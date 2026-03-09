@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  USER
+  BAR_ADMIN
+  SUPER_ADMIN
+}
+
+enum EventStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  FINISHED
+}
+
+enum PredictionStatus {
+  PENDING
+  WON
+  LOST
+}
+
+model User {
+  id             String       @id @default(cuid())
+  name           String?
+  email          String       @unique
+  emailVerified  DateTime?
+  image          String?
+  passwordHash   String?
+  role           Role         @default(USER)
+  totalPoints    Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  barMemberships BarMember[]
+  predictions    Prediction[]
+  badges         UserBadge[]
+  adminBars      Bar[]        @relation("BarAdmin")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Bar {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?  @db.Text
+  logo        String?
+  qrCode      String?  @db.Text
+  address     String?
+  adminId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  admin   User        @relation("BarAdmin", fields: [adminId], references: [id])
+  members BarMember[]
+  events  Event[]
+}
+
+model BarMember {
+  id        String   @id @default(cuid())
+  userId    String
+  barId     String
+  points    Int      @default(0)
+  joinedAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bar  Bar  @relation(fields: [barId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, barId])
+}
+
+model Event {
+  id             String      @id @default(cuid())
+  title          String
+  description    String?     @db.Text
+  barId          String
+  status         EventStatus @default(DRAFT)
+  startTime      DateTime
+  endTime        DateTime?
+  tokenAllowance Int         @default(100)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  bar       Bar          @relation(fields: [barId], references: [id], onDelete: Cascade)
+  outcomes  Outcome[]
+  predictions Prediction[]
+}
+
+model Outcome {
+  id        String  @id @default(cuid())
+  eventId   String
+  label     String
+  odds      Float   @default(2.0)
+  isCorrect Boolean @default(false)
+
+  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  predictions Prediction[]
+}
+
+model Prediction {
+  id        String           @id @default(cuid())
+  userId    String
+  eventId   String
+  outcomeId String
+  tokens    Int
+  status    PredictionStatus @default(PENDING)
+  payout    Int              @default(0)
+  createdAt DateTime         @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  outcome Outcome @relation(fields: [outcomeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])
+}
+
+model Badge {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  description String
+  icon        String
+  condition   String
+
+  users UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+}
