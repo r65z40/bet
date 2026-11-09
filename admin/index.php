@@ -61,10 +61,12 @@ admin_header('Tableau de bord', 'index');
   <p style="margin:14px 0 0"><a href="stats.php">Toutes les statistiques →</a></p>
 </div>
 
-<div class="grid g4">
+<div class="grid g3">
+  <a class="card" href="sections.php" style="text-decoration:none"><h2>⇅ Sections</h2><p class="muted">Ordre des blocs de la page d’accueil (avis, photos, tarifs…).</p></a>
   <a class="card" href="textes.php" style="text-decoration:none"><h2>✏️ Textes</h2><p class="muted">Titres, descriptions, coordonnées, référencement.</p></a>
   <a class="card" href="listes.php?g=tarif_jours" style="text-decoration:none"><h2>€ Tarifs</h2><p class="muted"><?= $nbTarifs ?> lignes de tarifs affichées.</p></a>
   <a class="card" href="photos.php" style="text-decoration:none"><h2>📷 Photos</h2><p class="muted"><?= $nbPhotos ?> photos dans la galerie.</p></a>
+  <a class="card" href="avis.php" style="text-decoration:none"><h2>★ Avis</h2><p class="muted">Avis Google et 1001Salles affichés sur le site.</p></a>
   <a class="card" href="listes.php" style="text-decoration:none"><h2>☰ Listes</h2><p class="muted">Points forts, équipements, mobilier, accès…</p></a>
 </div>
 <?php admin_footer();

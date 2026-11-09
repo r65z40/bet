@@ -469,3 +469,22 @@ function rating_label(string $r): string
 {
     return str_replace('.', ',', trim($r));
 }
+
+/* ---------- Ordre des sections de l'accueil ---------- */
+
+/** Sections dans l'ordre choisi : [clé => visible (bool)]. Les nouvelles sections s'ajoutent à la fin. */
+function home_sections(): array
+{
+    $order = array_values(array_intersect(array_filter(explode(',', s('sections_order'))), array_keys(HOME_SECTIONS)));
+    foreach (array_keys(HOME_SECTIONS) as $k) {
+        if (!in_array($k, $order, true)) {
+            $order[] = $k;
+        }
+    }
+    $hidden = array_filter(explode(',', s('sections_hidden')));
+    $out = [];
+    foreach ($order as $k) {
+        $out[$k] = !in_array($k, $hidden, true);
+    }
+    return $out;
+}

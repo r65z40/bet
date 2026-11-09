@@ -11,6 +11,15 @@ $heroWebp = variant_src(hero_filename(), 'large');
 $showReviews = $reviews || s('google_rating') !== '' || s('salles1001_rating') !== '';
 $reviewsLimit = max(1, (int)s('reviews_visible') ?: 6);
 $mapSrc = s('map_query') !== '' ? 'https://www.google.com/maps?q=' . rawurlencode(s('map_query')) . '&output=embed&hl=fr' : '';
+$blocks = [];
+$sections = home_sections();
+// Liens du menu dans le même ordre que les sections (le plan reste une page à part, toujours accessible)
+$navItems = [];
+foreach ($sections as $k => $visible) {
+    if (($visible || $k === 'plan') && ($k !== 'avis' || $showReviews)) {
+        $navItems[$k] = HOME_SECTIONS[$k];
+    }
+}
 $jsonLd  = [
     '@context' => 'https://schema.org',
     '@type' => 'EventVenue',
@@ -410,16 +419,9 @@ $jsonLd  = [
         <span><?= e($name) ?><small><?= e(s('site_location')) ?></small></span>
       </a>
       <nav class="navlinks" aria-label="Navigation principale">
-        <a href="#salle">La salle</a>
-        <a href="#equipements">Équipements</a>
-        <a href="#mobilier">Mobilier</a>
-        <a href="#tarifs">Tarifs</a>
-        <a href="#acces">Accès</a>
-        <a href="plan.php" data-track="plan">Plan</a>
-        <a href="#photos">Photos</a>
-<?php if ($showReviews): ?>
-        <a href="#avis">Avis</a>
-<?php endif; ?>
+<?php foreach ($navItems as $k => $it): if ($it['nav'] === null) continue; ?>
+        <a href="<?= e($it['href']) ?>"<?= $k === 'plan' ? ' data-track="plan"' : '' ?>><?= e($it['nav']) ?></a>
+<?php endforeach; ?>
         <a class="cta-small" href="reservation.php" data-track="reserver" style="background:linear-gradient(135deg,#273CF5,#1727b8);color:#fff;border-color:#5262ff;box-shadow:0 7px 20px rgba(39,60,245,.28)">Réserver en ligne</a>
         <a class="cta-small cta-contact" href="<?= e($mailto) ?>" data-track="email">Nous contacter</a>
       </nav>
@@ -427,17 +429,9 @@ $jsonLd  = [
     </div>
     <nav class="mobile-menu" id="mobile-menu" aria-label="Menu mobile" hidden>
       <ul>
-        <li><a href="#salle">La salle</a></li>
-        <li><a href="#equipements">Équipements</a></li>
-        <li><a href="#mobilier">Mobilier</a></li>
-        <li><a href="#tarifs">Tarifs</a></li>
-        <li><a href="#acces">Accès</a></li>
-        <li><a href="plan.php" data-track="plan">Plan de la salle</a></li>
-        <li><a href="#photos">Photos</a></li>
-<?php if ($showReviews): ?>
-        <li><a href="#avis">Avis clients</a></li>
-<?php endif; ?>
-        <li><a href="#contact">Contact</a></li>
+<?php foreach ($navItems as $k => $it): ?>
+        <li><a href="<?= e($it['href']) ?>"<?= $k === 'plan' ? ' data-track="plan"' : '' ?>><?= e($it['mobile']) ?></a></li>
+<?php endforeach; ?>
       </ul>
       <div class="mm-actions">
         <a class="btn btn-primary" href="reservation.php" data-track="reserver">📅 Réserver en ligne</a>
@@ -471,6 +465,7 @@ $jsonLd  = [
       </div>
     </div>
 
+<?php ob_start(); ?>
     <section id="salle">
       <div class="wrap">
         <div class="section-title">
@@ -484,7 +479,9 @@ $jsonLd  = [
         </div>
       </div>
     </section>
+<?php $blocks['salle'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
     <section class="specs" id="equipements">
       <div class="wrap">
         <div class="section-title">
@@ -498,7 +495,9 @@ $jsonLd  = [
         </div>
       </div>
     </section>
+<?php $blocks['equipements'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
     <section id="mobilier">
       <div class="wrap">
         <div class="section-title">
@@ -519,7 +518,9 @@ $jsonLd  = [
         </div>
       </div>
     </section>
+<?php $blocks['mobilier'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
     <section class="plan-cta-section" aria-labelledby="plan-cta-title">
       <div class="wrap">
         <div class="plan-cta-box">
@@ -532,7 +533,9 @@ $jsonLd  = [
         </div>
       </div>
     </section>
+<?php $blocks['plan'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
     <section class="pricing-section" id="tarifs">
       <div class="wrap">
         <div class="section-title">
@@ -581,7 +584,9 @@ $jsonLd  = [
         <p class="pricing-foot"><?= rich(s('tarifs_foot')) ?> <a href="<?= e($mailto) ?>" data-track="email"><strong><?= e(s('contact_email')) ?></strong></a>.</p>
       </div>
     </section>
+<?php $blocks['tarifs'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
     <section id="acces">
       <div class="wrap">
         <div class="section-title">
@@ -616,7 +621,9 @@ $jsonLd  = [
 <?php endif; ?>
       </div>
     </section>
+<?php $blocks['acces'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
     <section class="photos-section" id="photos">
       <div class="wrap">
         <div class="section-title">
@@ -639,7 +646,9 @@ $jsonLd  = [
         </div>
       </div>
     </section>
+<?php $blocks['photos'] = ob_get_clean(); ?>
 
+<?php ob_start(); ?>
 <?php if ($showReviews): ?>
     <section class="reviews-section" id="avis">
       <div class="wrap">
@@ -689,6 +698,7 @@ $jsonLd  = [
       </div>
     </section>
 <?php endif; ?>
+<?php $blocks['avis'] = ob_get_clean(); ?>
 
     <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Galerie photo agrandie">
       <button class="lightbox-close" type="button" aria-label="Fermer">×</button>
@@ -698,6 +708,7 @@ $jsonLd  = [
       <div class="lightbox-counter"></div>
     </div>
 
+<?php ob_start(); ?>
     <section class="contact" id="contact">
       <div class="wrap">
         <div class="contact-box">
@@ -714,6 +725,8 @@ $jsonLd  = [
         </div>
       </div>
     </section>
+<?php $blocks['contact'] = ob_get_clean(); ?>
+<?php foreach ($sections as $key => $visible) { if ($visible && isset($blocks[$key])) { echo $blocks[$key]; } } ?>
   </main>
 
   <footer>

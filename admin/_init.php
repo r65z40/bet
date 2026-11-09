@@ -12,6 +12,7 @@ function admin_header(string $title, string $active = ''): void
     $menu = [
         'index'    => ['index.php', '🏠', 'Tableau de bord'],
         'textes'   => ['textes.php', '✏️', 'Textes'],
+        'sections' => ['sections.php', '⇅', 'Sections'],
         'contenus' => ['listes.php', '☰', 'Listes & cartes'],
         'tarifs'   => ['listes.php?g=tarif_jours', '€', 'Tarifs'],
         'photos'   => ['photos.php', '📷', 'Photos'],

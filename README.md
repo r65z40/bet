@@ -19,6 +19,7 @@ C'est tout : la base `data/site.sqlite` est créée automatiquement et pré-remp
 
 | Menu | Contenu |
 |---|---|
+| **Sections** | Ordre des blocs de la page d'accueil (la salle, tarifs, photos, avis, accès, contact…) et masquage ; le menu du site suit le même ordre |
 | **Textes** | Tous les titres et paragraphes, e-mail, adresse, liens Facebook / Maps / 1001Salles, référencement Google, pages Plan et Réservation (identifiants SuperSaaS) |
 | **Tarifs** | Prix par jour, infos (caution…), options & services : modifier, ajouter, supprimer, réordonner, masquer |
 | **Listes & cartes** | Points forts, cartes « La salle », équipements, mobilier, vaisselle, accès, événements, surfaces du plan |

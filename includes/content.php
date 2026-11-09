@@ -248,3 +248,20 @@ const REVIEW_SOURCES = [
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
 const SCHEMA_VERSION = 3;
+
+/**
+ * Sections de la page d'accueil dont l'ordre et l'affichage se règlent dans
+ * l'administration (le bandeau d'accueil et ses 4 points forts restent en haut).
+ * nav = libellé dans le menu (null = pas de lien), href = cible du lien.
+ */
+const HOME_SECTIONS = [
+    'salle'       => ['label' => 'La salle (cartes)', 'nav' => 'La salle', 'mobile' => 'La salle', 'href' => '#salle'],
+    'equipements' => ['label' => 'Équipements sur place', 'nav' => 'Équipements', 'mobile' => 'Équipements', 'href' => '#equipements'],
+    'mobilier'    => ['label' => 'Équipements & mobilier inclus', 'nav' => 'Mobilier', 'mobile' => 'Mobilier', 'href' => '#mobilier'],
+    'plan'        => ['label' => 'Encart « Plan de la salle »', 'nav' => 'Plan', 'mobile' => 'Plan de la salle', 'href' => 'plan.php'],
+    'tarifs'      => ['label' => 'Tarifs de location', 'nav' => 'Tarifs', 'mobile' => 'Tarifs', 'href' => '#tarifs'],
+    'acces'       => ['label' => 'Accès & carte', 'nav' => 'Accès', 'mobile' => 'Accès', 'href' => '#acces'],
+    'photos'      => ['label' => 'Galerie photos', 'nav' => 'Photos', 'mobile' => 'Photos', 'href' => '#photos'],
+    'avis'        => ['label' => 'Avis clients', 'nav' => 'Avis', 'mobile' => 'Avis clients', 'href' => '#avis'],
+    'contact'     => ['label' => 'Contact (encadré bleu)', 'nav' => null, 'mobile' => 'Contact', 'href' => '#contact'],
+];
