@@ -63,10 +63,15 @@ function photo_src(string $filename): string
     return 'photos/' . rawurlencode($filename) . ($v ? '?v=' . $v : '');
 }
 
-function hero_image(): string
+function hero_filename(): string
 {
     $f = s('hero_photo');
-    return photo_src($f !== '' && is_file(UPLOAD_DIR . '/' . $f) ? $f : 'photo-02.jpg');
+    return $f !== '' && is_file(UPLOAD_DIR . '/' . $f) ? $f : 'photo-02.jpg';
+}
+
+function hero_image(): string
+{
+    return photo_src(hero_filename());
 }
 
 function plan_image(): string
@@ -262,6 +267,7 @@ function store_uploaded_image(array $file): array
         throw new RuntimeException('Impossible d’enregistrer le fichier (vérifiez les droits du dossier photos/).');
     }
     [$w, $h] = optimize_image(UPLOAD_DIR . '/' . $name);
+    make_variants($name);
     return [$name, $w, $h];
 }
 
@@ -271,6 +277,9 @@ function delete_photo_file(string $filename): void
     $path = UPLOAD_DIR . '/' . basename($filename);
     if ($filename !== '' && is_file($path)) {
         @unlink($path);
+    }
+    if ($filename !== '') {
+        delete_variants(basename($filename));
     }
 }
 
@@ -353,4 +362,110 @@ function optimize_image(string $path, int $max = 2400): array
         [$w, $h] = [$nw, $nh];
     }
     return [$w, $h];
+}
+
+/* ---------- Variantes WebP (vignette + grand format) ---------- */
+
+const PHOTO_SIZES = ['thumb' => 800, 'large' => 1920];
+
+function variant_path(string $filename, string $size): string
+{
+    return UPLOAD_DIR . '/cache/' . pathinfo($filename, PATHINFO_FILENAME) . '-' . PHOTO_SIZES[$size] . '.webp';
+}
+
+/** URL de la variante WebP si elle existe, sinon de l'original. */
+function variant_src(string $filename, string $size): ?string
+{
+    $path = variant_path($filename, $size);
+    if (!is_file($path)) {
+        return null;
+    }
+    return 'photos/cache/' . rawurlencode(basename($path)) . '?v=' . filemtime($path);
+}
+
+/** Crée les variantes WebP manquantes ou périmées d'une photo. Retourne true si au moins une a été créée. */
+function make_variants(string $filename): bool
+{
+    $src = UPLOAD_DIR . '/' . basename($filename);
+    if (!is_file($src) || !function_exists('imagewebp')) {
+        return false;
+    }
+    if (!is_dir(UPLOAD_DIR . '/cache')) {
+        @mkdir(UPLOAD_DIR . '/cache', 0775, true);
+    }
+    $todo = array_filter(array_keys(PHOTO_SIZES), function ($size) use ($filename, $src) {
+        $p = variant_path($filename, $size);
+        return !is_file($p) || filemtime($p) < filemtime($src);
+    });
+    if (!$todo) {
+        return false;
+    }
+    $info = @getimagesize($src);
+    $img = match ($info[2] ?? 0) {
+        IMAGETYPE_JPEG => @imagecreatefromjpeg($src),
+        IMAGETYPE_PNG  => @imagecreatefrompng($src),
+        IMAGETYPE_WEBP => @imagecreatefromwebp($src),
+        default => false,
+    };
+    if (!$img) {
+        return false;
+    }
+    $w = imagesx($img);
+    $h = imagesy($img);
+    foreach ($todo as $size) {
+        $ratio = min(1, PHOTO_SIZES[$size] / $w);
+        $nw = (int)round($w * $ratio);
+        $nh = (int)round($h * $ratio);
+        $dst = imagecreatetruecolor($nw, $nh);
+        imagealphablending($dst, false);
+        imagesavealpha($dst, true);
+        imagecopyresampled($dst, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        imagewebp($dst, variant_path($filename, $size), $size === 'thumb' ? 72 : 80);
+    }
+    return true;
+}
+
+function delete_variants(string $filename): void
+{
+    foreach (array_keys(PHOTO_SIZES) as $size) {
+        @unlink(variant_path($filename, $size));
+    }
+}
+
+/**
+ * Génère les variantes manquantes (appelé depuis l'administration, jamais
+ * sur le site public pour ne pas le ralentir). Limité en temps par appel.
+ */
+function ensure_all_variants(float $budgetSeconds = 8.0): int
+{
+    $start = microtime(true);
+    $n = 0;
+    foreach (db()->query('SELECT filename FROM photos')->fetchAll(PDO::FETCH_COLUMN) as $f) {
+        if (microtime(true) - $start > $budgetSeconds) {
+            break;
+        }
+        $n += (int)make_variants($f);
+    }
+    $hero = s('hero_photo') ?: 'photo-02.jpg';
+    make_variants($hero);
+    return $n;
+}
+
+/* ---------- Avis ---------- */
+
+function reviews(bool $all = false): array
+{
+    return db()->query('SELECT * FROM reviews' . ($all ? '' : ' WHERE visible = 1') . ' ORDER BY position, id')->fetchAll();
+}
+
+function stars(int $n): string
+{
+    $n = max(0, min(5, $n));
+    return '<span class="stars" aria-label="' . $n . ' sur 5">' . str_repeat('★', $n) . '<span class="stars-off">' . str_repeat('★', 5 - $n) . '</span></span>';
+}
+
+/** Affiche une note « 4,9 » à partir de la saisie « 4.9 » ou « 4,9 ». */
+function rating_label(string $r): string
+{
+    return str_replace('.', ',', trim($r));
 }

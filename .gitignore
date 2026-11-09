@@ -4,3 +4,4 @@ data/*.sqlite-*
 # Photos envoyées depuis l'administration
 photos/upload-*
 .DS_Store
+photos/cache/upload-*

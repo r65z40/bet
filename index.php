@@ -6,6 +6,11 @@ $name    = s('site_name');
 $siteUrl = rtrim(s('site_url'), '/');
 $mailto  = mailto();
 $photos  = photos();
+$reviews = reviews();
+$heroWebp = variant_src(hero_filename(), 'large');
+$showReviews = $reviews || s('google_rating') !== '' || s('salles1001_rating') !== '';
+$reviewsLimit = max(1, (int)s('reviews_visible') ?: 6);
+$mapSrc = s('map_query') !== '' ? 'https://www.google.com/maps?q=' . rawurlencode(s('map_query')) . '&output=embed&hl=fr' : '';
 $jsonLd  = [
     '@context' => 'https://schema.org',
     '@type' => 'EventVenue',
@@ -51,7 +56,11 @@ $jsonLd  = [
   <meta name="twitter:description" content="<?= e(s('og_description')) ?>">
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="icon" href="logo-rn6.png" type="image/png">
+<?php if ($heroWebp): ?>
+  <link rel="preload" as="image" href="<?= e($heroWebp) ?>" type="image/webp">
+<?php else: ?>
   <link rel="preload" as="image" href="<?= e(hero_image()) ?>">
+<?php endif; ?>
   <script type="application/ld+json"><?= json_encode($jsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
   <style>
     :root{
@@ -311,6 +320,92 @@ $jsonLd  = [
       .navlinks .cta-small{font-size:.76rem;padding:9px 9px}
     }
 
+
+    /* ===== Ajouts : WebP, menu mobile, avis, carte, animations ===== */
+<?php if ($heroWebp): ?>
+    @supports (background-image: image-set(url("x.webp") type("image/webp"))){
+      .hero{--hero-image:image-set(url('<?= e($heroWebp) ?>') type("image/webp"), url('<?= e(hero_image()) ?>') type("image/jpeg"))}
+    }
+<?php endif; ?>
+    .gallery-item picture{display:block;width:100%;height:100%}
+
+    /* Menu mobile */
+    .menu-toggle{display:none;flex:0 0 44px;width:44px;height:44px;border-radius:10px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.06);cursor:pointer;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:0}
+    .menu-toggle span{display:block;width:20px;height:2px;border-radius:2px;background:#fff;transition:transform .25s ease, opacity .2s ease}
+    .menu-toggle[aria-expanded="true"] span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+    .menu-toggle[aria-expanded="true"] span:nth-child(2){opacity:0}
+    .menu-toggle[aria-expanded="true"] span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+    .mobile-menu{display:none}
+    @media (max-width:900px){
+      .menu-toggle{display:inline-flex}
+      .mobile-menu{display:block;position:absolute;left:0;right:0;top:100%;background:#06172a;border-top:1px solid rgba(255,255,255,.08);box-shadow:0 22px 40px rgba(0,0,0,.25);max-height:calc(100vh - 64px);overflow:auto;transform-origin:top;transition:opacity .22s ease, transform .22s ease}
+      .mobile-menu[hidden]{display:block;opacity:0;transform:translateY(-8px);pointer-events:none;visibility:hidden}
+      .mobile-menu ul{list-style:none;margin:0;padding:8px 0}
+      .mobile-menu li a{display:flex;align-items:center;justify-content:space-between;padding:15px 22px;color:#fff;text-decoration:none;font-weight:800;font-size:1.05rem;border-bottom:1px solid rgba(255,255,255,.06)}
+      .mobile-menu li a:after{content:"›";color:var(--gold-2);font-size:1.3rem}
+      .mobile-menu li a:active{background:rgba(255,255,255,.05)}
+      .mobile-menu .mm-actions{display:grid;gap:10px;padding:16px 18px 22px}
+      .mobile-menu .mm-actions .btn{width:100%}
+    }
+    @media (max-width:620px){ .navlinks .cta-contact{display:none} }
+
+    /* Avis */
+    .reviews-section{background:var(--soft-blue);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .review-badges{display:flex;flex-wrap:wrap;gap:14px;margin:-8px 0 30px}
+    .review-badge{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 20px 14px 16px;text-decoration:none;color:var(--ink);box-shadow:0 7px 24px rgba(7,28,53,.06);transition:transform .2s ease, box-shadow .2s ease}
+    a.review-badge:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(7,28,53,.10)}
+    .review-badge .src-logo{flex:0 0 44px;width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:#fff;border:1px solid var(--line)}
+    .review-badge .src-logo.s1001{background:var(--navy);color:var(--gold-2);font-weight:900;font-size:.72rem;letter-spacing:-.02em;border:0}
+    .review-badge .score{font-size:1.9rem;font-weight:900;color:var(--navy);line-height:1}
+    .review-badge small{display:block;color:var(--muted);font-size:.84rem;margin-top:3px}
+    .star-meter{position:relative;display:inline-block;color:#d6dbe1;letter-spacing:2px;font-size:1rem;line-height:1}
+    .star-meter:before{content:"★★★★★";position:absolute;left:0;top:0;width:var(--pct,100%);overflow:hidden;color:#f2b01e;white-space:nowrap}
+    .reviews{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+    .review{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:24px;display:flex;flex-direction:column;gap:14px;box-shadow:0 7px 28px rgba(7,28,53,.05)}
+    .review.is-more{display:none}
+    .reviews.show-all .review.is-more{display:flex}
+    .review-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .stars{color:#f2b01e;letter-spacing:2px;font-size:1.05rem}
+    .stars-off{color:#d6dbe1}
+    .review-src{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:800;color:var(--muted);background:var(--soft);border-radius:999px;padding:4px 10px}
+    .review blockquote{margin:0;color:#34465b;position:relative;display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}
+    .review.open blockquote{display:block}
+    .review .more{align-self:flex-start;border:0;background:none;color:#8f6818;font-weight:800;cursor:pointer;padding:0;font:inherit;font-size:.9rem}
+    .review-author{display:flex;align-items:center;gap:12px;margin-top:auto;padding-top:14px;border-top:1px solid var(--line)}
+    .review-author .avatar{color:#fff;font-size:1rem;flex:0 0 40px;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;font-weight:900;color:#fff;background:linear-gradient(135deg,var(--navy-2),#273CF5)}
+    .review-author strong{display:block;color:var(--navy);line-height:1.2}
+    .review-author span{font-size:.85rem;color:var(--muted)}
+    .reviews-more{text-align:center;margin-top:26px}
+    .reviews-more button{cursor:pointer;font:inherit}
+    @media (max-width:900px){.reviews{grid-template-columns:1fr 1fr}}
+    @media (max-width:620px){.reviews{grid-template-columns:1fr}.review-badge{flex:1 1 100%}}
+
+    /* Carte */
+    .map-box{position:relative;margin-top:22px;height:400px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);box-shadow:0 7px 28px rgba(7,28,53,.06);
+      background:
+        radial-gradient(circle at 62% 46%, rgba(199,154,56,.20) 0 70px, transparent 71px),
+        linear-gradient(115deg, transparent 47%, rgba(255,255,255,.95) 47% 50%, transparent 50%),
+        linear-gradient(25deg, transparent 60%, rgba(255,255,255,.85) 60% 62%, transparent 62%),
+        repeating-linear-gradient(0deg, rgba(7,28,53,.05) 0 1px, transparent 1px 46px),
+        repeating-linear-gradient(90deg, rgba(7,28,53,.05) 0 1px, transparent 1px 46px),
+        #e9eef2}
+    .map-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+    .map-load{position:absolute;inset:0;width:100%;border:0;background:transparent;cursor:pointer;display:grid;place-content:center;justify-items:center;gap:8px;font:inherit;color:var(--navy);padding:20px;text-align:center}
+    .map-load .pin{width:58px;height:58px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:linear-gradient(135deg,#273CF5,#1727b8);display:grid;place-items:center;box-shadow:0 10px 26px rgba(39,60,245,.35);margin-bottom:8px;transition:transform .25s ease}
+    .map-load .pin:after{content:"";width:20px;height:20px;border-radius:50%;background:#fff}
+    .map-load:hover .pin{transform:rotate(-45deg) translate(3px,-3px)}
+    .map-load strong{font-size:1.1rem;background:#fff;padding:10px 18px;border-radius:999px;box-shadow:0 6px 18px rgba(7,28,53,.12)}
+    .map-load small{color:var(--muted);font-weight:700;background:rgba(255,255,255,.8);padding:3px 10px;border-radius:999px}
+    @media (max-width:620px){.map-box{height:320px}}
+
+    /* Animations douces */
+    @media (prefers-reduced-motion: no-preference){
+      .hero-copy{animation:heroIn .9s cubic-bezier(.2,.7,.2,1) both}
+      @keyframes heroIn{from{opacity:0;transform:translateY(22px)}to{opacity:1;transform:none}}
+      .js-anim .reveal{opacity:0;transform:translateY(24px);transition:opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1);transition-delay:var(--d,0ms)}
+      .js-anim .reveal.in{opacity:1;transform:none}
+    }
+    .count{font-variant-numeric:tabular-nums}
   </style>
 </head>
 <body>
@@ -328,10 +423,33 @@ $jsonLd  = [
         <a href="#acces">Accès</a>
         <a href="plan.php" data-track="plan">Plan</a>
         <a href="#photos">Photos</a>
+<?php if ($showReviews): ?>
+        <a href="#avis">Avis</a>
+<?php endif; ?>
         <a class="cta-small" href="reservation.php" data-track="reserver" style="background:linear-gradient(135deg,#273CF5,#1727b8);color:#fff;border-color:#5262ff;box-shadow:0 7px 20px rgba(39,60,245,.28)">Réserver en ligne</a>
-        <a class="cta-small" href="<?= e($mailto) ?>" data-track="email">Nous contacter</a>
+        <a class="cta-small cta-contact" href="<?= e($mailto) ?>" data-track="email">Nous contacter</a>
       </nav>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Ouvrir le menu"><span></span><span></span><span></span></button>
     </div>
+    <nav class="mobile-menu" id="mobile-menu" aria-label="Menu mobile" hidden>
+      <ul>
+        <li><a href="#salle">La salle</a></li>
+        <li><a href="#equipements">Équipements</a></li>
+        <li><a href="#mobilier">Mobilier</a></li>
+        <li><a href="#tarifs">Tarifs</a></li>
+        <li><a href="#acces">Accès</a></li>
+        <li><a href="plan.php" data-track="plan">Plan de la salle</a></li>
+        <li><a href="#photos">Photos</a></li>
+<?php if ($showReviews): ?>
+        <li><a href="#avis">Avis clients</a></li>
+<?php endif; ?>
+        <li><a href="#contact">Contact</a></li>
+      </ul>
+      <div class="mm-actions">
+        <a class="btn btn-primary" href="reservation.php" data-track="reserver">📅 Réserver en ligne</a>
+        <a class="btn btn-secondary" style="background:#fff;color:var(--navy)" href="<?= e($mailto) ?>" data-track="email">✉ Nous contacter</a>
+      </div>
+    </nav>
   </header>
 
   <main>
@@ -485,7 +603,7 @@ $jsonLd  = [
 <?php endforeach; ?>
             </ul>
 <?php if (s('maps_url') !== ''): ?>
-            <div style="margin-top:20px"><a class="btn btn-secondary" target="_blank" rel="noopener" href="<?= e(s('maps_url')) ?>" data-track="maps">Voir l’adresse sur la carte ↗</a></div>
+            <div style="margin-top:20px"><a class="btn btn-secondary" target="_blank" rel="noopener" href="<?= e(s('maps_url')) ?>" data-track="maps">Itinéraire dans Google Maps ↗</a></div>
 <?php endif; ?>
           </div>
           <div class="details-panel">
@@ -497,6 +615,15 @@ $jsonLd  = [
             </ul>
           </div>
         </div>
+<?php if ($mapSrc): ?>
+        <div class="map-box" id="map" data-src="<?= e($mapSrc) ?>" data-autoload="<?= s('map_autoload') === '1' ? '1' : '0' ?>">
+          <button class="map-load" type="button" data-track="carte" aria-label="Afficher la carte interactive Google Maps">
+            <span class="pin" aria-hidden="true"></span>
+            <strong>Afficher la carte interactive</strong>
+            <small><?= e(s('map_query')) ?> · Google Maps</small>
+          </button>
+        </div>
+<?php endif; ?>
       </div>
     </section>
 
@@ -508,14 +635,70 @@ $jsonLd  = [
         </div>
         <div class="gallery" aria-label="Galerie photos de <?= e($name) ?>">
 <?php foreach ($photos as $i => $ph): ?>
-          <figure class="gallery-item" data-track="photo">
-            <img alt="<?= e($ph['alt']) ?>" data-src="<?= e(photo_src($ph['filename'])) ?>" width="<?= (int)$ph['width'] ?>" height="<?= (int)$ph['height'] ?>" loading="lazy" decoding="async" fetchpriority="low">
+<?php $thumb = variant_src($ph['filename'], 'thumb'); $large = variant_src($ph['filename'], 'large'); ?>
+          <figure class="gallery-item" data-track="photo"<?= $large ? ' data-full="' . e($large) . '"' : '' ?>>
+            <picture>
+<?php if ($thumb): ?>
+              <source type="image/webp" data-srcset="<?= e($thumb) ?>">
+<?php endif; ?>
+              <img alt="<?= e($ph['alt']) ?>" data-src="<?= e(photo_src($ph['filename'])) ?>" width="<?= (int)$ph['width'] ?>" height="<?= (int)$ph['height'] ?>" loading="lazy" decoding="async" fetchpriority="low">
+            </picture>
             <div class="gallery-empty"><div><span>📷</span>Photo <?= $i + 1 ?></div></div>
           </figure>
 <?php endforeach; ?>
         </div>
       </div>
     </section>
+
+<?php if ($showReviews): ?>
+    <section class="reviews-section" id="avis">
+      <div class="wrap">
+        <div class="section-title">
+          <h2><?= e(s('reviews_title')) ?></h2>
+          <p><?= rich(s('reviews_subtitle')) ?></p>
+        </div>
+        <div class="review-badges">
+<?php if (s('google_rating') !== ''): $g = (float)str_replace(',', '.', s('google_rating')); $tag = s('google_reviews_url') !== '' ? 'a' : 'div'; ?>
+          <<?= $tag ?> class="review-badge"<?= $tag === 'a' ? ' href="' . e(s('google_reviews_url')) . '" target="_blank" rel="noopener" data-track="avis"' : '' ?>>
+            <span class="src-logo" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg></span>
+            <span><span class="score"><?= e(rating_label(s('google_rating'))) ?></span> <span class="star-meter" style="--pct:<?= round(min(5, $g) * 20) ?>%" aria-label="<?= e(rating_label(s('google_rating'))) ?> sur 5">★★★★★</span>
+              <small><?= s('google_count') !== '' ? (int)s('google_count') . ' avis ' : 'Avis ' ?>Google<?= $tag === 'a' ? ' · Voir les avis ↗' : '' ?></small></span>
+          </<?= $tag ?>>
+<?php endif; ?>
+<?php if (s('salles1001_rating') !== ''): $r1 = (float)str_replace(',', '.', s('salles1001_rating')); $tag = s('salles1001_url') !== '' ? 'a' : 'div'; ?>
+          <<?= $tag ?> class="review-badge"<?= $tag === 'a' ? ' href="' . e(s('salles1001_url')) . '" target="_blank" rel="noopener" data-track="avis"' : '' ?>>
+            <span class="src-logo s1001" aria-hidden="true">1001</span>
+            <span><span class="score"><?= e(rating_label(s('salles1001_rating'))) ?></span> <span class="star-meter" style="--pct:<?= round(min(5, $r1) * 20) ?>%" aria-label="<?= e(rating_label(s('salles1001_rating'))) ?> sur 5">★★★★★</span>
+              <small><?= s('salles1001_count') !== '' ? (int)s('salles1001_count') . ' avis ' : 'Avis ' ?>1001Salles<?= $tag === 'a' ? ' · Voir les avis ↗' : '' ?></small></span>
+          </<?= $tag ?>>
+<?php endif; ?>
+        </div>
+<?php if ($reviews): ?>
+        <div class="reviews" id="reviews-list">
+<?php foreach ($reviews as $i => $rv): ?>
+          <article class="review<?= $i >= $reviewsLimit ? ' is-more' : '' ?>">
+            <div class="review-top">
+              <?= stars((int)$rv['rating']) ?>
+              <span class="review-src"><?= e(['google' => 'Avis Google', '1001' => 'Avis 1001Salles'][$rv['source']] ?? 'Avis client') ?></span>
+            </div>
+            <blockquote><?= nl2br(e($rv['text']), false) ?></blockquote>
+<?php if (mb_strlen($rv['text']) > 330): ?>
+            <button class="more" type="button">Lire la suite</button>
+<?php endif; ?>
+            <div class="review-author">
+              <span class="avatar" aria-hidden="true"><?= e(mb_strtoupper(mb_substr($rv['author'], 0, 1))) ?></span>
+              <div><strong><?= e($rv['author']) ?></strong><span><?= e(implode(' · ', array_filter([$rv['event'], $rv['review_date']]))) ?></span></div>
+            </div>
+          </article>
+<?php endforeach; ?>
+        </div>
+<?php if (count($reviews) > $reviewsLimit): ?>
+        <div class="reviews-more"><button class="btn btn-gold" type="button" id="reviews-more"><?= count($reviews) - $reviewsLimit === 1 ? 'Voir l’autre avis' : 'Voir les ' . (count($reviews) - $reviewsLimit) . ' autres avis' ?></button></div>
+<?php endif; ?>
+<?php endif; ?>
+      </div>
+    </section>
+<?php endif; ?>
 
     <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Galerie photo agrandie">
       <button class="lightbox-close" type="button" aria-label="Fermer">×</button>
@@ -575,7 +758,22 @@ $jsonLd  = [
     function loadGalleryImage(img){
       if (!img || img.dataset.loaded === '1' || !img.dataset.src) return;
       img.dataset.loaded = '1';
-      img.src = img.dataset.src;
+      const source = img.parentNode.querySelector('source[data-srcset]');
+      if (source) source.srcset = source.dataset.srcset; // vignette WebP légère
+      img.src = img.dataset.src;                          // repli JPEG (anciens navigateurs)
+    }
+
+    // Grand format : WebP 1920 px si le navigateur le gère, sinon la photo d'origine
+    function fullSrc(item){
+      const img = item.querySelector('img');
+      const webpOk = (img.currentSrc || '').includes('.webp') || window.__webp === true;
+      return (webpOk && item.dataset.full) ? item.dataset.full : (img.dataset.src || img.src);
+    }
+    (function(){ const t = new Image(); t.onload = () => { window.__webp = t.width > 0; };
+      t.src = 'data:image/webp;base64,UklGRhoAAABXRUJQVlA4TA0AAAAvAAAAEAcQERGIiP4HAA=='; })();
+    function preload(index){
+      const item = galleryItems[(index + galleryItems.length) % galleryItems.length];
+      if (item) { const i = new Image(); i.src = fullSrc(item); }
     }
 
     galleryItems.forEach((item, index) => {
@@ -606,10 +804,11 @@ $jsonLd  = [
       if (!galleryItems.length) return;
       currentPhoto = (index + galleryItems.length) % galleryItems.length;
       const img = galleryItems[currentPhoto].querySelector('img');
-      const src = img.dataset.src || img.src;
-      if (!src) return;
       loadGalleryImage(img);
+      const src = fullSrc(galleryItems[currentPhoto]);
+      if (!src) return;
       lightboxImg.src = src;
+      preload(currentPhoto + 1); preload(currentPhoto - 1);
       lightboxImg.alt = img.alt || 'Photo de La Salle RN6';
       counter.textContent = `${currentPhoto + 1} / ${galleryItems.length}`;
       lightbox.classList.add('open');
@@ -631,6 +830,109 @@ $jsonLd  = [
       if (e.key === 'ArrowLeft') openPhoto(currentPhoto - 1);
       if (e.key === 'ArrowRight') openPhoto(currentPhoto + 1);
     });
+    // Balayage sur mobile dans la visionneuse
+    let touchX = null;
+    lightbox.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, {passive:true});
+    lightbox.addEventListener('touchend', e => {
+      if (touchX === null) return;
+      const dx = e.changedTouches[0].clientX - touchX; touchX = null;
+      if (Math.abs(dx) > 50) openPhoto(currentPhoto + (dx < 0 ? 1 : -1));
+    });
+
+    // ===== Menu mobile =====
+    const menuBtn = document.querySelector('.menu-toggle');
+    const menu = document.getElementById('mobile-menu');
+    function setMenu(open){
+      menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      menuBtn.setAttribute('aria-label', open ? 'Fermer le menu' : 'Ouvrir le menu');
+      menu.hidden = !open;
+    }
+    menuBtn.addEventListener('click', () => setMenu(menu.hidden));
+    menu.addEventListener('click', e => { if (e.target.closest('a')) setMenu(false); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !menu.hidden) { setMenu(false); menuBtn.focus(); } });
+    document.addEventListener('click', e => { if (!menu.hidden && !e.target.closest('header')) setMenu(false); });
+    window.addEventListener('resize', () => { if (window.innerWidth > 900 && !menu.hidden) setMenu(false); });
+
+    // ===== Avis : « Lire la suite » et « Voir plus » =====
+    document.querySelectorAll('.review .more').forEach(b => b.addEventListener('click', () => {
+      const r = b.closest('.review'); r.classList.toggle('open');
+      b.textContent = r.classList.contains('open') ? 'Réduire' : 'Lire la suite';
+    }));
+    const moreBtn = document.getElementById('reviews-more');
+    if (moreBtn) moreBtn.addEventListener('click', () => {
+      document.getElementById('reviews-list').classList.add('show-all');
+      moreBtn.parentNode.remove();
+    });
+
+    // ===== Carte Google Maps (chargée au clic, ou à l'approche si activé) =====
+    const mapBox = document.getElementById('map');
+    function loadMap(){
+      if (!mapBox || mapBox.querySelector('iframe')) return;
+      const f = document.createElement('iframe');
+      f.src = mapBox.dataset.src; f.title = 'Carte Google Maps'; f.loading = 'lazy';
+      f.referrerPolicy = 'no-referrer-when-downgrade'; f.allowFullscreen = true;
+      mapBox.appendChild(f);
+      const b = mapBox.querySelector('.map-load'); if (b) b.remove();
+    }
+    if (mapBox) {
+      mapBox.querySelector('.map-load').addEventListener('click', loadMap);
+      if (mapBox.dataset.autoload === '1' && 'IntersectionObserver' in window) {
+        const mo = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) { loadMap(); mo.disconnect(); } }, {rootMargin:'300px 0px'});
+        mo.observe(mapBox);
+      }
+    }
+
+    // ===== Animations : apparition au défilement + chiffres qui comptent =====
+    (function(){
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduce || !('IntersectionObserver' in window)) return;
+      document.documentElement.classList.add('js-anim');
+
+      const targets = document.querySelectorAll('main .section-title, .hero-fact, .card, .stat, .details-panel, .plan-cta-box, .day-price, .pricing-info-item, .pricing-card, .gallery-item, .review-badge, .review, .map-box, .contact-box');
+      const groups = new Map();
+      targets.forEach(el => {
+        el.classList.add('reveal');
+        const n = groups.get(el.parentNode) || 0;      // léger décalage entre éléments voisins
+        el.style.setProperty('--d', Math.min(n, 6) * 70 + 'ms');
+        groups.set(el.parentNode, n + 1);
+      });
+
+      // Chiffres clés : « 120 personnes », « 125 m² », « 11,77 m² »…
+      const counters = [];
+      document.querySelectorAll('.hero-fact strong, .card p strong, .stat b').forEach(el => {
+        if (el.children.length) return;
+        const m = el.textContent.match(/\d+(?:[,.]\d+)?/);
+        if (!m) return;
+        const decimals = (m[0].split(/[,.]/)[1] || '').length;
+        const value = parseFloat(m[0].replace(',', '.'));
+        if (value < 10 && !decimals) return;          // « 5 min » reste tel quel
+        counters.push(el);
+        el.classList.add('count');
+        el._count = { before: el.textContent.slice(0, m.index), after: el.textContent.slice(m.index + m[0].length), value, decimals, sep: m[0].includes(',') ? ',' : '.' };
+        el.textContent = el._count.before + (0).toFixed(decimals).replace('.', el._count.sep) + el._count.after;
+      });
+      function runCount(el){
+        const c = el._count; if (!c || c.done) return; c.done = true;
+        const t0 = performance.now(), dur = 1300;
+        (function step(now){
+          const p = Math.min(1, (now - t0) / dur), eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = c.before + (c.value * eased).toFixed(c.decimals).replace('.', c.sep) + c.after;
+          if (p < 1) requestAnimationFrame(step);
+        })(t0);
+      }
+
+      const io = new IntersectionObserver(entries => {
+        entries.forEach(en => {
+          if (!en.isIntersecting) return;
+          en.target.classList.add('in');
+          en.target.querySelectorAll('.count').forEach(runCount);
+          if (en.target._count) runCount(en.target);
+          io.unobserve(en.target);
+        });
+      }, {rootMargin:'0px 0px -8% 0px', threshold:0.08});
+      targets.forEach(el => io.observe(el));
+      counters.forEach(el => { if (!el.closest('.reveal')) io.observe(el); });
+    })();
   </script>
   <?= tracking_script('accueil') ?>
 </body>

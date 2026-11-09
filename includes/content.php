@@ -85,6 +85,29 @@ const SETTINGS_SCHEMA = [
             'contact_text'    => ['label' => 'Contact — texte', 'type' => 'textarea', 'default' => 'Pour toute demande de tarif, de disponibilité ou d’information sur la location de La Salle RN6, contactez-nous directement par e-mail.'],
         ],
     ],
+    'avis' => [
+        'title' => 'Section « Avis clients »',
+        'fields' => [
+            'reviews_title'      => ['label' => 'Titre', 'default' => 'Ils ont fêté chez nous'],
+            'reviews_subtitle'   => ['label' => 'Sous-titre', 'default' => 'Les avis de nos clients sur Google et 1001Salles.'],
+            'google_rating'      => ['label' => 'Note Google (ex. 4,9)', 'default' => '', 'help' => 'Laisser vide pour masquer le badge Google.'],
+            'google_count'       => ['label' => 'Nombre d’avis Google', 'default' => '', 'type' => 'number'],
+            'google_reviews_url' => ['label' => 'Lien vers vos avis Google', 'default' => '', 'type' => 'url', 'help' => 'Sur Google Maps : votre fiche › Avis › Partager › Copier le lien.'],
+            'salles1001_rating'  => ['label' => 'Note 1001Salles (ex. 5)', 'default' => '', 'help' => 'Laisser vide pour masquer le badge 1001Salles. Le lien utilisé est celui des Informations générales.'],
+            'salles1001_count'   => ['label' => 'Nombre d’avis 1001Salles', 'default' => '', 'type' => 'number'],
+            'reviews_visible'    => ['label' => 'Nombre d’avis affichés avant « Voir plus »', 'default' => '6', 'type' => 'number'],
+        ],
+    ],
+    'carte' => [
+        'title' => 'Carte Google Maps',
+        'fields' => [
+            'map_query'    => ['label' => 'Lieu affiché sur la carte', 'default' => 'La Salle RN6, 71 C route d’Auxerre, 89380 Appoigny', 'help' => 'Nom de la fiche Google ou adresse.'],
+            'map_autoload' => ['label' => 'Chargement de la carte', 'type' => 'select', 'default' => '0', 'options' => [
+                '0' => 'Au clic du visiteur (recommandé : page plus rapide, pas de cookie Google sans accord)',
+                '1' => 'Automatique quand le visiteur arrive sur la section',
+            ]],
+        ],
+    ],
     'plan' => [
         'title' => 'Page « Plan de la salle »',
         'fields' => [
@@ -96,8 +119,18 @@ const SETTINGS_SCHEMA = [
         ],
     ],
     'resa' => [
-        'title' => 'Page « Réserver en ligne »',
+        'title' => 'Page « Réserver en ligne » / maintenance',
         'fields' => [
+            'resa_maintenance'       => ['label' => 'État de la réservation en ligne', 'type' => 'select', 'default' => '0', 'options' => [
+                '0' => '✅ Ouverte : l’agenda SuperSaaS est affiché',
+                '1' => '🛠 En maintenance : l’agenda est remplacé par le message ci-dessous',
+            ]],
+            'resa_maint_title'       => ['label' => 'Maintenance — titre', 'default' => 'Réservation en ligne momentanément indisponible'],
+            'resa_maint_message'     => ['label' => 'Maintenance — message', 'type' => 'textarea', 'default' => "Notre agenda en ligne est en cours de mise à jour.\nPour réserver ou connaître nos disponibilités, contactez-nous directement par e-mail : nous vous répondons rapidement."],
+            'resa_maint_contact'     => ['label' => 'Maintenance — boutons de contact', 'type' => 'select', 'default' => '1', 'options' => [
+                '1' => 'Afficher les boutons « Nous contacter » et « Retour au site »',
+                '0' => 'Ne rien afficher sous le message',
+            ]],
             'resa_meta_title'     => ['label' => 'Titre Google', 'default' => 'Réserver en ligne | La Salle RN6'],
             'resa_title'          => ['label' => 'Titre', 'default' => 'Réservez La Salle RN6'],
             'resa_lead'           => ['label' => 'Introduction', 'type' => 'textarea', 'default' => 'Consultez les disponibilités de la salle et choisissez directement votre créneau de location.'],
@@ -207,4 +240,15 @@ const CLICK_KINDS = [
     'facebook' => 'Clic Facebook',
     '1001'     => 'Clic 1001Salles',
     'photo'    => 'Ouverture d’une photo',
+    'carte'    => 'Affichage de la carte',
+    'avis'     => 'Clic vers les avis Google / 1001Salles',
 ];
+
+const REVIEW_SOURCES = [
+    'google' => 'Google',
+    '1001'   => '1001Salles',
+    'autre'  => 'Autre (Facebook, e-mail…)',
+];
+
+/** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
+const SCHEMA_VERSION = 3;

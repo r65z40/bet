@@ -3,6 +3,15 @@
 require __DIR__ . '/_init.php';
 $admin = require_admin();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['maintenance'])) {
+    check_csrf();
+    $on = $_POST['maintenance'] === '1';
+    save_setting('resa_maintenance', $on ? '1' : '0');
+    flash($on ? 'Réservation en ligne passée en maintenance.' : 'Réservation en ligne réouverte.');
+    redirect('index.php');
+}
+
+ensure_all_variants(4.0); // crée les WebP des photos qui n'en ont pas encore
 $today = date('Y-m-d');
 $t = stats_summary($today, $today);
 $w = stats_summary(date('Y-m-d', strtotime('-6 days')), $today);
@@ -22,6 +31,20 @@ admin_header('Tableau de bord', 'index');
 ?>
 <h1>Bonjour <?= e($admin['username']) ?> 👋</h1>
 <p class="intro">Voici l’activité de <?= e(s('site_name')) ?>.</p>
+
+<?php $maint = s('resa_maintenance') === '1'; ?>
+<form method="post" class="card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;<?= $maint ? 'border-color:#f0c36d;background:#fffaf0' : '' ?>">
+  <?= csrf_field() ?>
+  <div>
+    <h2 style="margin:0 0 4px"><?= $maint ? '🛠 Réservation en ligne : en maintenance' : '✅ Réservation en ligne : ouverte' ?></h2>
+    <p class="muted" style="margin:0"><?= $maint
+        ? 'Les visiteurs voient votre message à la place de l’agenda SuperSaaS.'
+        : 'Les visiteurs voient l’agenda SuperSaaS sur la page « Réserver en ligne ».' ?>
+      <a href="textes.php?s=resa">Modifier la page et le message</a> · <a href="../reservation.php" target="_blank">Voir la page ↗</a></p>
+  </div>
+  <button class="btn <?= $maint ? 'gold' : 'light' ?>" name="maintenance" value="<?= $maint ? '0' : '1' ?>"
+    <?= $maint ? '' : 'onclick="return confirm(\'Passer la réservation en ligne en maintenance ?\')"' ?>><?= $maint ? 'Rouvrir la réservation' : 'Passer en maintenance' ?></button>
+</form>
 
 <?php foreach ($checks as $c): ?><div class="flash flash-err">⚠ <?= e($c) ?></div><?php endforeach; ?>
 

@@ -78,10 +78,24 @@ function install_schema(PDO $pdo): void
             visitor TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_clicks_day ON clicks(day);
+        CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            author TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'google',
+            rating INTEGER NOT NULL DEFAULT 5,
+            review_date TEXT NOT NULL DEFAULT '',
+            event TEXT NOT NULL DEFAULT '',
+            text TEXT NOT NULL DEFAULT '',
+            position INTEGER NOT NULL DEFAULT 0,
+            visible INTEGER NOT NULL DEFAULT 1
+        );
     ");
 
     if (setting_raw($pdo, '_seeded') === null) {
         seed_content($pdo);
+    }
+    if ((int)setting_raw($pdo, '_schema_version') < SCHEMA_VERSION) {
+        migrate($pdo);
     }
 }
 
@@ -126,4 +140,16 @@ function seed_content(PDO $pdo): void
 
     $pdo->exec("INSERT OR REPLACE INTO settings(key, value) VALUES('_seeded', '1')");
     $pdo->commit();
+}
+
+/** Mise à jour d'un site déjà installé : ajoute les nouveaux réglages sans toucher aux existants. */
+function migrate(PDO $pdo): void
+{
+    $set = $pdo->prepare('INSERT OR IGNORE INTO settings(key, value) VALUES(?, ?)');
+    foreach (SETTINGS_SCHEMA as $section) {
+        foreach ($section['fields'] as $key => $f) {
+            $set->execute([$key, $f['default'] ?? '']);
+        }
+    }
+    $pdo->prepare("INSERT OR REPLACE INTO settings(key, value) VALUES('_schema_version', ?)")->execute([(string)SCHEMA_VERSION]);
 }

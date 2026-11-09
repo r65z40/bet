@@ -20,6 +20,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = $f['label'] . ' : adresse e-mail invalide.';
             continue;
         }
+        if ($type === 'select' && !isset($f['options'][$v])) {
+            continue;
+        }
         if ($type === 'url' && $v !== '' && !preg_match('#^https?://#i', $v)) {
             $errors[] = $f['label'] . ' : le lien doit commencer par https://';
             continue;
@@ -50,7 +53,7 @@ admin_header('Textes', 'textes');
     <?= csrf_field() ?>
     <h2><?= e($sections[$current]['title']) ?></h2>
     <?php foreach ($fields as $key => $f): ?>
-      <?= field($key, $f['label'], s($key), $f['type'] ?? 'text', $f['help'] ?? '') ?>
+      <?= field($key, $f['label'], s($key), $f['type'] ?? 'text', $f['help'] ?? '', $f['options'] ?? []) ?>
     <?php endforeach; ?>
     <div class="sticky-save"><button class="btn gold">💾 Enregistrer</button></div>
   </form>

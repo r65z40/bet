@@ -71,6 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('Photo supprimée.');
     } elseif ($action === 'hero' && $photo) {
         save_setting('hero_photo', $photo['filename']);
+        make_variants($photo['filename']);
         flash('Image d’accueil modifiée.');
     } elseif (in_array($action, ['up', 'down', 'first', 'last'], true) && ($i = array_search($id, $ids)) !== false) {
         array_splice($ids, $i, 1);
@@ -89,6 +90,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('photos.php' . ($id ? '#ph' . $id : ''));
 }
 
+$generated = ensure_all_variants();
+if ($generated) {
+    flash($generated . ' photo(s) optimisée(s) en WebP (vignettes + grand format).');
+}
 $photos = photos(true);
 $hero = s('hero_photo');
 $maxUpload = max_upload_bytes();

@@ -22,9 +22,16 @@ C'est tout : la base `data/site.sqlite` est créée automatiquement et pré-remp
 | **Textes** | Tous les titres et paragraphes, e-mail, adresse, liens Facebook / Maps / 1001Salles, référencement Google, pages Plan et Réservation (identifiants SuperSaaS) |
 | **Tarifs** | Prix par jour, infos (caution…), options & services : modifier, ajouter, supprimer, réordonner, masquer |
 | **Listes & cartes** | Points forts, cartes « La salle », équipements, mobilier, vaisselle, accès, événements, surfaces du plan |
-| **Photos** | Envoi multiple, légendes, ordre, masquer, supprimer, choix de l'image du bandeau d'accueil, remplacement du plan |
+| **Photos** | Envoi multiple, légendes, ordre, masquer, supprimer, choix de l'image du bandeau d'accueil, remplacement du plan. Chaque photo est automatiquement réduite et déclinée en WebP (vignette 800 px pour la galerie, 1920 px pour l'agrandissement) |
+| **Avis** | Avis Google / 1001Salles recopiés (nom, note, date, événement, texte), ordre, masquage ; notes globales et liens dans Textes › Avis clients |
 | **Statistiques** | Visiteurs, pages vues, provenance (Google, Facebook…), appareils, jours/heures, clics sur « Réserver », e-mail, Maps, photos… et taux de conversion, avec comparaison à la période précédente |
 | **Mon compte** | Identifiant et mot de passe |
+| **Tableau de bord** | Bouton pour passer la réservation en ligne **en maintenance** (message personnalisé à la place de l'agenda SuperSaaS, modifiable dans Textes › Réserver en ligne) |
+
+### Côté visiteurs
+- Menu « hamburger » sur mobile, animations d'apparition et chiffres clés animés (désactivés si le visiteur a demandé « réduire les animations »).
+- Carte Google Maps intégrée dans la section Accès : chargée au clic (par défaut, plus rapide et sans cookie Google) ou automatiquement (réglage dans Textes › Carte).
+- Galerie en WebP avec vignettes légères ; la photo en grand n'est chargée qu'à l'ouverture (balayage gauche/droite sur mobile).
 
 Dans les textes, `**mot**` affiche le mot en **gras**.
 
@@ -42,6 +49,10 @@ includes/                              code commun (base, fonctions, contenus pa
 data/                                  base SQLite — non accessible du web
 photos/                                photos du site (les scripts y sont bloqués)
 ```
+
+Les vignettes WebP sont rangées dans `photos/cache/` ; si elles manquent (photos ajoutées par FTP), elles sont créées automatiquement à l'ouverture de l'administration.
+
+Les mises à jour du site s'installent en renvoyant les fichiers par FTP : la base existante est complétée automatiquement (nouveaux réglages), sans perte de contenu.
 
 Les anciennes adresses `plan.html` et `reservation.html` sont redirigées (301) vers les pages PHP via `.htaccess`.
 

@@ -15,6 +15,7 @@ function admin_header(string $title, string $active = ''): void
         'contenus' => ['listes.php', '☰', 'Listes & cartes'],
         'tarifs'   => ['listes.php?g=tarif_jours', '€', 'Tarifs'],
         'photos'   => ['photos.php', '📷', 'Photos'],
+        'avis'     => ['avis.php', '★', 'Avis'],
         'stats'    => ['stats.php', '📊', 'Statistiques'],
         'compte'   => ['compte.php', '🔑', 'Mon compte'],
     ];
@@ -54,11 +55,17 @@ function admin_footer(): void
 }
 
 /** Champ de formulaire simple. */
-function field(string $name, string $label, string $value, string $type = 'text', string $help = ''): string
+function field(string $name, string $label, string $value, string $type = 'text', string $help = '', array $options = []): string
 {
     $id = 'f_' . preg_replace('/\W/', '_', $name);
     $html = '<label class="field" for="' . $id . '"><span>' . e($label) . '</span>';
-    if ($type === 'textarea') {
+    if ($type === 'select') {
+        $html .= '<select id="' . $id . '" name="' . e($name) . '">';
+        foreach ($options as $k => $lbl) {
+            $html .= '<option value="' . e((string)$k) . '"' . ((string)$k === $value ? ' selected' : '') . '>' . e($lbl) . '</option>';
+        }
+        $html .= '</select>';
+    } elseif ($type === 'textarea') {
         $rows = max(3, min(10, substr_count($value, "\n") + 2, (int)ceil(mb_strlen($value) / 90) + 1));
         $html .= '<textarea id="' . $id . '" name="' . e($name) . '" rows="' . $rows . '">' . e($value) . '</textarea>';
     } else {
