@@ -102,10 +102,6 @@ const SETTINGS_SCHEMA = [
         'title' => 'Carte Google Maps',
         'fields' => [
             'map_query'    => ['label' => 'Lieu affiché sur la carte', 'default' => 'La Salle RN6, 71 C route d’Auxerre, 89380 Appoigny', 'help' => 'Nom de la fiche Google ou adresse.'],
-            'map_autoload' => ['label' => 'Chargement de la carte', 'type' => 'select', 'default' => '0', 'options' => [
-                '0' => 'Au clic du visiteur (recommandé : page plus rapide, pas de cookie Google sans accord)',
-                '1' => 'Automatique quand le visiteur arrive sur la section',
-            ]],
         ],
     ],
     'plan' => [

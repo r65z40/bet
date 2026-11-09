@@ -390,12 +390,6 @@ $jsonLd  = [
         repeating-linear-gradient(90deg, rgba(7,28,53,.05) 0 1px, transparent 1px 46px),
         #e9eef2}
     .map-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-    .map-load{position:absolute;inset:0;width:100%;border:0;background:transparent;cursor:pointer;display:grid;place-content:center;justify-items:center;gap:8px;font:inherit;color:var(--navy);padding:20px;text-align:center}
-    .map-load .pin{width:58px;height:58px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:linear-gradient(135deg,#273CF5,#1727b8);display:grid;place-items:center;box-shadow:0 10px 26px rgba(39,60,245,.35);margin-bottom:8px;transition:transform .25s ease}
-    .map-load .pin:after{content:"";width:20px;height:20px;border-radius:50%;background:#fff}
-    .map-load:hover .pin{transform:rotate(-45deg) translate(3px,-3px)}
-    .map-load strong{font-size:1.1rem;background:#fff;padding:10px 18px;border-radius:999px;box-shadow:0 6px 18px rgba(7,28,53,.12)}
-    .map-load small{color:var(--muted);font-weight:700;background:rgba(255,255,255,.8);padding:3px 10px;border-radius:999px}
     @media (max-width:620px){.map-box{height:320px}}
 
     /* Animations douces */
@@ -616,12 +610,8 @@ $jsonLd  = [
           </div>
         </div>
 <?php if ($mapSrc): ?>
-        <div class="map-box" id="map" data-src="<?= e($mapSrc) ?>" data-autoload="<?= s('map_autoload') === '1' ? '1' : '0' ?>">
-          <button class="map-load" type="button" data-track="carte" aria-label="Afficher la carte interactive Google Maps">
-            <span class="pin" aria-hidden="true"></span>
-            <strong>Afficher la carte interactive</strong>
-            <small><?= e(s('map_query')) ?> · Google Maps</small>
-          </button>
+        <div class="map-box" id="map">
+          <iframe src="<?= e($mapSrc) ?>" title="Carte Google Maps : <?= e(s('map_query')) ?>" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
         </div>
 <?php endif; ?>
       </div>
@@ -863,24 +853,6 @@ $jsonLd  = [
       document.getElementById('reviews-list').classList.add('show-all');
       moreBtn.parentNode.remove();
     });
-
-    // ===== Carte Google Maps (chargée au clic, ou à l'approche si activé) =====
-    const mapBox = document.getElementById('map');
-    function loadMap(){
-      if (!mapBox || mapBox.querySelector('iframe')) return;
-      const f = document.createElement('iframe');
-      f.src = mapBox.dataset.src; f.title = 'Carte Google Maps'; f.loading = 'lazy';
-      f.referrerPolicy = 'no-referrer-when-downgrade'; f.allowFullscreen = true;
-      mapBox.appendChild(f);
-      const b = mapBox.querySelector('.map-load'); if (b) b.remove();
-    }
-    if (mapBox) {
-      mapBox.querySelector('.map-load').addEventListener('click', loadMap);
-      if (mapBox.dataset.autoload === '1' && 'IntersectionObserver' in window) {
-        const mo = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting)) { loadMap(); mo.disconnect(); } }, {rootMargin:'300px 0px'});
-        mo.observe(mapBox);
-      }
-    }
 
     // ===== Animations : apparition au défilement + chiffres qui comptent =====
     (function(){

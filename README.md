@@ -30,7 +30,7 @@ C'est tout : la base `data/site.sqlite` est créée automatiquement et pré-remp
 
 ### Côté visiteurs
 - Menu « hamburger » sur mobile, animations d'apparition et chiffres clés animés (désactivés si le visiteur a demandé « réduire les animations »).
-- Carte Google Maps intégrée dans la section Accès : chargée au clic (par défaut, plus rapide et sans cookie Google) ou automatiquement (réglage dans Textes › Carte).
+- Carte Google Maps interactive affichée directement dans la section Accès (chargée par le navigateur à l'approche de la section, pour ne pas ralentir le haut de page). Le lieu se règle dans Textes › Carte.
 - Galerie en WebP avec vignettes légères ; la photo en grand n'est chargée qu'à l'ouverture (balayage gauche/droite sur mobile).
 
 Dans les textes, `**mot**` affiche le mot en **gras**.
