@@ -52,15 +52,21 @@ function photos(bool $all = false): array
     return db()->query('SELECT * FROM photos' . ($all ? '' : ' WHERE visible = 1') . ' ORDER BY position, id')->fetchAll();
 }
 
+/**
+ * URL d'une photo avec un numéro de version (date du fichier) : si un cache
+ * (navigateur, CDN, hébergeur) a gardé une ancienne réponse en erreur, la
+ * nouvelle URL l'ignore automatiquement après chaque remplacement du fichier.
+ */
 function photo_src(string $filename): string
 {
-    return 'photos/' . rawurlencode($filename);
+    $v = @filemtime(UPLOAD_DIR . '/' . $filename);
+    return 'photos/' . rawurlencode($filename) . ($v ? '?v=' . $v : '');
 }
 
 function hero_image(): string
 {
     $f = s('hero_photo');
-    return $f !== '' && is_file(UPLOAD_DIR . '/' . $f) ? photo_src($f) : 'photos/photo-02.jpg';
+    return photo_src($f !== '' && is_file(UPLOAD_DIR . '/' . $f) ? $f : 'photo-02.jpg');
 }
 
 function plan_image(): string
@@ -255,7 +261,8 @@ function store_uploaded_image(array $file): array
     if (!move_uploaded_file($file['tmp_name'], UPLOAD_DIR . '/' . $name)) {
         throw new RuntimeException('Impossible d’enregistrer le fichier (vérifiez les droits du dossier photos/).');
     }
-    return [$name, (int)$size[0], (int)$size[1]];
+    [$w, $h] = optimize_image(UPLOAD_DIR . '/' . $name);
+    return [$name, $w, $h];
 }
 
 /** Supprime un fichier du dossier photos/ en toute sécurité. */
@@ -291,4 +298,59 @@ function max_upload_bytes(): int
     };
     $limits = array_filter([MAX_UPLOAD_BYTES, $toBytes((string)ini_get('upload_max_filesize')), $toBytes((string)ini_get('post_max_size'))]);
     return min($limits);
+}
+
+/**
+ * Réduit une image trop grande (max 2400 px) et la recompresse, en tenant
+ * compte de l'orientation des photos de téléphone. Retourne [largeur, hauteur].
+ * Sans l'extension GD, l'image est laissée telle quelle.
+ */
+function optimize_image(string $path, int $max = 2400): array
+{
+    $info = @getimagesize($path);
+    if (!$info) {
+        return [1200, 900];
+    }
+    [$w, $h, $type] = $info;
+    if (!function_exists('imagecreatetruecolor')) {
+        return [$w, $h];
+    }
+    $img = match ($type) {
+        IMAGETYPE_JPEG => @imagecreatefromjpeg($path),
+        IMAGETYPE_PNG  => @imagecreatefrompng($path),
+        IMAGETYPE_WEBP => function_exists('imagecreatefromwebp') ? @imagecreatefromwebp($path) : false,
+        default => false,
+    };
+    if (!$img) {
+        return [$w, $h];
+    }
+    $rotated = false;
+    if ($type === IMAGETYPE_JPEG && function_exists('exif_read_data')) {
+        $o = (int)(@exif_read_data($path)['Orientation'] ?? 1);
+        $angle = [3 => 180, 6 => -90, 8 => 90][$o] ?? 0;
+        if ($angle) {
+            $img = imagerotate($img, $angle, 0);
+            $rotated = true;
+        }
+    }
+    $w = imagesx($img);
+    $h = imagesy($img);
+    $ratio = min(1, $max / max($w, $h));
+    if ($ratio < 1 || $rotated || ($type === IMAGETYPE_JPEG && filesize($path) > 600 * 1024)) {
+        $nw = (int)round($w * $ratio);
+        $nh = (int)round($h * $ratio);
+        $dst = imagecreatetruecolor($nw, $nh);
+        if ($type !== IMAGETYPE_JPEG) {
+            imagealphablending($dst, false);
+            imagesavealpha($dst, true);
+        }
+        imagecopyresampled($dst, $img, 0, 0, 0, 0, $nw, $nh, $w, $h);
+        match ($type) {
+            IMAGETYPE_PNG  => imagepng($dst, $path, 8),
+            IMAGETYPE_WEBP => imagewebp($dst, $path, 82),
+            default        => (imageinterlace($dst, true) && imagejpeg($dst, $path, 82)),
+        };
+        [$w, $h] = [$nw, $nh];
+    }
+    return [$w, $h];
 }
