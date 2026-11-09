@@ -12,12 +12,45 @@ function db(): PDO
             mkdir($dir, 0775, true);
         }
     }
-    $pdo = new PDO('sqlite:' . DB_FILE);
+    $pdo = new PDO('sqlite:' . db_file());
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
     $pdo->exec('PRAGMA journal_mode = WAL');
     install_schema($pdo);
     return $pdo;
+}
+
+/**
+ * Chemin de la base. Son nom contient une partie aléatoire, mémorisée dans
+ * data/config.php (un fichier PHP n'est jamais téléchargeable) : même si le
+ * serveur ignorait les .htaccess, la base ne pourrait pas être devinée.
+ * Une ancienne base data/site.sqlite est renommée automatiquement.
+ */
+function db_file(): string
+{
+    $cfgFile = DATA_DIR . '/config.php';
+    $cfg = is_file($cfgFile) ? (include $cfgFile) : null;
+    if (!is_array($cfg) || empty($cfg['db'])) {
+        $lock = fopen(DATA_DIR . '/.lock', 'c');
+        flock($lock, LOCK_EX);
+        clearstatcache();
+        $cfg = is_file($cfgFile) ? (include $cfgFile) : null;
+        if (!is_array($cfg) || empty($cfg['db'])) {
+            $cfg = ['db' => 'site-' . bin2hex(random_bytes(12)) . '.sqlite'];
+            $old = DATA_DIR . '/site.sqlite';
+            foreach (['', '-wal', '-shm'] as $suffix) {
+                if (is_file($old . $suffix)) {
+                    rename($old . $suffix, DATA_DIR . '/' . $cfg['db'] . $suffix);
+                }
+            }
+            $tmp = $cfgFile . '.' . bin2hex(random_bytes(4));
+            file_put_contents($tmp, "<?php\n// Généré automatiquement : nom secret de la base de données.\nreturn " . var_export($cfg, true) . ";\n");
+            rename($tmp, $cfgFile);
+        }
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+    return DATA_DIR . '/' . basename($cfg['db']);
 }
 
 function install_schema(PDO $pdo): void

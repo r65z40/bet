@@ -9,7 +9,7 @@ Fonctionne sur n'importe quel hébergement mutualisé PHP (OVH, o2switch, Hostin
 
 1. Envoyer **tout le dossier** sur l'hébergement (FTP), à la racine du site.
 2. Vérifier que les dossiers `data/` et `photos/` sont **accessibles en écriture** par PHP (droits 755 ou 775).
-3. Ouvrir `https://votre-site.fr/admin/` → créer le compte administrateur (une seule fois).
+3. Ouvrir `https://votre-site.fr/admin/` → la page d'installation demande un **code** : l'ouvrir par FTP dans `data/setup-code.php` (Bloc-notes), le recopier et créer le compte administrateur. Le fichier est supprimé automatiquement ensuite.
 
 C'est tout : la base `data/site.sqlite` est créée automatiquement et pré-remplie avec le contenu actuel du site.
 
@@ -59,7 +59,19 @@ Les anciennes adresses `plan.html` et `reservation.html` sont redirigées (301) 
 
 ## Sauvegarde
 
-Sauvegarder régulièrement `data/site.sqlite` et le dossier `photos/` (c'est tout le contenu du site).
+Sauvegarder régulièrement **tout le dossier `data/`** (la base `site-xxxx.sqlite` et `config.php` qui contient son nom) et le dossier `photos/`.
+
+## Sécurité
+
+- Mots de passe hachés (bcrypt), 10 caractères minimum ; 5 essais ratés par IP = blocage 15 min ; déconnexion après 2 h d'inactivité.
+- Installation protégée par un code lisible uniquement par FTP.
+- Jeton anti-CSRF sur tous les formulaires de l'administration ; requêtes SQL préparées ; tout le contenu affiché est échappé.
+- Photos envoyées : type vérifié, renommées au hasard, **réencodées** (suppression des données GPS/EXIF et de tout contenu caché), aucun script exécutable dans `photos/`.
+- Base de données au nom aléatoire dans `data/`, dossier interdit d'accès (`.htaccess`), nom stocké dans un fichier PHP non téléchargeable.
+- En-têtes de sécurité (anti-clickjacking, nosniff, HSTS en HTTPS, CSP sur l'administration), erreurs PHP jamais affichées.
+- Statistiques plafonnées (anti-flood) et refus des envois venant d'autres sites.
+- Pour forcer le HTTPS sur tout le site, décommenter le bloc prévu dans `.htaccess`.
+- Mot de passe oublié : supprimer la ligne du compte n'est pas possible sans outil SQLite ; demander de l'aide plutôt que de supprimer la base.
 
 ## Développement local
 
@@ -73,6 +85,7 @@ puis ouvrir http://localhost:8000 et http://localhost:8000/admin/
 Les `.htaccess` ne sont pas lus par Nginx ; ajouter :
 ```nginx
 location ~ ^/(data|includes)/ { deny all; }
+location ~ /\. { deny all; }
 location ~ ^/photos/.*\.php$ { deny all; }
 location = /plan.html { return 301 /plan.php; }
 location = /reservation.html { return 301 /reservation.php; }

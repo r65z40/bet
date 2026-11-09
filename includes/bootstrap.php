@@ -6,22 +6,45 @@
 declare(strict_types=1);
 
 define('ROOT', dirname(__DIR__));
+
+function is_https(): bool
+{
+    return (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (int)($_SERVER['SERVER_PORT'] ?? 0) === 443
+        || strtolower((string)($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+}
 define('DATA_DIR', ROOT . '/data');
 define('UPLOAD_DIR', ROOT . '/photos');   // photos du site (existantes + envoyées)
-define('DB_FILE', DATA_DIR . '/site.sqlite');
 define('MAX_UPLOAD_BYTES', 8 * 1024 * 1024); // 8 Mo
 
 date_default_timezone_set('Europe/Paris');
+
+// Jamais de message d'erreur technique affiché aux visiteurs (chemins, requêtes…)
+ini_set('display_errors', '0');
+ini_set('log_errors', '1');
+
+// En-têtes de sécurité (valables aussi sur les serveurs qui ignorent .htaccess)
+if (!headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('X-Frame-Options: SAMEORIGIN');
+    header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()');
+    if (is_https()) {
+        header('Strict-Transport-Security: max-age=15552000');
+    }
+}
 
 // Pas de cookie pour les visiteurs : la session ne démarre que dans l'admin
 // (ou si un administrateur connecté consulte le site, pour l'exclure des stats).
 if (session_status() === PHP_SESSION_NONE
     && (defined('ADMIN_AREA') || isset($_COOKIE[session_name()]))) {
+    ini_set('session.use_strict_mode', '1');      // refuse les identifiants de session inventés
+    ini_set('session.use_only_cookies', '1');
     session_set_cookie_params([
         'path'     => '/',
         'httponly' => true,
         'samesite' => 'Lax',
-        'secure'   => !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off',
+        'secure'   => is_https(),
     ]);
     session_start();
 }

@@ -10,6 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $hidden = array_values(array_diff($order, $visible));
 
     [$do, $key] = array_pad(explode(':', (string)($_POST['do'] ?? 'save'), 2), 2, '');
+    if (!isset(HOME_SECTIONS[$key])) {
+        $key = '';
+    }
     $i = array_search($key, $order, true);
     if ($i !== false && in_array($do, ['up', 'down', 'first', 'last'], true)) {
         array_splice($order, $i, 1);

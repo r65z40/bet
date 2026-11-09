@@ -17,7 +17,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $st = db()->prepare('SELECT * FROM admins WHERE username = ?');
         $st->execute([trim((string)($_POST['username'] ?? ''))]);
         $admin = $st->fetch();
-        if ($admin && password_verify((string)($_POST['password'] ?? ''), $admin['password_hash'])) {
+        // password_verify est toujours exécuté (même identifiant inconnu) : temps de réponse identique
+        $hash = $admin['password_hash'] ?? '$2y$10$ZerNfhZOyf7d1fQOxn1ejO5PPK0Ig4chEqEUNkZZHr.tLdfaRzl9e';
+        if (password_verify((string)($_POST['password'] ?? ''), $hash) && $admin) {
+            if (password_needs_rehash($admin['password_hash'], PASSWORD_DEFAULT)) {
+                db()->prepare('UPDATE admins SET password_hash = ? WHERE id = ?')
+                    ->execute([password_hash((string)$_POST['password'], PASSWORD_DEFAULT), $admin['id']]);
+            }
             login_admin((int)$admin['id']);
             redirect('index.php');
         }

@@ -20,10 +20,16 @@ $nbPhotos = (int)db()->query('SELECT COUNT(*) FROM photos WHERE visible = 1')->f
 $nbTarifs = (int)db()->query("SELECT COUNT(*) FROM items WHERE grp LIKE 'tarif_%' AND visible = 1")->fetchColumn();
 
 $checks = [];
+if (stripos((string)($_SERVER['SERVER_SOFTWARE'] ?? ''), 'nginx') !== false) {
+    $checks[] = 'Serveur Nginx détecté : les fichiers .htaccess ne sont pas appliqués. Ajoutez les règles de protection indiquées dans le README.';
+}
+if (is_file(SETUP_CODE_FILE)) {
+    @unlink(SETUP_CODE_FILE);
+}
 if (!is_writable(UPLOAD_DIR)) {
     $checks[] = 'Le dossier photos/ n’est pas accessible en écriture : l’envoi de photos échouera.';
 }
-if (empty($_SERVER['HTTPS']) && !in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'], true) && !str_starts_with($_SERVER['HTTP_HOST'] ?? '', 'localhost:')) {
+if (!is_https() && !in_array($_SERVER['HTTP_HOST'] ?? '', ['localhost', '127.0.0.1'], true) && !str_starts_with($_SERVER['HTTP_HOST'] ?? '', 'localhost:')) {
     $checks[] = 'Le site n’est pas en HTTPS : activez le certificat SSL chez votre hébergeur pour protéger votre mot de passe.';
 }
 

@@ -139,11 +139,18 @@ function admin_count(): int
     return (int)db()->query('SELECT COUNT(*) FROM admins')->fetchColumn();
 }
 
+const ADMIN_IDLE_TIMEOUT = 7200; // déconnexion automatique après 2 h d'inactivité
+
 function current_admin(): ?array
 {
     if (empty($_SESSION['admin_id'])) {
         return null;
     }
+    if (time() - (int)($_SESSION['admin_seen'] ?? 0) > ADMIN_IDLE_TIMEOUT) {
+        unset($_SESSION['admin_id'], $_SESSION['admin_seen']);
+        return null;
+    }
+    $_SESSION['admin_seen'] = time();
     $st = db()->prepare('SELECT id, username FROM admins WHERE id = ?');
     $st->execute([$_SESSION['admin_id']]);
     return $st->fetch() ?: null;
@@ -162,6 +169,7 @@ function login_admin(int $id): void
 {
     session_regenerate_id(true);
     $_SESSION['admin_id'] = $id;
+    $_SESSION['admin_seen'] = time();
 }
 
 /** Limite : 5 essais ratés par IP sur 15 minutes. */
@@ -208,12 +216,16 @@ function track_visit(string $page): void
         return; // robots et administrateur non comptés
     }
     $ref = (string)parse_url($_SERVER['HTTP_REFERER'] ?? '', PHP_URL_HOST);
+    $ref = substr((string)preg_replace('/[^a-z0-9.\-]/', '', strtolower($ref)), 0, 100); // un nom de domaine, rien d'autre
     if ($ref === (string)parse_url('//' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST)) {
         $ref = ''; // navigation interne
     }
     $device = preg_match('/tablet|ipad/i', $ua) ? 'tablette'
             : (preg_match('/mobi|android|iphone/i', $ua) ? 'mobile' : 'ordinateur');
     try {
+        if (stats_quota_reached('visits', 30, 20000)) {
+            return; // protection contre le gonflage artificiel des statistiques
+        }
         db()->prepare('INSERT INTO visits(day, visited_at, page, visitor, referrer, device) VALUES(?,?,?,?,?,?)')
             ->execute([date('Y-m-d'), date('Y-m-d H:i:s'), $page, visitor_id(), preg_replace('/^(www|m|l|lm)\./', '', strtolower($ref)), $device]);
     } catch (Throwable) {
@@ -227,7 +239,7 @@ function tracking_script(string $page): string
     if (!empty($_SESSION['admin_id'])) {
         return '';
     }
-    $p = json_encode($page);
+    $p = json_encode($page, JSON_HEX_TAG);
     return <<<JS
 <script>
 document.addEventListener('click', function (e) {
@@ -262,11 +274,21 @@ function store_uploaded_image(array $file): array
     if (!isset($allowed[$mime]) || $size === false) {
         throw new RuntimeException($file['name'] . ' : format non accepté (JPG, PNG ou WebP).');
     }
+    if ($size[0] * $size[1] > 50_000_000) {
+        throw new RuntimeException($file['name'] . ' : image trop grande (50 mégapixels maximum).');
+    }
     $name = 'upload-' . date('Ymd') . '-' . bin2hex(random_bytes(5)) . '.' . $allowed[$mime];
     if (!move_uploaded_file($file['tmp_name'], UPLOAD_DIR . '/' . $name)) {
         throw new RuntimeException('Impossible d’enregistrer le fichier (vérifiez les droits du dossier photos/).');
     }
-    [$w, $h] = optimize_image(UPLOAD_DIR . '/' . $name);
+    // Réencodage obligatoire : supprime les métadonnées (GPS, appareil…) et tout
+    // contenu caché dans le fichier ; un fichier illisible est refusé.
+    $dims = optimize_image(UPLOAD_DIR . '/' . $name, 2400, true);
+    if ($dims === null) {
+        @unlink(UPLOAD_DIR . '/' . $name);
+        throw new RuntimeException($file['name'] . ' : image illisible ou corrompue.');
+    }
+    [$w, $h] = $dims;
     make_variants($name);
     return [$name, $w, $h];
 }
@@ -314,15 +336,15 @@ function max_upload_bytes(): int
  * compte de l'orientation des photos de téléphone. Retourne [largeur, hauteur].
  * Sans l'extension GD, l'image est laissée telle quelle.
  */
-function optimize_image(string $path, int $max = 2400): array
+function optimize_image(string $path, int $max = 2400, bool $force = false): ?array
 {
     $info = @getimagesize($path);
     if (!$info) {
-        return [1200, 900];
+        return $force ? null : [1200, 900];
     }
     [$w, $h, $type] = $info;
     if (!function_exists('imagecreatetruecolor')) {
-        return [$w, $h];
+        return $force ? null : [$w, $h];
     }
     $img = match ($type) {
         IMAGETYPE_JPEG => @imagecreatefromjpeg($path),
@@ -331,7 +353,7 @@ function optimize_image(string $path, int $max = 2400): array
         default => false,
     };
     if (!$img) {
-        return [$w, $h];
+        return $force ? null : [$w, $h];
     }
     $rotated = false;
     if ($type === IMAGETYPE_JPEG && function_exists('exif_read_data')) {
@@ -345,7 +367,7 @@ function optimize_image(string $path, int $max = 2400): array
     $w = imagesx($img);
     $h = imagesy($img);
     $ratio = min(1, $max / max($w, $h));
-    if ($ratio < 1 || $rotated || ($type === IMAGETYPE_JPEG && filesize($path) > 600 * 1024)) {
+    if ($force || $ratio < 1 || $rotated || ($type === IMAGETYPE_JPEG && filesize($path) > 600 * 1024)) {
         $nw = (int)round($w * $ratio);
         $nh = (int)round($h * $ratio);
         $dst = imagecreatetruecolor($nw, $nh);
@@ -487,4 +509,22 @@ function home_sections(): array
         $out[$k] = !in_array($k, $hidden, true);
     }
     return $out;
+}
+
+/**
+ * Plafonds anti-abus pour les statistiques : par visiteur et par jour, et
+ * global par jour (protège la base contre un envoi massif de fausses données).
+ */
+function stats_quota_reached(string $table, int $perVisitor, int $perDay): bool
+{
+    $table = $table === 'clicks' ? 'clicks' : 'visits';
+    $day = date('Y-m-d');
+    $st = db()->prepare("SELECT COUNT(*) FROM $table WHERE day = ? AND visitor = ?");
+    $st->execute([$day, visitor_id()]);
+    if ((int)$st->fetchColumn() >= $perVisitor) {
+        return true;
+    }
+    $st = db()->prepare("SELECT COUNT(*) FROM $table WHERE day = ?");
+    $st->execute([$day]);
+    return (int)$st->fetchColumn() >= $perDay;
 }

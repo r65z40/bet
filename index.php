@@ -737,8 +737,8 @@ $jsonLd  = [
   </footer>
 
   <script>
-    const CONTACT_EMAIL = <?= json_encode(s('contact_email')) ?>;
-    const MAILTO = <?= json_encode($mailto) ?>;
+    const CONTACT_EMAIL = <?= json_encode(s('contact_email'), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
+    const MAILTO = <?= json_encode($mailto, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     const btn = document.getElementById('copyMail');
     btn.addEventListener('click', async () => {
       try {
