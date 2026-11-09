@@ -1,0 +1,34 @@
+# --- La Salle RN6 : configuration Apache ---
+Options -Indexes
+DirectoryIndex index.php
+AddDefaultCharset UTF-8
+
+# Anciennes adresses .html -> nouvelles pages PHP (conserve le référencement)
+RedirectMatch 301 ^(.*/)?index\.html$ $1
+RedirectMatch 301 ^(.*/)?plan\.html$ $1plan.php
+RedirectMatch 301 ^(.*/)?reservation\.html$ $1reservation.php
+
+# Dossiers et fichiers internes jamais accessibles depuis le web
+RedirectMatch 404 ^(.*/)?(data|includes|\.git)(/.*)?$
+<FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm|md|ini|log)$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Cache navigateur des images
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType image/jpeg "access plus 1 month"
+  ExpiresByType image/png "access plus 1 month"
+  ExpiresByType image/webp "access plus 1 month"
+</IfModule>
+
+# Taille des envois de photos (si l'hébergeur l'autorise ; sinon voir .user.ini)
+<IfModule mod_php.c>
+  php_value upload_max_filesize 10M
+  php_value post_max_size 80M
+</IfModule>
