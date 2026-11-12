@@ -18,6 +18,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $id = (int)($_POST['id'] ?? 0);
     $target = $id ? find_admin($id) : null;
     $self = $target && (int)$target['id'] === (int)$me['id'];
+    if (in_array($do, ['save', 'link', 'delete'], true)) {
+        require_reauth('utilisateurs.php' . ($do === 'save' ? '?id=' . $id : ''));
+    }
 
     if ($do === 'save') {
         $username = trim((string)($_POST['username'] ?? ''));
@@ -134,6 +137,7 @@ admin_header('Équipe', 'utilisateurs');
   <?php else: ?>
     <input type="hidden" name="active" value="1">
   <?php endif; ?>
+  <?= reauth_field() ?>
   <div class="actions" style="margin-top:14px">
     <button class="btn gold" name="do" value="save"><?= $a['id'] ? '💾 Enregistrer' : '✉ Créer et envoyer l’invitation' ?></button>
     <a class="btn light" href="utilisateurs.php">Annuler</a>
@@ -170,7 +174,7 @@ document.querySelectorAll('.role').forEach(b => b.addEventListener('click', () =
         <td style="white-space:nowrap">
           <a class="btn light sm" href="utilisateurs.php?id=<?= (int)$a['id'] ?>">Modifier</a>
           <?php if ((int)$a['id'] !== (int)$me['id']): ?>
-          <form method="post" style="display:inline"><?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)$a['id'] ?>">
+          <form method="post" style="display:inline"><?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)$a['id'] ?>"><?php if (reauth_needed()): ?><input type="password" name="reauth" placeholder="Votre mot de passe" aria-label="Votre mot de passe (confirmation)" style="width:150px;padding:6px 8px;margin-right:4px"><?php endif; ?>
             <?php if ((int)$a['active'] && $a['email'] !== ''): ?><button class="btn light sm" name="do" value="link" title="Envoyer un lien pour choisir un nouveau mot de passe">🔑 Lien</button><?php endif; ?>
             <button class="btn danger sm" name="do" value="delete" onclick="return confirm(<?= e(json_encode('Supprimer définitivement le compte « ' . $a['username'] . ' » ?', JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT)) ?>)">✕</button>
           </form>

@@ -5,6 +5,7 @@ $current = (string)($_GET['s'] ?? 'regles');
 require_perm($current === 'tarifs' ? 'tarifs' : 'reglages');
 
 $sections = BOOKING_SETTINGS;
+const SENSITIVE_SECTIONS = ['paiement', 'emails', 'agenda', 'societe']; // détournement de paiements, d'e-mails ou de liens
 $current = (string)($_GET['s'] ?? 'regles');
 if (!isset($sections[$current])) {
     $current = 'regles';
@@ -14,6 +15,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
     $do = (string)($_POST['do'] ?? 'save');
     if ($do === 'save') {
+        if (in_array($current, SENSITIVE_SECTIONS, true)) {
+            require_reauth('reglages.php?s=' . urlencode($current));
+        }
         $errors = save_settings_fields($sections[$current]['fields']);
         admin_log('Réglages modifiés : ' . $sections[$current]['title']);
         foreach ($errors as $err) {
@@ -152,6 +156,7 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
           <?= field($key, $f['label'], s($key), $f['type'] ?? 'text', $f['help'] ?? '', $f['options'] ?? []) ?>
         <?php endforeach; ?>
       <?php endif; ?>
+      <?= in_array($current, SENSITIVE_SECTIONS, true) ? reauth_field() : '' ?>
       <div class="sticky-save actions">
         <button class="btn gold" name="do" value="save">💾 Enregistrer</button>
         <?php if ($current === 'emails'): ?><button class="btn light" name="do" value="testmail">✉ Envoyer un e-mail de test</button><?php endif; ?>

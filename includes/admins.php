@@ -12,7 +12,7 @@ const ADMIN_PERMS = [
     'emails'         => ['E-mails clients', 'Écrire aux clients, envois groupés'],
     'contenu'        => ['Contenu du site', 'Textes, photos, avis, listes, ordre des sections'],
     'stats'          => ['Statistiques', 'Fréquentation et chiffre d’affaires'],
-    'reglages'       => ['Réglages techniques', 'Paiement, envoi d’e-mails, agenda, société, conditions, maintenance'],
+    'reglages'       => ['Réglages techniques', 'Paiement, envoi d’e-mails, agenda, société, conditions, maintenance — droit sensible, à réserver aux personnes de confiance'],
     'utilisateurs'   => ['Utilisateurs', 'Créer des comptes et attribuer les droits'],
 ];
 
@@ -65,8 +65,8 @@ function current_admin(): ?array
         $cache = false;
         return null;
     };
-    if (time() - (int)($_SESSION['admin_seen'] ?? 0) > ADMIN_IDLE_TIMEOUT) {
-        return $logout();
+    if (time() - (int)($_SESSION['admin_seen'] ?? 0) > ADMIN_IDLE_TIMEOUT || time() - (int)($_SESSION['admin_login_at'] ?? 0) > 12 * 3600) {
+        return $logout(); // 2 h d'inactivité ou 12 h depuis la connexion
     }
     $st = db()->prepare('SELECT id, username, email, perms, active, pw_changed_at FROM admins WHERE id = ?');
     $st->execute([$_SESSION['admin_id']]);
@@ -121,12 +121,21 @@ function login_admin(int $id): void
     $_SESSION['admin_id'] = $id;
     $_SESSION['admin_seen'] = time();
     $_SESSION['admin_login_at'] = time();
+    $_SESSION['sudo_until'] = time() + 900; // mot de passe saisi à l'instant : pas redemandé pendant 15 min
     db()->prepare('UPDATE admins SET last_login = ? WHERE id = ?')->execute([date('Y-m-d H:i:s'), $id]);
 }
 
 /** Change le mot de passe ; ferme les autres sessions de ce compte. */
 function admin_set_password(int $id, string $password, bool $keepCurrentSession = false): void
 {
+    $st = db()->prepare('SELECT username, email FROM admins WHERE id = ?');
+    $st->execute([$id]);
+    $acc = $st->fetch();
+    if ($acc && $acc['email'] !== '') {
+        send_mail($acc['email'], 'Votre mot de passe a été modifié — ' . s('site_name'), mail_layout('Mot de passe modifié',
+            '<p>Bonjour ' . e($acc['username']) . ',</p><p>Le mot de passe de votre compte d’administration vient d’être modifié (' . date('d/m/Y à H:i') . ').</p>'
+            . '<p>Si ce n’est pas vous, utilisez tout de suite « Mot de passe oublié » sur la page de connexion et prévenez les autres administrateurs.</p>'));
+    }
     $now = time();
     db()->prepare('UPDATE admins SET password_hash = ?, pw_changed_at = ? WHERE id = ?')
         ->execute([password_hash($password, PASSWORD_DEFAULT), $now, $id]);

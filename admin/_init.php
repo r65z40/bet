@@ -98,6 +98,41 @@ function admin_footer(): void
     echo "</main>\n</body>\n</html>\n";
 }
 
+/**
+ * Confirmation par mot de passe avant une action sensible (paiement, envoi d'e-mails, agenda,
+ * comptes) : protège contre une session laissée ouverte ou volée. Valable 15 minutes.
+ */
+function reauth_needed(): bool
+{
+    return (int)($_SESSION['sudo_until'] ?? 0) < time();
+}
+
+function reauth_field(): string
+{
+    return reauth_needed()
+        ? '<div class="hint" style="margin-top:14px">🔒 Modification sensible : confirmez avec votre mot de passe (redemandé au bout de 15 minutes).'
+          . field('reauth', 'Votre mot de passe', '', 'password') . '</div>'
+        : '';
+}
+
+/** Vérifie la confirmation ; en cas d'échec, message + redirection vers $back. */
+function require_reauth(string $back): void
+{
+    if (!reauth_needed()) {
+        return;
+    }
+    $a = current_admin();
+    $st = db()->prepare('SELECT password_hash FROM admins WHERE id = ?');
+    $st->execute([$a['id']]);
+    if (login_blocked() || !password_verify((string)($_POST['reauth'] ?? ''), (string)$st->fetchColumn())) {
+        login_failed();
+        admin_log('Confirmation par mot de passe refusée');
+        flash('Mot de passe de confirmation incorrect : rien n’a été modifié.', 'err');
+        redirect($back);
+    }
+    $_SESSION['sudo_until'] = time() + 900;
+}
+
 /** Champ de formulaire simple. */
 function field(string $name, string $label, string $value, string $type = 'text', string $help = '', array $options = []): string
 {
@@ -112,6 +147,8 @@ function field(string $name, string $label, string $value, string $type = 'text'
     } elseif ($type === 'textarea') {
         $rows = max(3, min(10, substr_count($value, "\n") + 2, (int)ceil(mb_strlen($value) / 90) + 1));
         $html .= '<textarea id="' . $id . '" name="' . e($name) . '" rows="' . $rows . '">' . e($value) . '</textarea>';
+    } elseif ($type === 'readonly') {
+        $html .= '<input id="' . $id . '" type="text" value="' . e($value) . '" disabled>';
     } elseif ($type === 'secret') {
         $html .= '<input id="' . $id . '" type="password" name="' . e($name) . '" value="" autocomplete="new-password" placeholder="'
             . ($value !== '' ? '•••••••• enregistré — laisser vide pour conserver' : 'non renseigné') . '">';
@@ -132,6 +169,9 @@ function save_settings_fields(array $fields): array
 {
     $errors = [];
     foreach ($fields as $key => $f) {
+        if (isset($f['perm']) && !admin_can($f['perm'])) {
+            continue; // champ réservé à un autre droit : ignoré même si envoyé
+        }
         $type = $f['type'] ?? 'text';
         $v = trim(str_replace("\r\n", "\n", (string)($_POST[$key] ?? '')));
         if ($type === 'secret') {

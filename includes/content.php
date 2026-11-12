@@ -27,7 +27,7 @@ const SETTINGS_SCHEMA = [
     'seo' => [
         'title' => 'Référencement (Google)',
         'fields' => [
-            'site_url'         => ['label' => 'Adresse du site', 'default' => 'https://lasallern6.fr', 'type' => 'url'],
+            'site_url'         => ['perm' => 'reglages', 'label' => 'Adresse du site', 'default' => 'https://lasallern6.fr', 'type' => 'url'],
             'meta_title'       => ['label' => 'Titre de la page d’accueil', 'default' => 'Location de salle à Appoigny près d’Auxerre | La Salle RN6'],
             'meta_description' => ['label' => 'Description Google', 'type' => 'textarea', 'default' => 'Louez La Salle RN6 à Appoigny, près d’Auxerre : jusqu’à 120 personnes assises, parking, cuisine, mobilier, mariages, anniversaires et séminaires.'],
             'og_title'         => ['label' => 'Titre de partage (Facebook…)', 'default' => 'La Salle RN6 | Location de salle à Appoigny près d’Auxerre'],
@@ -117,7 +117,7 @@ const SETTINGS_SCHEMA = [
     'resa' => [
         'title' => 'Page « Réserver en ligne » / maintenance',
         'fields' => [
-            'resa_maintenance'       => ['label' => 'État de la réservation en ligne', 'type' => 'select', 'default' => '0', 'options' => [
+            'resa_maintenance'       => ['perm' => 'reglages', 'label' => 'État de la réservation en ligne', 'type' => 'select', 'default' => '0', 'options' => [
                 '0' => '✅ Ouverte : l’agenda SuperSaaS est affiché',
                 '1' => '🛠 En maintenance : l’agenda est remplacé par le message ci-dessous',
             ]],

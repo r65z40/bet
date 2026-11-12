@@ -92,6 +92,7 @@ Sauvegarder régulièrement **tout le dossier `data/`** (la base `site-xxxx.sqli
 
 - Mots de passe hachés (bcrypt), 10 caractères minimum ; 5 essais ratés par IP = blocage 15 min ; déconnexion après 2 h d'inactivité.
 - Plusieurs comptes avec droits vérifiés sur chaque page et chaque action ; un compte désactivé, supprimé ou dont le mot de passe change est déconnecté partout immédiatement ; il reste toujours au moins un compte « Utilisateurs ».
+- Actions sensibles (réglages de paiement, d'envoi d'e-mails, d'agenda, de société ; gestion des comptes) : mot de passe redemandé (valable 15 min). L'adresse du site et la maintenance ne sont modifiables qu'avec le droit « Réglages ». Limite de 10 essais ratés par compte en plus de la limite par IP ; session de 12 h maximum ; e-mail d'alerte au titulaire quand son mot de passe change.
 - Mot de passe oublié : lien à usage unique valable 1 h (seule son empreinte est stockée), 3 demandes max. par heure et par compte, réponse identique que le compte existe ou non.
 - Installation protégée par un code lisible uniquement par FTP.
 - Jeton anti-CSRF sur tous les formulaires de l'administration ; requêtes SQL préparées ; tout le contenu affiché est échappé.

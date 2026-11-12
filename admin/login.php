@@ -20,7 +20,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $admin = $st->fetch();
         // password_verify est toujours exécuté (même identifiant inconnu) : temps de réponse identique
         $hash = $admin['password_hash'] ?? '$2y$10$ZerNfhZOyf7d1fQOxn1ejO5PPK0Ig4chEqEUNkZZHr.tLdfaRzl9e';
-        if (password_verify((string)($_POST['password'] ?? ''), $hash) && $admin) {
+        $acctKey = $admin ? 'compte:' . $admin['id'] : '';
+        $acctBlocked = $acctKey !== '' && account_blocked($acctKey);
+        if (!$acctBlocked && password_verify((string)($_POST['password'] ?? ''), $hash) && $admin) {
             if (password_needs_rehash($admin['password_hash'], PASSWORD_DEFAULT)) {
                 db()->prepare('UPDATE admins SET password_hash = ? WHERE id = ?')
                     ->execute([password_hash((string)$_POST['password'], PASSWORD_DEFAULT), $admin['id']]);
@@ -30,6 +32,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('index.php');
         }
         login_failed();
+        if ($acctKey !== '') {
+            db()->prepare('INSERT INTO login_attempts(ip, at) VALUES(?, ?)')->execute([$acctKey, time()]);
+            if ($acctBlocked) {
+                admin_log_as($admin, 'Connexion bloquée : trop d’essais sur ce compte');
+            }
+        }
         usleep(500000);
         $error = 'Identifiant ou mot de passe incorrect.';
     }
