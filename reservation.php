@@ -145,11 +145,17 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
     <div class="step-head"><span class="step-num">5</span><h2>Récapitulatif</h2></div>
     <div class="sum-slot" id="sumSlot">Choisissez une formule et une date.</div>
     <ul class="sum-lines" id="sumLines"></ul>
+    <div class="promo-row">
+      <label for="promoInput" class="muted" style="font-size:.86rem;font-weight:700">Code promo ou bon cadeau</label>
+      <div style="display:flex;gap:8px;margin-top:4px"><input type="text" id="promoInput" maxlength="40" autocomplete="off" autocapitalize="characters" placeholder="Ex. RN6-XXXX-XXXX" style="text-transform:uppercase"><button type="button" class="btn btn-light" id="promoApply" style="padding:10px 14px">Appliquer</button></div>
+      <div id="promoMsg" style="font-size:.86rem;margin-top:4px"></div>
+    </div>
     <div class="sum-total"><span>Total TTC</span><strong id="sumTotal">—</strong></div>
     <div class="sum-vat" id="sumVat"></div>
+    <div class="sum-total" id="dueRow" hidden style="margin-top:6px"><span>Reste à payer</span><strong id="sumDue" style="font-size:1.35rem">—</strong></div>
     <div id="errors"></div>
     <p class="notice" style="margin:14px 0 0;font-size:.86rem"><span>🔑</span><span><?= e(s('bk_deposit_text')) ?></span></p>
-    <label class="check"><input type="checkbox" name="cgv" id="cgv"> <span>J’accepte les <a href="conditions.php" target="_blank">conditions de location</a>.</span></label>
+    <label class="check"><input type="checkbox" name="cgv" id="cgv"> <span>J’accepte les <a href="conditions.php" target="_blank">conditions de location</a> et j’ai lu la <a href="confidentialite.php" target="_blank">politique de confidentialité</a>.</span></label>
     <div class="pay">
 <?php foreach ($providers as $key => $label): ?>
       <button type="submit" class="btn <?= $key === 'paypal' ? 'btn-paypal' : 'btn-blue' ?>" data-provider="<?= e($key) ?>" disabled>

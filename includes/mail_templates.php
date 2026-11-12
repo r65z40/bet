@@ -31,6 +31,22 @@ const MAIL_TEMPLATES = [
         'vars' => ['prenom', 'nom', 'societe', 'email_client', 'telephone', 'date', 'reservation', 'reference', 'evenement', 'personnes', 'total'],
         'blocks' => ['attention', 'recapitulatif', 'message_client', 'bouton'],
     ],
+    'rappel' => [
+        'label' => 'Rappel avant l’événement (J-7)',
+        'title' => 'Votre événement approche',
+        'subject' => 'J-{jours} : infos pratiques pour votre {evenement} — {site}',
+        'body' => "Bonjour {prenom},\n\nVotre événement à {site} approche ! Voici les informations utiles pour que tout se passe bien.\n\n**Arrivée** : {arrivee}\n**Départ** : {depart}\n**Adresse** : {adresse} — itinéraire : {itineraire}\n\n{infos_pratiques}\n\n{caution}\n\nUne question ? Répondez simplement à cet e-mail.\n\n{bouton}",
+        'vars' => ['prenom', 'nom', 'evenement', 'personnes', 'arrivee', 'depart', 'reservation', 'adresse', 'itineraire', 'jours', 'lien'],
+        'blocks' => ['recapitulatif', 'infos_pratiques', 'caution', 'bouton'],
+    ],
+    'avis' => [
+        'label' => 'Demande d’avis après l’événement (J+1)',
+        'title' => 'Merci pour votre venue !',
+        'subject' => 'Merci {prenom} ! Votre avis sur {site} ?',
+        'body' => "Bonjour {prenom},\n\nMerci d’avoir choisi {site} pour votre {evenement} ! Nous espérons que tout s’est bien passé.\n\nVotre avis compte beaucoup pour nous et aide les futurs clients à nous découvrir : il ne prend qu’une minute.\n\n{bouton_avis}\n\nMerci et à bientôt !",
+        'vars' => ['prenom', 'nom', 'evenement', 'reservation', 'lien_avis'],
+        'blocks' => ['bouton_avis'],
+    ],
     'invitation' => [
         'label' => 'Invitation d’un nouvel administrateur',
         'title' => 'Bienvenue',
@@ -56,7 +72,8 @@ const MAIL_VAR_HELP = [
     'adresse' => 'adresse de la salle', 'itineraire' => 'lien Google Maps', 'conditions' => 'lien des conditions de location',
     'lien' => 'lien principal (espace client ou activation)', 'identifiant' => 'identifiant du compte', 'site' => 'nom de la salle',
     'recapitulatif' => 'tableau du détail et du total', 'boutons' => 'boutons espace client + ajout à l’agenda', 'caution' => 'encadré caution',
-    'bouton' => 'bouton principal', 'remboursement' => 'phrase sur le remboursement', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
+    'bouton' => 'bouton principal', 'arrivee' => 'date et heure d’arrivée', 'depart' => 'date et heure de départ', 'jours' => 'nombre de jours avant l’événement',
+    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
 ];
 
 const MAIL_STYLE_DEFAULTS = [

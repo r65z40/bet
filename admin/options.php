@@ -69,7 +69,7 @@ function option_fields(string $n, array $o): string
 }
 ?>
 <h1>Tarifs & options</h1>
-<nav class="tabs"><a href="reglages.php?s=tarifs">Prix de location</a><a href="options.php" class="on">Options payantes</a></nav>
+<?= tarifs_tabs('options') ?>
 <p class="intro">Proposées lors de la réservation en ligne et affichées dans la section Tarifs de l’accueil. « Par personne » est multiplié par le nombre d’invités.</p>
 
 <form method="post" class="card">

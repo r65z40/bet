@@ -120,3 +120,6 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(242,212,123,.6);b
 .status.green{background:#e7f6ec;color:var(--ok)}.status.gray{background:#eef1f4;color:var(--muted)}.status.red{background:#fdecea;color:var(--err)}
 .legal h2{margin-top:26px;font-size:1.25rem}
 .legal p{color:#34465b}
+
+.promo-row{margin:14px 0 4px;padding-top:12px;border-top:1px dashed var(--line)}
+.day small.sp{color:#b42318}

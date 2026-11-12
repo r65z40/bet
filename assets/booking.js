@@ -13,7 +13,7 @@
   const addMonths = (ym, n) => { const [y, m] = ym.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   const isoDow = d => (d.getDay() + 6) % 7 + 1;
 
-  const st = { mode: null, days: 1, month: C.today, date: null, start: null, hours: null, total: null, quoteOk: false };
+  const st = { promo: '', mode: null, days: 1, month: C.today, date: null, start: null, hours: null, total: null, quoteOk: false };
   const cache = {};
   const maxMonth = addMonths(C.today, C.maxMonths);
 
@@ -41,7 +41,12 @@
   }));
   function dayPriceFrom(y, m, d) {
     let sum = 0;
-    for (let i = 0; i < st.days; i++) sum += C.dayPrices[isoDow(new Date(y, m - 1, d + i))];
+    for (let i = 0; i < st.days; i++) {
+      const dt = new Date(y, m - 1, d + i);
+      const key = dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+      const info = (cache[key.slice(0, 7)] || {})[key];
+      sum += info && info.p ? info.p : C.dayPrices[isoDow(dt)]; // prix réel du jour (dates spéciales)
+    }
     const disc = C.dayDiscounts[st.days] || 0;
     return Math.round(sum * (1 - disc / 100) * 100) / 100;
   }
@@ -82,8 +87,8 @@
       const info = days[key];
       const cls = dayState(info);
       const dow = isoDow(new Date(y, m - 1, d));
-      const price = st.mode === 'day' && cls ? `<small>${eurShort(dayPriceFrom(y, m, d))}</small>` : '';
-      const label = `${daysFr[dow - 1]} ${d} ${monthsFr[m - 1]}${cls ? '' : ' (indisponible)'}`;
+      const price = st.mode === 'day' && cls ? `<small class="${info && info.sp ? 'sp' : ''}">${info && info.sp ? '★ ' : ''}${eurShort(dayPriceFrom(y, m, d))}</small>` : (cls && info && info.sp ? '<small class="sp">★</small>' : '');
+      const label = escAttr(`${daysFr[dow - 1]} ${d} ${monthsFr[m - 1]}${cls ? '' : ' (indisponible)'}${info && info.sp ? ' — tarif spécial ' + info.sp : ''}`);
       html += `<button type="button" class="day ${cls} ${key === st.date ? 'sel' : ''}" data-date="${key}" ${cls ? '' : 'disabled'} aria-label="${label}" aria-pressed="${key === st.date}">${d}${price}</button>`;
     }
     cal.innerHTML = html;
@@ -149,6 +154,7 @@
       guests: parseInt(fd.get('guests'), 10) || 0,
       options: fd.getAll('options').map(Number),
       asso: !!(asso && asso.checked),
+      promo: st.promo,
     };
   }
 
@@ -180,24 +186,40 @@
     $('#sumSlot').textContent = st.mode === 'day'
       ? `${24 * st.days} h — du ${daysFr[isoDow(d) - 1]} ${d.getDate()} ${monthsFr[d.getMonth()]} ${C.dayStart} au ${daysFr[isoDow(e) - 1]} ${e.getDate()} ${monthsFr[e.getMonth()]} ${C.dayStart}`
       : `${daysFr[isoDow(d) - 1]} ${d.getDate()} ${monthsFr[d.getMonth()]} — ${st.start.replace(':', 'h')}, ${hoursLabel(st.hours)}`;
-    lines.innerHTML = (j.lines || []).map((l, i) => `<li><span>${i === 0 ? 'Location' : esc(l.label)}</span><span>${eur.format(l.ttc)}</span></li>`).join('')
-      + (j.discount_ttc > 0 ? `<li><span>Remise association</span><span>− ${eur.format(j.discount_ttc)}</span></li>` : '');
+    lines.innerHTML = (j.lines || []).map((l, i) => `<li><span>${i === 0 ? (/tarif « /.test(l.label) ? 'Location (' + esc(l.label.split('tarif « ')[1].replace(' »', '')) + ')' : 'Location') : esc(l.label)}</span><span>${eur.format(l.ttc)}</span></li>`).join('')
+      + (j.discount_ttc > 0 ? `<li><span>Remise association</span><span>− ${eur.format(j.discount_ttc)}</span></li>` : '')
+      + (j.promo_ttc > 0 ? `<li><span>${esc(j.promo_label)}</span><span>− ${eur.format(j.promo_ttc)}</span></li>` : '');
+    const msg = $('#promoMsg');
+    if (st.promo) {
+      msg.style.color = j.code_error ? 'var(--err)' : 'var(--ok)';
+      msg.textContent = j.code_error ? j.code_error : (j.gift_amount > 0 ? `Bon cadeau appliqué : ${eur.format(j.gift_amount)} déduits du montant à payer.` : 'Code appliqué ✓');
+    } else { msg.textContent = ''; }
+    const due = typeof j.amount_due === 'number' ? j.amount_due : j.total_ttc;
+    $('#dueRow').hidden = !(j.gift_amount > 0);
+    $('#sumDue').textContent = eur.format(due || 0);
+    $$('.pay .btn').forEach((b, i) => {
+      if (!b.dataset.label) b.dataset.label = b.innerHTML;
+      const giftOnly = j.gift_amount > 0 && due <= 0;
+      b.hidden = giftOnly && i > 0;
+      b.innerHTML = giftOnly && i === 0 ? '🎁 Confirmer (réglé par bon cadeau)' : b.dataset.label;
+    });
     $('#sumTotal').textContent = eur.format(j.total_ttc || 0);
     $('#sumVat').textContent = j.total_ttc ? `dont TVA ${eur.format(j.vat)} — total HT ${eur.format(j.total_ht)}` + (preview ? ' (hors options par personne)' : '') : '';
-    const errs = (j.errors || []).filter(e => !(preview && /personnes/.test(e)));
+    const errs = (j.errors || []).filter(e => !(preview && /personnes/.test(e)) && e !== j.code_error);
     showErrors(errs);
     st.quoteOk = !!j.ok || (preview && !errs.length);
-    setTotal(j.total_ttc || null);
+    setTotal(j.total_ttc || null, due);
     if (errs.some(e => /plus disponible|avance/.test(e))) { delete cache[st.month]; renderCal(true); }
   }
-  function setTotal(t) {
+  function setTotal(t, due) {
     st.total = t;
     $$('.pay .btn').forEach(b => b.disabled = !t || !st.quoteOk);
-    $('#barTotal').textContent = t ? eur.format(t) : '—';
+    $('#barTotal').textContent = t ? eur.format(typeof due === 'number' ? due : t) : '—';
     $('#mobileBar').hidden = !t;
     document.body.classList.toggle('has-bar', !!t);
   }
   function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+  function escAttr(s) { return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
   function showErrors(list) {
     $('#errors').innerHTML = list.length ? `<div class="alert alert-err" role="alert" style="margin-top:14px">${list.length > 1 ? '<ul>' + list.map(e => `<li>${esc(e)}</li>`).join('') + '</ul>' : esc(list[0])}</div>` : '';
   }
@@ -206,6 +228,11 @@
   if ('IntersectionObserver' in window) {
     new IntersectionObserver(es => es.forEach(en => { if (st.total) $('#mobileBar').hidden = en.isIntersecting; }), { threshold: 0.15 }).observe($('#summary'));
   }
+
+  /* ---------- Code promo / bon cadeau ---------- */
+  const applyPromo = () => { st.promo = $('#promoInput').value.trim().toUpperCase(); quote(0); };
+  $('#promoApply').addEventListener('click', applyPromo);
+  $('#promoInput').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyPromo(); } });
 
   /* ---------- Paiement ---------- */
   form.addEventListener('submit', async e => {

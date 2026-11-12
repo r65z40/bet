@@ -57,6 +57,22 @@ Page `reservation.php` : formule **à la journée** (24 h, 48 h ou 72 h, de 10 h
 5. *Annulation & conditions* : faire relire les conditions de location.
 6. Tester une réservation en mode test, puis passer les clés en production.
 
+## Tarifs spéciaux, codes promo, bons cadeaux
+*Admin › Réservations › Tarifs & options* :
+- **Dates spéciales** : majoration (ou remise) en % ou prix de journée fixe sur une date ou une période (réveillon, fêtes, haute saison). La location à l'heure suit la même proportion ; le calendrier affiche le prix réel (★).
+- **Codes promo** : remise en % ou en €, dates de validité, nombre d'utilisations, minimum de réservation.
+- **Bons cadeaux** : montant prépayé avec solde, code long généré automatiquement, imprimable ou envoyé par e-mail. C'est un moyen de paiement : la facture garde le prix complet et indique la part réglée par le bon ; s'il couvre tout, la réservation est confirmée sans paiement en ligne ; en cas d'annulation, le bon peut être recrédité.
+
+## E-mails automatiques et tâche planifiée
+- **Rappel J-7** (infos pratiques modifiables) et **demande d'avis Google J+1** (lien « Laisser un avis » à renseigner), modèles modifiables dans *E-mails clients › Modèles*.
+- Tâche planifiée OVH : *Hébergement › Tâches planifiées - Cron* › commande `www/cron.php`, toutes les heures. Sans elle, les tâches tournent au plus une fois par heure après l'affichage d'une page. Elle s'occupe aussi des paiements abandonnés, des envois groupés en attente et de la suppression des réservations jamais payées après 6 mois.
+
+## Application admin et notifications
+L'administration s'installe sur l'écran d'accueil (iPhone : Safari › Partager › Sur l'écran d'accueil ; Android : Installer l'application) et envoie une **notification à chaque réservation payée** (iOS 16.4+), à activer dans *Mon compte › Application et notifications* sur chaque appareil. Notifications Web Push chiffrées (VAPID), sans service tiers.
+
+## Pages légales
+`mentions-legales.php` et `confidentialite.php`, textes préremplis (à faire relire) et modifiables dans *Contenu du site › Textes › Pages légales* ; liens en pied de page de toutes les pages et dans le tunnel de réservation.
+
 ## Statistiques et RGPD
 
 Mesure maison, sans Google Analytics ni cookie : l'adresse IP n'est jamais enregistrée (seulement un hash anonyme qui change chaque jour). Les robots et l'administrateur connecté ne sont pas comptés. Les données de plus de 25 mois sont effacées automatiquement. Aucun bandeau cookies n'est donc nécessaire pour ces statistiques.

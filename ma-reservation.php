@@ -48,9 +48,16 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
 <?php if ((float)$b['discount_ht'] > 0): ?>
       <li><span>Remise association</span><span>− <?= money2(ttc((float)$b['discount_ht'])) ?></span></li>
 <?php endif; ?>
+<?php if ((float)$b['promo_ht'] > 0): ?>
+      <li><span>Code promo <?= e($b['promo_code']) ?></span><span>− <?= money2(ttc((float)$b['promo_ht'])) ?></span></li>
+<?php endif; ?>
     </ul>
     <div class="sum-total"><span>Total TTC</span><strong><?= money2((float)$b['total_ttc']) ?></strong></div>
     <div class="sum-vat">dont TVA <?= money2((float)$b['vat']) ?> — total HT <?= money2((float)$b['total_ht']) ?></div>
+<?php if ((float)$b['gift_amount'] > 0): ?>
+    <div class="sum-total" style="margin-top:8px;font-size:.95rem"><span>Réglé par bon cadeau <?= e($b['gift_code']) ?></span><span>− <?= money2((float)$b['gift_amount']) ?></span></div>
+    <div class="sum-total"><span><?= $pending ? 'Reste à payer' : 'Payé en ligne' ?></span><strong style="font-size:1.3rem"><?= money2(bk_due($b)) ?></strong></div>
+<?php endif; ?>
 <?php if ((float)$b['refunded_amount'] > 0): ?>
     <p class="alert alert-ok" style="margin-top:14px">Remboursé : <?= money2((float)$b['refunded_amount']) ?></p>
 <?php endif; ?>
@@ -70,7 +77,7 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
     <form method="post" action="paiement.php" class="pay" style="margin-top:22px">
       <input type="hidden" name="ref" value="<?= e($b['ref']) ?>"><input type="hidden" name="t" value="<?= e($b['token']) ?>">
       <?php foreach ($providers as $k => $label): ?>
-      <button class="btn <?= $k === 'paypal' ? 'btn-paypal' : 'btn-blue' ?>" name="provider" value="<?= e($k) ?>"><?= $k === 'paypal' ? 'Payer avec PayPal' : '🔒 Payer par carte bancaire' ?> — <?= money2((float)$b['total_ttc']) ?></button>
+      <button class="btn <?= $k === 'paypal' ? 'btn-paypal' : 'btn-blue' ?>" name="provider" value="<?= e($k) ?>"><?= $k === 'paypal' ? 'Payer avec PayPal' : '🔒 Payer par carte bancaire' ?> — <?= money2(bk_due($b)) ?></button>
       <?php endforeach; ?>
     </form>
     <p class="muted" style="font-size:.88rem;margin-top:12px">Sans paiement, la réservation n’est pas prise en compte et le créneau est libéré automatiquement.</p>

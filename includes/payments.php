@@ -81,7 +81,7 @@ function stripe_checkout(array $b): string
             'quantity' => 1,
             'price_data' => [
                 'currency' => 'eur',
-                'unit_amount' => (int)round($b['total_ttc'] * 100),
+                'unit_amount' => (int)round(bk_due($b) * 100),
                 'product_data' => ['name' => 'Location ' . s('site_name') . ' — ' . bk_slot_label($b), 'description' => $b['event_type'] . ' · ' . $b['guests'] . ' pers. · réf. ' . $b['ref']],
             ],
         ]],
@@ -175,7 +175,7 @@ function paypal_checkout(array $b): string
             'custom_id' => (string)$b['id'],
             'invoice_id' => $b['ref'],
             'description' => mb_substr('Location ' . s('site_name') . ' — ' . bk_slot_label($b), 0, 127),
-            'amount' => ['currency_code' => 'EUR', 'value' => number_format((float)$b['total_ttc'], 2, '.', '')],
+            'amount' => ['currency_code' => 'EUR', 'value' => number_format(bk_due($b), 2, '.', '')],
         ]],
         'payment_source' => ['paypal' => ['experience_context' => [
             'brand_name' => mb_substr(s('site_name'), 0, 127),
@@ -231,23 +231,24 @@ function paypal_refund(array $b, int $cents): string
  * Annule une réservation et rembourse $amount € TTC (0 = sans remboursement).
  * Le remboursement est d'abord demandé au prestataire ; la réservation n'est modifiée qu'en cas de succès.
  */
-function bk_cancel(array $b, float $amount, bool $notify): float
+function bk_cancel(array $b, float $amount, bool $notify, bool $restoreGift = false): float
 {
     // Verrou exclusif pendant toute l'opération ; la réservation est relue sous verrou.
     $lock = fopen(DATA_DIR . '/.refund.lock', 'c');
     flock($lock, LOCK_EX);
     try {
         $b = bk_get((int)$b['id']) ?? $b;
-        return bk_cancel_locked($b, $amount, $notify);
+        return bk_cancel_locked($b, $amount, $notify, $restoreGift);
     } finally {
         flock($lock, LOCK_UN);
         fclose($lock);
     }
 }
 
-function bk_cancel_locked(array $b, float $amount, bool $notify): float
+function bk_cancel_locked(array $b, float $amount, bool $notify, bool $restoreGift = false): float
 {
-    $amount = round(max(0, min($amount, (float)$b['total_ttc'] - (float)$b['refunded_amount'])), 2);
+    // On ne rembourse en ligne que ce qui a été payé en ligne (la part « bon cadeau » se recrédite sur le bon)
+    $amount = round(max(0, min($amount, bk_due($b) - (float)$b['refunded_amount'])), 2);
     $refundId = '';
     if ($amount > 0) {
         if (empty($b['paid_at']) || $b['payment_ref'] === '') {
@@ -258,7 +259,13 @@ function bk_cancel_locked(array $b, float $amount, bool $notify): float
     }
     $pdo = db();
     $credit = $b['credit_number'];
-    if ($amount > 0 && $credit === '') {
+    $giftBack = $restoreGift && !(int)$b['gift_restored'] && (float)$b['gift_amount'] > 0 && !empty($b['paid_at']) ? (float)$b['gift_amount'] : 0.0;
+    if ($giftBack > 0) {
+        $pdo->prepare('UPDATE promo_codes SET balance = balance + ? WHERE code = ?')->execute([$giftBack, $b['gift_code']]);
+        $pdo->prepare('UPDATE bookings SET gift_restored = 1 WHERE id = ?')->execute([$b['id']]);
+        bk_log((int)$b['id'], 'Bon cadeau ' . $b['gift_code'] . ' recrédité de ' . money2($giftBack));
+    }
+    if (($amount > 0 || $giftBack > 0) && $credit === '') {
         $year = bk_now()->format('Y');
         $seq = (int)(setting_raw($pdo, '_credit_seq_' . $year) ?? 0) + 1;
         save_setting('_credit_seq_' . $year, (string)$seq);

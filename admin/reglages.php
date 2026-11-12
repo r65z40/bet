@@ -44,6 +44,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             admin_log('Synchronisation complète vers Google Agenda');
             flash($fail ? 'Google Agenda : ' . s('_gcal_push_error') : 'Google Agenda est à jour (' . $ok . ' réservation(s) ou blocage(s) traité(s)).', $fail ? 'err' : 'ok');
         }
+    } elseif ($do === 'cronnow') {
+        $r = run_scheduled_tasks(true);
+        admin_log('Tâches automatiques lancées manuellement');
+        flash('Tâches exécutées : ' . (int)($r['rappels'] ?? 0) . ' rappel(s), ' . (int)($r['avis'] ?? 0) . ' demande(s) d’avis, ' . (int)($r['emails_groupes'] ?? 0) . ' e-mail(s) groupé(s).'
+            . (!empty($r['erreurs']) ? ' Erreurs : ' . implode(' ; ', $r['erreurs']) : ''), empty($r['erreurs']) ? 'ok' : 'err');
     } elseif ($do === 'newtoken') {
         save_setting('bk_ics_token', bin2hex(random_bytes(16)));
         flash('Nouveau lien d’abonnement créé : l’ancien ne fonctionne plus.');
@@ -78,7 +83,7 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
 <p class="intro"><?= $current === 'tarifs' ? 'Prix des journées saisis <strong>HT</strong> (TTC indiqué dessous) ; location à l’heure saisie <strong>TTC</strong>. Le site affiche et encaisse le TTC.' : 'Horaires, paiement, e-mails, agenda, factures et conditions de location.' ?></p>
 
 <?php if ($current === 'tarifs'): ?>
-<nav class="tabs"><a href="reglages.php?s=tarifs" class="on">Prix de location</a><a href="options.php">Options payantes</a></nav>
+<?= tarifs_tabs('prix') ?>
 <div>
   <div>
 <?php else: ?>
@@ -99,6 +104,22 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
 <?php elseif ($current === 'emails'): ?>
     <div class="hint">Le texte et l’apparence des e-mails envoyés (confirmation, annulation, alertes…) se modifient dans <a href="modeles.php">Modèles d’e-mails</a>.</div>
     <?php if (s('_mail_last_error') !== ''): ?><div class="flash flash-err">Dernière erreur d’envoi : <?= e(s('_mail_last_error')) ?></div><?php endif; ?>
+<?php elseif ($current === 'automatique'): $rep = json_decode(s('_cron_report'), true) ?: []; ?>
+    <div class="card">
+      <h2>Tâche planifiée</h2>
+      <p class="muted" style="margin-top:-6px">Les rappels et demandes d’avis partent automatiquement toutes les heures. Dernier passage :
+        <strong><?= s('_cron_last') ? e(date('d/m/Y à H:i', (int)s('_cron_last'))) : 'jamais' ?></strong>
+        <?php if ($rep && empty($rep['skipped'])): ?>— <?= (int)($rep['rappels'] ?? 0) ?> rappel(s), <?= (int)($rep['avis'] ?? 0) ?> demande(s) d’avis<?= !empty($rep['erreurs']) ? ' — <span style="color:#b42318">' . e(implode(' ; ', $rep['erreurs'])) . '</span>' : '' ?><?php endif; ?></p>
+      <form method="post"><?= csrf_field() ?><button class="btn light sm" name="do" value="cronnow">▶ Lancer maintenant</button></form>
+      <details style="margin-top:14px"><summary><strong>Activer la tâche planifiée chez OVH (recommandé, 2 minutes)</strong></summary>
+        <ol style="line-height:1.7">
+          <li>Espace client OVH › <strong>Web Cloud › Hébergements</strong> › votre hébergement › onglet <strong>Plus › Tâches planifiées - Cron</strong> › <strong>Ajouter une planification</strong>.</li>
+          <li>Commande à exécuter : <code>www/cron.php</code> (adaptez si le site est dans un sous-dossier) — Langage : la version de PHP du site — Fréquence : <strong>toutes les heures</strong>.</li>
+          <li>Valider. Sans cette tâche, les e-mails partent quand même, au plus une fois par heure, dès qu’une page du site est consultée.</li>
+        </ol>
+        <p class="muted">Autre solution (service externe type cron-job.org) — adresse secrète à appeler toutes les heures :<br><code style="word-break:break-all"><?= e(bk_url('cron.php?k=' . s('bk_cron_token'))) ?></code></p>
+      </details>
+    </div>
 <?php elseif ($current === 'agenda'): ?>
     <?php $sa = gcal_service_account(); ?>
     <div class="card">

@@ -63,6 +63,14 @@ function admin_header(string $title, string $active = ''): void
 <title><?= e($title) ?> · Administration <?= e(s('site_name')) ?></title>
 <link rel="icon" href="../favicon.ico">
 <link rel="stylesheet" href="admin.css?v=<?= @filemtime(__DIR__ . '/admin.css') ?>">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#071c35">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RN6 Admin">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});</script>
 </head>
 <body>
 <?php if ($admin): ?>
@@ -133,6 +141,18 @@ function require_reauth(string $back): void
     $_SESSION['sudo_until'] = time() + 900;
 }
 
+/** Onglets de la rubrique « Tarifs & options ». */
+function tarifs_tabs(string $on): string
+{
+    $tabs = ['prix' => ['reglages.php?s=tarifs', 'Prix de location'], 'speciaux' => ['tarifs-speciaux.php', 'Dates spéciales'],
+        'options' => ['options.php', 'Options payantes'], 'codes' => ['codes.php', 'Codes promo & bons cadeaux']];
+    $h = '<nav class="tabs">';
+    foreach ($tabs as $k => [$href, $label]) {
+        $h .= '<a href="' . $href . '" class="' . ($k === $on ? 'on' : '') . '">' . e($label) . '</a>';
+    }
+    return $h . '</nav>';
+}
+
 /** Champ de formulaire simple. */
 function field(string $name, string $label, string $value, string $type = 'text', string $help = '', array $options = []): string
 {
@@ -200,6 +220,9 @@ function save_settings_fields(array $fields): array
         if ($type === 'time' && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $v)) {
             $errors[] = $f['label'] . ' : heure attendue (ex. 10:00).';
             continue;
+        }
+        if (isset($f['fallback']) && $v === str_replace("\r\n", "\n", constant($f['fallback']))) {
+            $v = ''; // texte par défaut non modifié : on garde le défaut (mis à jour avec le site)
         }
         save_setting($key, mb_substr($v, 0, 20000));
     }

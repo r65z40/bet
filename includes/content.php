@@ -104,6 +104,17 @@ const SETTINGS_SCHEMA = [
             'map_query'    => ['label' => 'Lieu affiché sur la carte', 'default' => 'La Salle RN6, 71 C route d’Auxerre, 89380 Appoigny', 'help' => 'Nom de la fiche Google ou adresse.'],
         ],
     ],
+    'legal' => [
+        'title' => 'Pages légales',
+        'fields' => [
+            'legal_director' => ['label' => 'Directeur de la publication (nom et prénom du gérant)', 'default' => ''],
+            'legal_host'     => ['label' => 'Hébergeur', 'default' => '', 'help' => 'Vide = OVH SAS, 2 rue Kellermann, 59100 Roubaix.'],
+            'legal_mentions' => ['label' => 'Mentions légales', 'type' => 'textarea', 'default' => '', 'fallback' => 'LEGAL_MENTIONS_DEFAULT',
+                'help' => 'Lignes commençant par « # » = titres, **gras**. Variables : {societe} {forme} {adresse_siege} {siren} {rcs} {tva} {email} {directeur} {hebergeur} {adresse_site} {conditions} {confidentialite}. Société, SIREN et TVA viennent de Réservations › Réglages › Société.'],
+            'legal_privacy'  => ['label' => 'Politique de confidentialité', 'type' => 'textarea', 'default' => '', 'fallback' => 'LEGAL_PRIVACY_DEFAULT',
+                'help' => 'Texte proposé à faire relire. Mêmes variables que ci-dessus.'],
+        ],
+    ],
     'plan' => [
         'title' => 'Page « Plan de la salle »',
         'fields' => [
@@ -232,7 +243,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 10;
 
 /**
  * Sections de la page d'accueil dont l'ordre et l'affichage se règlent dans

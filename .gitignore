@@ -16,3 +16,5 @@ data/.mailing.lock
 *.png
 !logo-rn6.png
 !photos/**
+data/.cron.lock
+!admin/icons/*.png

@@ -14,9 +14,11 @@ function sample_mail(string $key): array
 {
     $b = mail_sample_booking();
     [$vars, $blocks] = mail_booking_data($b);
-    $vars += ['identifiant' => 'marie', 'montant_rembourse' => money2(360)];
+    $vars += ['identifiant' => 'marie', 'montant_rembourse' => money2(360), 'arrivee' => 'samedi 12 décembre 2026 à 10h00', 'depart' => 'dimanche 13 décembre 2026 à 10h00', 'jours' => '7', 'lien_avis' => review_url()];
     $blocks += [
         'attention' => '',
+        'infos_pratiques' => s('bk_practical_info') !== '' ? '<div style="background:#f4f6f8;border-radius:8px;padding:12px 16px;margin:0 0 14px">' . render_mail_paragraphs(s('bk_practical_info')) . '</div>' : '',
+        'bouton_avis' => '<p style="text-align:center;margin:20px 0">' . mail_button(review_url() ?: bk_url(''), '★ Laisser un avis Google') . '</p>',
         'remboursement' => '<p style="margin:0 0 14px">Un remboursement de <strong>' . money2(360) . '</strong> a été effectué sur votre moyen de paiement.</p>',
         'bouton' => '<p>' . mail_button(bk_url(''), $key === 'invitation' ? 'Créer mon mot de passe' : ($key === 'motdepasse' ? 'Choisir un nouveau mot de passe' : ($key === 'alerte' ? 'Voir dans l’administration' : 'Voir ma réservation'))) . '</p>',
     ];

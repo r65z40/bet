@@ -62,6 +62,7 @@ $req = [
     'guests' => (int)($in['guests'] ?? 0),
     'options' => array_slice(array_map('intval', (array)($in['options'] ?? [])), 0, 50),
     'asso' => !empty($in['asso']),
+    'promo' => mb_substr((string)($in['promo'] ?? ''), 0, 40),
 ];
 
 if ($a === 'quote') {
@@ -71,6 +72,12 @@ if ($a === 'quote') {
         'errors' => $q['errors'],
         'lines' => array_map(fn($l) => ['label' => $l['label'], 'ttc' => ttc((float)$l['total_ht'])], $q['lines'] ?? []),
         'discount_ttc' => isset($q['discount_ht']) ? ttc($q['discount_ht']) : 0,
+        'promo_label' => $q['promo_label'] ?? '',
+        'promo_ttc' => !empty($q['promo_ht']) ? ttc($q['promo_ht']) : 0,
+        'gift_code' => $q['gift_code'] ?? '',
+        'gift_amount' => $q['gift_amount'] ?? 0,
+        'amount_due' => $q['amount_due'] ?? 0,
+        'code_error' => $q['code_error'] ?? null,
         'total_ht' => $q['total_ht'] ?? 0,
         'vat' => $q['vat'] ?? 0,
         'total_ttc' => $q['total_ttc'] ?? 0,
@@ -95,7 +102,6 @@ if ($a === 'book') {
     if ($req['asso'] && $c['asso_name'] === '') $errors[] = 'Indiquez le nom de l’association.';
     if (empty($in['cgv'])) $errors[] = 'Vous devez accepter les conditions de location.';
     $provider = (string)($in['provider'] ?? '');
-    if (!isset(payment_providers()[$provider])) $errors[] = 'Moyen de paiement indisponible.';
 
     // Anti-abus : pas plus de 3 réservations non payées par visiteur et par heure
     $st = db()->prepare("SELECT COUNT(*) FROM bookings WHERE visitor = ? AND status IN ('pending','expired') AND created_at > ?");
@@ -112,6 +118,12 @@ if ($a === 'book') {
 
     gcal_sync_if_needed(time() - (int)s('_gcal_last_try') > 120); // agenda Google relu juste avant de bloquer le créneau
     $q = bk_quote($req);
+    $giftOnly = ($q['amount_due'] ?? 1) <= 0 && ($q['gift_code'] ?? '') !== '';
+    if ($giftOnly) {
+        $provider = 'giftcard'; // entièrement réglé par bon cadeau : pas de paiement en ligne
+    } elseif (!isset(payment_providers()[$provider])) {
+        $errors[] = 'Moyen de paiement indisponible.';
+    }
     $errors = array_merge($q['errors'] ?? [], $errors);
     if ($errors) {
         out(['errors' => array_values(array_unique($errors))], 422);
@@ -125,6 +137,10 @@ if ($a === 'book') {
         out(['errors' => [$e->getMessage()]], 409);
     }
     bk_log((int)$b['id'], 'Réservation créée (en attente de paiement ' . $provider . ')');
+    if ($giftOnly) {
+        bk_confirm_paid((int)$b['id'], 'giftcard', 'bon ' . $b['gift_code'], 0, 'eur');
+        out(['redirect' => bk_client_url(bk_get((int)$b['id'])) . '&merci=1']);
+    }
     try {
         $url = $provider === 'paypal' ? paypal_checkout($b) : stripe_checkout($b);
     } catch (Throwable $e) {

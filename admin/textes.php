@@ -40,7 +40,7 @@ admin_header('Textes', 'textes');
       <?php if (isset($f['perm']) && !admin_can($f['perm'])): ?>
         <?= field($key, $f['label'], (string)($f['options'][s($key)] ?? s($key)), 'readonly', 'Modifiable uniquement avec le droit « ' . ADMIN_PERMS[$f['perm']][0] . ' ».') ?>
       <?php else: ?>
-        <?= field($key, $f['label'], s($key), $f['type'] ?? 'text', $f['help'] ?? '', $f['options'] ?? []) ?>
+        <?= field($key, $f['label'], s($key) === '' && isset($f['fallback']) ? constant($f['fallback']) : s($key), $f['type'] ?? 'text', $f['help'] ?? '', $f['options'] ?? []) ?>
       <?php endif; ?>
     <?php endforeach; ?>
     <div class="sticky-save"><button class="btn gold">💾 Enregistrer</button></div>

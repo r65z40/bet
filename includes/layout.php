@@ -25,7 +25,7 @@ function public_footer(string $page = ''): void
 {
     ?>
 </main>
-<footer class="foot-bar"><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?></span><span><a href="conditions.php">Conditions de location</a> · <a href="<?= e(mailto()) ?>" data-track="email"><?= e(s('contact_email')) ?></a></span></div></footer>
+<footer class="foot-bar"><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?></span><span><a href="conditions.php">Conditions de location</a> · <a href="mentions-legales.php">Mentions légales</a> · <a href="confidentialite.php">Confidentialité</a> · <a href="<?= e(mailto()) ?>" data-track="email"><?= e(s('contact_email')) ?></a></span></div></footer>
 <?= $page !== '' ? tracking_script($page) : '' ?>
 </body></html>
 <?php

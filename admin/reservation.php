@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         $amount = round((float)str_replace([',', ' '], ['.', ''], (string)($_POST['amount'] ?? '0')), 2);
         try {
-            $done = bk_cancel($b, $amount, !empty($_POST['notify']));
+            $done = bk_cancel($b, $amount, !empty($_POST['notify']), !empty($_POST['restore_gift']));
             bk_log($id, 'Action effectuée par ' . current_admin()['username']);
             admin_log(($do === 'cancel' ? 'Annulation' : 'Remboursement') . ' de la réservation ' . $b['ref'] . ($done > 0 ? ' — ' . money2($done) . ' remboursés' : ''));
             flash($done > 0 ? 'Remboursement de ' . money2($done) . ' effectué' . ($do === 'cancel' ? ' et réservation annulée.' : '.') : 'Réservation annulée sans remboursement.');
@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 [$sl, $sc] = BOOKING_STATUSES[$b['status']] ?? ['?', 'gray'];
 $paid = !empty($b['paid_at']);
-$remaining = round((float)$b['total_ttc'] - (float)$b['refunded_amount'], 2);
+$remaining = round(bk_due($b) - (float)$b['refunded_amount'], 2); // part payée en ligne encore remboursable
 $pct = bk_refund_percent($b);
 $suggest = round($remaining * $pct / 100, 2);
 $log = db()->prepare('SELECT * FROM booking_log WHERE booking_id = ? ORDER BY id DESC');
@@ -54,7 +54,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
 ?>
 <p><a href="reservations.php">← Réservations</a></p>
 <h1><?= e($b['first_name'] . ' ' . $b['last_name']) ?> <span class="pill" style="vertical-align:middle;<?= $sc === 'green' ? 'background:#e7f6ec;color:#1d7a46' : ($sc === 'red' ? 'background:#fdecea;color:#b42318' : '') ?>"><?= e($sl) ?></span></h1>
-<p class="intro">Réf. <?= e($b['ref']) ?> · créée le <?= e(bk_dt($b['created_at'])->format('d/m/Y à H\hi')) ?><?= $paid ? ' · payée le ' . e(bk_dt($b['paid_at'])->format('d/m/Y à H\hi')) . ' (' . e($b['provider'] === 'paypal' ? 'PayPal' : 'Stripe') . ')' : '' ?></p>
+<p class="intro">Réf. <?= e($b['ref']) ?> · créée le <?= e(bk_dt($b['created_at'])->format('d/m/Y à H\hi')) ?><?= $paid ? ' · payée le ' . e(bk_dt($b['paid_at'])->format('d/m/Y à H\hi')) . ' (' . e(provider_label($b['provider'])) . ')' : '' ?></p>
 
 <div class="grid g2" style="align-items:start">
   <div>
@@ -67,6 +67,9 @@ admin_header('Réservation ' . $b['ref'], 'resa');
         <?php endforeach; ?>
         <?php if ((float)$b['discount_ht'] > 0): ?><tr><td>Remise association<?= $b['asso_name'] ? ' (' . e($b['asso_name']) . ')' : '' ?></td><td class="num">− <?= money2((float)$b['discount_ht']) ?></td><td class="num">− <?= money2(ttc((float)$b['discount_ht'])) ?></td></tr><?php endif; ?>
         <tr><td><strong>Total</strong></td><td class="num"><?= money2((float)$b['total_ht']) ?> HT</td><td class="num"><strong><?= money2((float)$b['total_ttc']) ?> TTC</strong></td></tr>
+        <?php if ((float)$b['promo_ht'] > 0): ?><tr><td>Code promo <?= e($b['promo_code']) ?></td><td class="num">− <?= money2((float)$b['promo_ht']) ?></td><td class="num">− <?= money2(ttc((float)$b['promo_ht'])) ?></td></tr><?php endif; ?>
+        <?php if ((float)$b['gift_amount'] > 0): ?><tr><td>Réglé par bon cadeau <?= e($b['gift_code']) ?><?= (int)$b['gift_restored'] ? ' <span class="pill">recrédité</span>' : '' ?></td><td></td><td class="num">− <?= money2((float)$b['gift_amount']) ?></td></tr>
+          <tr><td><strong>Payé en ligne</strong></td><td></td><td class="num"><strong><?= money2(bk_due($b)) ?></strong></td></tr><?php endif; ?>
         <?php if ((float)$b['refunded_amount'] > 0): ?><tr><td>Remboursé</td><td></td><td class="num">− <?= money2((float)$b['refunded_amount']) ?></td></tr><?php endif; ?>
       </table>
       <p class="actions" style="margin-top:14px">
@@ -100,8 +103,11 @@ admin_header('Réservation ' . $b['ref'], 'resa');
       <?= csrf_field() ?>
       <h2><?= $b['status'] === 'confirmed' ? 'Annuler / rembourser' : 'Rembourser à nouveau' ?></h2>
       <p class="muted" style="margin-top:-6px">Selon vos conditions, à <?= max(0, (int)floor((bk_dt($b['start_at'])->getTimestamp() - time()) / 86400)) ?> jour(s) de l’événement : <strong><?= $pct ?> %</strong> remboursable, soit <?= money2($suggest) ?>.
-        Le remboursement est effectué directement sur le moyen de paiement du client (<?= $b['provider'] === 'paypal' ? 'PayPal' : 'carte, via Stripe' ?>).</p>
+        Le remboursement est effectué directement sur le moyen de paiement du client (<?= e(provider_label($b['provider'])) ?>).</p>
       <?= field('amount', 'Montant à rembourser TTC (€) — maximum ' . money2($remaining), rating_label((string)$suggest), 'text') ?>
+      <?php if ((float)$b['gift_amount'] > 0 && !(int)$b['gift_restored']): ?>
+        <label style="display:block;margin-bottom:10px"><input type="checkbox" name="restore_gift" value="1"> Recréditer le bon cadeau <?= e($b['gift_code']) ?> de <?= money2((float)$b['gift_amount']) ?></label>
+      <?php endif; ?>
       <label style="display:block;margin-bottom:14px"><input type="checkbox" name="notify" value="1" checked> Prévenir le client par e-mail</label>
       <?php if ($b['status'] === 'confirmed'): ?>
         <button class="btn danger" name="do" value="cancel" onclick="return confirm('Annuler la réservation et rembourser le montant indiqué ? Cette action est définitive.')">Annuler la réservation</button>

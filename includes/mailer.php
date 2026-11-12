@@ -207,12 +207,18 @@ function mail_recap(array $b): string
     if ((float)$b['discount_ht'] > 0) {
         $rows .= '<tr><td style="padding:8px 0;border-bottom:1px solid #eee">Remise association</td><td align="right" style="padding:8px 0;border-bottom:1px solid #eee">− ' . money2(ttc((float)$b['discount_ht'])) . '</td></tr>';
     }
+    if ((float)($b['promo_ht'] ?? 0) > 0) {
+        $rows .= '<tr><td style="padding:8px 0;border-bottom:1px solid #eee">Code promo ' . e($b['promo_code']) . '</td><td align="right" style="padding:8px 0;border-bottom:1px solid #eee">− ' . money2(ttc((float)$b['promo_ht'])) . '</td></tr>';
+    }
     return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin:8px 0 18px">'
         . '<tr><td colspan="2" style="padding:10px 14px;background:#f4f6f8;border-radius:8px"><strong>' . e(bk_slot_label($b)) . '</strong><br>'
         . e($b['event_type']) . ' · ' . (int)$b['guests'] . ' personne(s) · Réf. ' . e($b['ref']) . '</td></tr>'
         . $rows
         . '<tr><td style="padding:10px 0 0;font-weight:bold">Total TTC</td><td align="right" style="padding:10px 0 0;font-weight:bold;font-size:16px">' . money2((float)$b['total_ttc']) . '</td></tr>'
-        . '<tr><td colspan="2" style="font-size:12px;color:#617083">dont TVA ' . money2((float)$b['vat']) . ' — total HT ' . money2((float)$b['total_ht']) . '</td></tr></table>';
+        . '<tr><td colspan="2" style="font-size:12px;color:#617083">dont TVA ' . money2((float)$b['vat']) . ' — total HT ' . money2((float)$b['total_ht']) . '</td></tr>'
+        . ((float)($b['gift_amount'] ?? 0) > 0 ? '<tr><td style="padding:8px 0 0">Réglé par bon cadeau ' . e($b['gift_code']) . '</td><td align="right" style="padding:8px 0 0">− ' . money2((float)$b['gift_amount']) . '</td></tr>'
+            . '<tr><td style="font-weight:bold">Payé en ligne</td><td align="right" style="font-weight:bold">' . money2(bk_due($b)) . '</td></tr>' : '')
+        . '</table>';
 }
 
 function bk_mail_confirmation(array $b): bool

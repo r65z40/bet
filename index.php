@@ -552,6 +552,9 @@ $jsonLd  = [
 <?php endforeach; ?>
         </div>
         <p class="pricing-foot" style="margin-top:14px">Prix de la <strong>journée (24 h)</strong>, de <?= e(str_replace(':', 'h', s('bk_day_start'))) ?> à <?= e(str_replace(':', 'h', s('bk_day_start'))) ?>, selon le jour d’arrivée<?= bk_max_days() > 1 ? ' — possible aussi sur ' . (bk_max_days() >= 3 ? '48 h ou 72 h' : '48 h') : '' ?>. <strong>Location à l’heure</strong> de <?= e(str_replace(':', 'h', s('bk_hour_open'))) ?> à <?= e(str_replace(':', 'h', s('bk_hour_close'))) ?> : <?= money(bk_hour_price_ttc(bk_num('bk_min_hours', 2))) ?> les <?= e(fr_hours(bk_num('bk_min_hours', 2))) ?>, tarif dégressif au-delà. <a href="reservation.php" data-track="reserver">Voir les disponibilités et réserver</a>.</p>
+<?php $specials = specials_upcoming(4); if ($specials): ?>
+        <p class="pricing-foot" style="margin-top:6px">★ <strong>Tarifs spéciaux</strong> : <?= implode(' · ', array_map(fn($sp) => e($sp['label']) . ' (' . e(bk_dt($sp['date_from'])->format('d/m')) . ($sp['date_to'] !== $sp['date_from'] ? '–' . e(bk_dt($sp['date_to'])->format('d/m')) : '') . ') ' . e(special_label($sp)), $specials)) ?>.</p>
+<?php endif; ?>
 
 <?php $infos = items('tarif_infos'); if ($infos): ?>
         <div class="pricing-info" aria-label="Informations tarifaires complémentaires">
@@ -733,7 +736,7 @@ $jsonLd  = [
 
   <footer>
     <div class="wrap foot">
-      <span>© <?= date('Y') ?> <?= e(s('footer_text')) ?></span>
+      <span>© <?= date('Y') ?> <?= e(s('footer_text')) ?><br><small><a href="mentions-legales.php" style="color:inherit">Mentions légales</a> · <a href="confidentialite.php" style="color:inherit">Confidentialité</a> · <a href="conditions.php" style="color:inherit">Conditions de location</a></small></span>
       <span><?= e(s('footer_tagline')) ?><br><small><?php if (s('salles1001_url') !== ''): ?><a href="<?= e(s('salles1001_url')) ?>" target="_blank" rel="noopener" data-track="1001" style="color:inherit;text-decoration:none">1001Salles</a> · <?php endif; ?><?php if (s('facebook_url') !== ''): ?><a href="<?= e(s('facebook_url')) ?>" target="_blank" rel="noopener" data-track="facebook" aria-label="Suivez <?= e($name) ?> sur Facebook" style="display:inline-flex;align-items:center;gap:7px;margin-left:6px;padding:7px 11px;border-radius:9px;background:#1877F2;color:#fff;text-decoration:none;font-weight:800;box-shadow:0 3px 10px rgba(0,0,0,.15)"><span aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#1877F2;font-family:Arial,sans-serif;font-size:18px;font-weight:900;line-height:1">f</span> Facebook</a><?php endif; ?></small></span>
     </div>
   </footer>

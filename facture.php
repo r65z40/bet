@@ -15,7 +15,8 @@ header('Referrer-Policy: no-referrer');
 $rate = (float)bk_num('bk_vat_rate', 20);
 $number = $avoir ? $b['credit_number'] : $b['invoice_number'];
 $date = bk_dt($avoir ? ($b['cancelled_at'] ?? $b['paid_at']) : $b['paid_at']);
-$refundTtc = (float)$b['refunded_amount'];
+$giftBack = (int)$b['gift_restored'] ? (float)$b['gift_amount'] : 0.0;
+$refundTtc = round((float)$b['refunded_amount'] + $giftBack, 2);
 $refundHt = round($refundTtc / (1 + $rate / 100), 2);
 ?><!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
@@ -73,6 +74,9 @@ td.n,th.n{text-align:right;white-space:nowrap}
     <tr><td><?= e($l['label']) ?><?php if ($l['kind'] === 'rental'): ?><br><span class="muted"><?= e($b['event_type']) ?>, <?= (int)$b['guests'] ?> pers.</span><?php endif; ?></td>
       <td class="n"><?= (int)$l['qty'] ?></td><td class="n"><?= money2((float)$l['unit_ht']) ?></td><td class="n"><?= money2((float)$l['total_ht']) ?></td></tr>
 <?php endforeach; ?>
+<?php if ((float)$b['promo_ht'] > 0): ?>
+    <tr><td>Code promo <?= e($b['promo_code']) ?></td><td class="n">1</td><td class="n">− <?= money2((float)$b['promo_ht']) ?></td><td class="n">− <?= money2((float)$b['promo_ht']) ?></td></tr>
+<?php endif; ?>
 <?php if ((float)$b['discount_ht'] > 0): ?>
     <tr><td>Remise association (<?= e(rating_label((string)bk_num('bk_asso_discount'))) ?> %)</td><td class="n">1</td><td class="n">− <?= money2((float)$b['discount_ht']) ?></td><td class="n">− <?= money2((float)$b['discount_ht']) ?></td></tr>
 <?php endif; ?>
@@ -82,11 +86,21 @@ td.n,th.n{text-align:right;white-space:nowrap}
     <tr><td>TVA <?= e(rating_label((string)$rate)) ?> %</td><td class="n"><?= money2((float)$b['vat']) ?></td></tr>
     <tr class="big"><td>Total TTC</td><td class="n"><?= money2((float)$b['total_ttc']) ?></td></tr>
   </table>
-  <span class="paid">✓ Payée le <?= e(bk_dt($b['paid_at'])->format('d/m/Y')) ?> par <?= $b['provider'] === 'paypal' ? 'PayPal' : 'carte bancaire' ?></span>
+<?php if ((float)$b['gift_amount'] > 0): ?>
+  <table class="tot" style="margin-top:0">
+    <tr><td>Réglé par bon cadeau <?= e($b['gift_code']) ?></td><td class="n">− <?= money2((float)$b['gift_amount']) ?></td></tr>
+<?php if (bk_due($b) > 0): ?>
+    <tr><td><strong>Réglé par <?= e(provider_label($b['provider'])) ?></strong></td><td class="n"><strong><?= money2(bk_due($b)) ?></strong></td></tr>
+<?php endif; ?>
+  </table>
+<?php endif; ?>
+  <span class="paid">✓ Payée le <?= e(bk_dt($b['paid_at'])->format('d/m/Y')) ?> par <?= e((float)$b['gift_amount'] > 0 && $b['provider'] !== 'giftcard' ? 'bon cadeau et ' . provider_label($b['provider']) : provider_label($b['provider'])) ?></span>
 <?php else: ?>
   <table>
     <tr><th>Désignation</th><th class="n">Total HT</th></tr>
-    <tr><td>Remboursement suite à l’annulation de la réservation <?= e($b['ref']) ?><br><span class="muted"><?= e(bk_slot_label($b)) ?></span></td><td class="n">− <?= money2($refundHt) ?></td></tr>
+    <tr><td>Annulation de la réservation <?= e($b['ref']) ?><br><span class="muted"><?= e(bk_slot_label($b)) ?>
+      <?= (float)$b['refunded_amount'] > 0 ? '<br>Remboursé par ' . e(provider_label($b['provider'])) . ' : ' . money2((float)$b['refunded_amount']) . ' TTC' : '' ?>
+      <?= $giftBack > 0 ? '<br>Recrédité sur le bon cadeau ' . e($b['gift_code']) . ' : ' . money2($giftBack) . ' TTC' : '' ?></span></td><td class="n">− <?= money2($refundHt) ?></td></tr>
   </table>
   <table class="tot">
     <tr><td>Total HT</td><td class="n">− <?= money2($refundHt) ?></td></tr>

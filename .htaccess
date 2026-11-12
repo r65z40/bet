@@ -2,6 +2,8 @@
 Options -Indexes
 DirectoryIndex index.php
 AddDefaultCharset UTF-8
+AddType application/manifest+json .webmanifest
+AddType text/javascript .js
 
 # Anciennes adresses .html -> nouvelles pages PHP (conserve le référencement)
 RedirectMatch 301 ^(.*/)?index\.html$ $1

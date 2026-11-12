@@ -104,6 +104,7 @@ $cards = [
     ['tarifs', 'reglages.php?s=tarifs', '€ Tarifs & options', 'Prix à la journée et à l’heure, options payantes.'],
     ['emails', 'emails.php', '✉ E-mails clients', 'Écrire à un client ou à un groupe.'],
     ['utilisateurs', 'utilisateurs.php', '👥 Équipe', 'Comptes et droits d’accès.'],
+    ['reservations', 'compte.php#app', '📱 Application', 'Installer l’admin sur le téléphone et recevoir une notification à chaque réservation.'],
 ];
 $cards = array_filter($cards, fn($c) => $can($c[0]));
 ?>

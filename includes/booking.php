@@ -117,13 +117,15 @@ function bk_rental_price(string $mode, DateTimeImmutable $start, float $hours, i
     if ($mode === 'day') {
         $sum = 0.0;
         for ($i = 0; $i < $days; $i++) {
-            $sum += bk_day_price((int)$start->modify("+$i day")->format('N'));
+            $sum += bk_day_price_for($start->modify("+$i day")); // dates spéciales comprises
         }
         return round($sum * (1 - bk_multiday_discount($days) / 100), 2);
     }
-    $price = round(bk_hour_price_ttc($hours) / bk_vat_factor(), 2);
+    $base = bk_day_price((int)$start->format('N'));
+    $day = bk_day_price_for($start);
+    $price = round(bk_hour_price_ttc($hours) / bk_vat_factor() * ($base > 0 ? $day / $base : 1), 2); // même proportion qu'une date spéciale
     if (s('bk_hour_cap') !== '0') {
-        $price = min($price, bk_day_price((int)$start->format('N')));
+        $price = min($price, $day);
     }
     return $price;
 }
@@ -182,6 +184,9 @@ function bk_quote(array $req, ?int $ignoreBooking = null): array
             : 'Location ' . fr_hours($hours) . ' — ' . fr_date($start) . ' de ' . $start->format('H\hi') . ' à ' . $end->format('H\hi'),
         'qty' => 1, 'unit_ht' => $rental, 'total_ht' => $rental, 'kind' => 'rental',
     ];
+    if ($sp = special_for($start)) {
+        $lines[0]['label'] .= ' — tarif « ' . $sp['label'] . ' »';
+    }
     $chosen = array_map('intval', (array)($req['options'] ?? []));
     foreach (bk_options() as $o) {
         if (!in_array((int)$o['id'], $chosen, true)) {
@@ -199,11 +204,39 @@ function bk_quote(array $req, ?int $ignoreBooking = null): array
     if ($asso && bk_num('bk_asso_discount') > 0) {
         $discount = round($subtotal * bk_num('bk_asso_discount') / 100, 2);
     }
-    $totalHt = round($subtotal - $discount, 2);
+    // Code promo (remise) ou bon cadeau (moyen de paiement)
+    $promo = null;
+    $promoHt = 0.0;
+    $gift = null;
+    $giftAmount = 0.0;
+    $codeError = null;
+    $raw = promo_normalize((string)($req['promo'] ?? ''));
+    if ($raw !== '') {
+        [$p, $codeError] = promo_check($raw, ttc($subtotal - $discount), $ignoreBooking);
+        if ($p && $p['kind'] === 'gift') {
+            $gift = $p;
+        } elseif ($p) {
+            $promo = $p;
+            $base = round($subtotal - $discount, 2);
+            $promoHt = $p['kind'] === 'percent'
+                ? round($base * min(100, (float)$p['value']) / 100, 2)
+                : min($base, round((float)$p['value'] / bk_vat_factor(), 2));
+        }
+        if ($codeError) {
+            $errors[] = $codeError;
+        }
+    }
+    $totalHt = round($subtotal - $discount - $promoHt, 2);
     $totalTtc = ttc($totalHt);
+    if ($gift) {
+        $giftAmount = min($totalTtc, gift_available($gift, $ignoreBooking));
+    }
 
     return [
-        'ok' => !$errors, 'errors' => $errors,
+        'ok' => !$errors, 'errors' => $errors, 'code_error' => $codeError,
+        'promo_code' => $promo['code'] ?? '', 'promo_ht' => $promoHt,
+        'promo_label' => $promo ? 'Code ' . $promo['code'] . ($promo['kind'] === 'percent' ? ' (−' . rating_label((string)(float)$promo['value']) . ' %)' : '') : '',
+        'gift_code' => $gift['code'] ?? '', 'gift_amount' => $giftAmount, 'amount_due' => round($totalTtc - $giftAmount, 2),
         'mode' => $mode, 'days' => $days, 'start' => $start, 'end' => $end, 'hours' => $hours, 'guests' => $guests,
         'lines' => $lines, 'subtotal_ht' => $subtotal, 'discount_ht' => $discount, 'asso' => $asso,
         'total_ht' => $totalHt, 'vat' => round($totalTtc - $totalHt, 2), 'total_ttc' => $totalTtc,
@@ -339,7 +372,7 @@ function bk_month_availability(int $year, int $month): array
         }
         $window = ($close->getTimestamp() - $d->setTime($oh, $om)->getTimestamp()) / 3600;
         $full = isset($hours[$d->setTime($oh, $om)->format('H:i')]) && abs($hours[$d->setTime($oh, $om)->format('H:i')] - $window) < 0.01;
-        $out[$key] = ($dayOk || $hours) ? ['day' => $dayOk, 'days' => $nbDays, 'hours' => $hours, 'full' => $full] : null;
+        $out[$key] = ($dayOk || $hours) ? ['day' => $dayOk, 'days' => $nbDays, 'hours' => $hours, 'full' => $full, 'p' => ttc(bk_day_price_for($d)), 'sp' => special_for($d)['label'] ?? null] : null;
     }
     return $out;
 }
@@ -375,19 +408,27 @@ function bk_create(array $quote, array $customer, string $provider): array
         if ($err) {
             throw new DomainException($err);
         }
+        if (!empty($quote['gift_code']) && ($g = promo_find($quote['gift_code'])) && gift_available($g) + 0.001 < (float)$quote['gift_amount']) {
+            throw new DomainException('Le solde du bon cadeau vient de changer : vérifiez le montant puis validez à nouveau.');
+        }
+        if (!empty($quote['promo_code']) && ($p = promo_find($quote['promo_code'])) && (int)$p['max_uses'] > 0 && promo_uses($p['code']) >= (int)$p['max_uses']) {
+            throw new DomainException('Ce code promo vient d’atteindre son nombre maximum d’utilisations.');
+        }
         $ref = 'RN6-' . bk_now()->format('ymd') . '-' . strtoupper(substr(bin2hex(random_bytes(3)), 0, 5));
         $token = bin2hex(random_bytes(16));
         $hold = bk_now()->modify('+35 minutes'); // > durée de validité d'une session de paiement Stripe (30 min)
         $pdo->prepare('INSERT INTO bookings(ref, token, status, mode, start_at, end_at, hours, guests, event_type,
                 first_name, last_name, email, phone, company, is_asso, asso_name, address, zip, city, message,
-                lines_json, subtotal_ht, discount_ht, total_ht, vat, total_ttc, provider, hold_until, created_at, cgv_at, visitor)
-            VALUES(?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?)')
+                lines_json, subtotal_ht, discount_ht, total_ht, vat, total_ttc, provider, hold_until, created_at, cgv_at, visitor,
+                promo_code, promo_ht, gift_code, gift_amount, amount_due)
+            VALUES(?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?,?,?,?,?,?,?,?, ?,?,?,?,?)')
             ->execute([
                 $ref, $token, 'pending', $quote['mode'], $quote['start']->format(BK_FMT), $quote['end']->format(BK_FMT), $quote['hours'], $quote['guests'], $customer['event_type'],
                 $customer['first_name'], $customer['last_name'], $customer['email'], $customer['phone'], $customer['company'], $quote['asso'] ? 1 : 0, $customer['asso_name'],
                 $customer['address'], $customer['zip'], $customer['city'], $customer['message'],
                 json_encode($quote['lines'], JSON_UNESCAPED_UNICODE), $quote['subtotal_ht'], $quote['discount_ht'], $quote['total_ht'], $quote['vat'], $quote['total_ttc'],
                 $provider, $hold->format(BK_FMT), bk_now()->format(BK_FMT), bk_now()->format(BK_FMT), ip_fingerprint(),
+                $quote['promo_code'] ?? '', $quote['promo_ht'] ?? 0, $quote['gift_code'] ?? '', $quote['gift_amount'] ?? 0, $quote['amount_due'] ?? $quote['total_ttc'],
             ]);
         $id = (int)$pdo->lastInsertId();
         $pdo->exec('COMMIT');
@@ -430,6 +471,11 @@ function bk_confirm_paid(int $id, string $provider, string $paymentRef, int $amo
     bk_mail_confirmation($b);
     bk_mail_admin_new($b, $err);
     gcal_sync_booking($b);
+    $s = bk_dt($b['start_at']);
+    push_notify('reservations', '💶 Nouvelle réservation — ' . money2((float)$b['total_ttc']),
+        $b['first_name'] . ' ' . $b['last_name'] . ' · ' . $b['event_type'] . ', ' . (int)$b['guests'] . ' pers. · ' . fr_date($s) . ' ' . $s->format('H\hi')
+        . ($b['mode'] === 'day' ? ' (' . (int)$b['hours'] . ' h)' : ' (' . fr_hours((float)$b['hours']) . ')') . ($err ? ' ⚠ conflit d’agenda' : ''),
+        'reservation.php?id=' . (int)$b['id'], 'resa-' . $b['id']);
     return true;
 }
 
@@ -440,8 +486,11 @@ function bk_confirm_tx(PDO $pdo, int $id, string $provider, string $paymentRef, 
     if (!$b || !in_array($b['status'], ['pending', 'expired'], true)) {
         return null; // déjà confirmée (webhook + retour) ou annulée
     }
-    if (strtolower($currency) !== 'eur' || $amountCents !== (int)round($b['total_ttc'] * 100)) {
+    if (strtolower($currency) !== 'eur' || $amountCents !== (int)round(bk_due($b) * 100)) {
         return '';
+    }
+    if ($b['gift_code'] !== '' && (float)$b['gift_amount'] > 0) {
+        $pdo->prepare('UPDATE promo_codes SET balance = balance - ? WHERE code = ?')->execute([(float)$b['gift_amount'], $b['gift_code']]);
     }
     // Numéro de facture séquentiel, sans trou
     $year = bk_now()->format('Y');
@@ -465,6 +514,12 @@ function bk_slot_error_after_payment(int $id): ?string
     return bk_conflict($s->getTimestamp(), $e->getTimestamp(), $busy)
         ? 'ce créneau chevauche un autre événement de l’agenda ou une autre réservation : vérifiez le planning.'
         : null;
+}
+
+/** Montant TTC réglé (ou à régler) en ligne : total moins la part payée par bon cadeau. */
+function bk_due(array $b): float
+{
+    return $b['amount_due'] !== null && $b['amount_due'] !== '' ? (float)$b['amount_due'] : (float)$b['total_ttc'];
 }
 
 function bk_log(int $id, string $msg): void

@@ -54,16 +54,28 @@ if (session_status() === PHP_SESSION_NONE
 }
 
 require_once __DIR__ . '/content.php';
+require_once __DIR__ . '/legal.php';
 require_once __DIR__ . '/booking_config.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/admins.php';
 require_once __DIR__ . '/stats.php';
 require_once __DIR__ . '/booking.php';
+require_once __DIR__ . '/promo.php';
+require_once __DIR__ . '/cron.php';
 require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/mail_templates.php';
 require_once __DIR__ . '/mailing.php';
 require_once __DIR__ . '/ical.php';
 require_once __DIR__ . '/gcal_write.php';
+require_once __DIR__ . '/webpush.php';
 require_once __DIR__ . '/payments.php';
 require_once __DIR__ . '/layout.php';
+
+// Tâches automatiques de secours (si la tâche planifiée OVH n'est pas configurée)
+if (PHP_SAPI !== 'cli' && !defined('NO_CRON')) {
+    try {
+        cron_on_shutdown();
+    } catch (Throwable) {
+    }
+}

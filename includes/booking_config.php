@@ -118,6 +118,18 @@ const BOOKING_SETTINGS = [
                 'help' => 'Vide = l’identifiant SMTP. Gmail et OVH n’acceptent en général que l’adresse du compte ou un alias déclaré.'],
         ],
     ],
+    'automatique' => [
+        'title' => 'E-mails automatiques',
+        'fields' => [
+            'bk_remind_enabled' => ['label' => 'Rappel avant l’événement', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Activé', '0' => 'Désactivé']],
+            'bk_remind_days'    => ['label' => 'Envoyé combien de jours avant ?', 'type' => 'number', 'default' => '7'],
+            'bk_practical_info' => ['label' => 'Infos pratiques (insérées dans le rappel)', 'type' => 'textarea', 'default' => "**Clés et état des lieux** : rendez-vous à l’heure d’arrivée pour la remise des clés et l’état des lieux d’entrée.\n**Parking** : grand parking public juste à côté de la salle.\n**Avant de partir** : salle rangée, poubelles triées et sorties, lumières éteintes.\n**Voisinage** : merci de modérer le volume sonore après 22 h et à la sortie."],
+            'bk_review_enabled' => ['label' => 'Demande d’avis après l’événement', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Activée', '0' => 'Désactivée']],
+            'bk_review_days'    => ['label' => 'Envoyée combien de jours après la fin ?', 'type' => 'number', 'default' => '1'],
+            'bk_review_url'     => ['label' => 'Lien « Laisser un avis Google »', 'type' => 'url', 'default' => '',
+                'help' => 'Profil d’établissement Google (recherchez « La Salle RN6 » connecté à votre compte) › « Demander des avis » › copier le lien. Vide = lien des avis saisi dans Textes › Avis clients.'],
+        ],
+    ],
     'societe' => [
         'title' => 'Société (factures)',
         'fields' => [

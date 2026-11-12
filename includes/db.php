@@ -185,6 +185,38 @@ function install_schema(PDO $pdo): void
             summary TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS idx_ext_dates ON ext_events(start_at, end_at);
+        CREATE TABLE IF NOT EXISTS special_prices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            label TEXT NOT NULL,
+            date_from TEXT NOT NULL,
+            date_to TEXT NOT NULL,
+            kind TEXT NOT NULL DEFAULT 'percent',
+            value REAL NOT NULL DEFAULT 0,
+            active INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE TABLE IF NOT EXISTS promo_codes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT NOT NULL UNIQUE,
+            kind TEXT NOT NULL DEFAULT 'percent',
+            value REAL NOT NULL DEFAULT 0,
+            balance REAL NOT NULL DEFAULT 0,
+            max_uses INTEGER NOT NULL DEFAULT 0,
+            valid_from TEXT NOT NULL DEFAULT '',
+            valid_to TEXT NOT NULL DEFAULT '',
+            min_total REAL NOT NULL DEFAULT 0,
+            label TEXT NOT NULL DEFAULT '',
+            active INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS push_subs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id INTEGER NOT NULL,
+            endpoint TEXT NOT NULL UNIQUE,
+            p256dh TEXT NOT NULL,
+            auth TEXT NOT NULL,
+            ua TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS password_resets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             admin_id INTEGER NOT NULL,
@@ -242,6 +274,17 @@ function install_schema(PDO $pdo): void
         );
     ");
 
+    // Colonnes ajoutées aux réservations (codes promo, bons cadeaux, e-mails automatiques)
+    $bcols = array_column($pdo->query('PRAGMA table_info(bookings)')->fetchAll(), 'name');
+    foreach ([
+        'promo_code' => "TEXT NOT NULL DEFAULT ''", 'promo_ht' => 'REAL NOT NULL DEFAULT 0',
+        'gift_code' => "TEXT NOT NULL DEFAULT ''", 'gift_amount' => 'REAL NOT NULL DEFAULT 0', 'gift_restored' => 'INTEGER NOT NULL DEFAULT 0',
+        'amount_due' => 'REAL', 'reminder_sent_at' => 'TEXT', 'review_sent_at' => 'TEXT',
+    ] as $col => $def) {
+        if (!in_array($col, $bcols, true)) {
+            $pdo->exec("ALTER TABLE bookings ADD COLUMN $col $def");
+        }
+    }
     // Colonnes ajoutées aux comptes administrateurs (droits, e-mail, désactivation)
     $cols = array_column($pdo->query('PRAGMA table_info(admins)')->fetchAll(), 'name');
     foreach ([
@@ -346,8 +389,14 @@ function migrate(PDO $pdo): void
         $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'resa_notice' AND value = ?")
             ->execute(['Choisissez votre formule et une date disponible, ajoutez vos options puis réglez en ligne : la salle vous est réservée immédiatement.', 'Choisissez une date disponible dans l’agenda ci-dessous puis suivez les étapes de réservation.']);
     }
-    // Lien secret du flux agenda (abonnement depuis l'iPhone / Google Agenda)
+    // Lien secret du flux agenda (abonnement depuis l'iPhone / Google Agenda) et de la tâche planifiée
     $set->execute(['bk_ics_token', bin2hex(random_bytes(16))]);
+    $set->execute(['bk_cron_token', bin2hex(random_bytes(16))]);
+    // v10 : les réservations déjà passées ne reçoivent pas de rappel ni de demande d'avis à la mise à jour
+    if ((int)setting_raw($pdo, '_schema_version') < 10 && setting_raw($pdo, '_seeded') !== null) {
+        $now = date('Y-m-d H:i:s');
+        $pdo->prepare('UPDATE bookings SET review_sent_at = ? WHERE review_sent_at IS NULL AND end_at < ?')->execute([$now, $now]);
+    }
     // Options réservables initiales (une seule fois)
     if (setting_raw($pdo, '_options_seeded') === null) {
         $ins = $pdo->prepare('INSERT INTO booking_options(label, description, price, unit, position) VALUES(?,?,?,?,?)');

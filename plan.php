@@ -50,6 +50,6 @@ $siteUrl = rtrim(s('site_url'), '/');
   <div class="plan-card"><img src="<?= e(plan_image()) ?>" alt="Plan de <?= e($name) ?> à Appoigny" loading="lazy" decoding="async"><p class="hint"><?= e(s('plan_hint')) ?></p></div>
   <div class="actions"><a class="btn primary" href="reservation.php" data-track="reserver">Réserver en ligne</a><a class="btn secondary" href="<?= e(mailto()) ?>" data-track="email">Demander une réservation</a><a class="btn secondary" href="./#photos">Voir les photos</a></div>
 </div></main>
-<footer><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?></span><span><?= e(s('footer_tagline')) ?></span></div></footer>
+<footer><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?> · <a href="mentions-legales.php" style="color:inherit">Mentions légales</a> · <a href="confidentialite.php" style="color:inherit">Confidentialité</a></span><span><?= e(s('footer_tagline')) ?></span></div></footer>
 <?= tracking_script('plan') ?>
 </body></html>
