@@ -49,7 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $errors = [];
     if ($form['subject'] === '') $errors[] = 'Indiquez un objet.';
     if ($form['body'] === '') $errors[] = 'Écrivez un message.';
-    if (!$recipients) $errors[] = $form['audience'] === 'un' ? 'Adresse e-mail du destinataire invalide.' : 'Aucun destinataire dans ce groupe.';
+    // Le test et l'aperçu fonctionnent même sans destinataire (exemple fictif) ; seul l'envoi réel en exige
+    if (!$recipients && $do === 'send') $errors[] = $form['audience'] === 'un' ? 'Adresse e-mail du destinataire invalide.' : 'Aucun destinataire dans ce groupe.';
     if ($do === 'send' && $form['audience'] !== 'un' && (int)($_POST['confirm_count'] ?? -1) !== count($recipients)) {
         $errors[] = 'Le nombre de destinataires a changé : vérifiez puis confirmez à nouveau.';
     }
@@ -58,10 +59,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('emails.php');
     }
     if ($do === 'test') {
-        $me = s('bk_notify_email') ?: s('contact_email');
-        $sample = reset($recipients);
+        $me = current_admin()['email'] ?: (s('bk_notify_email') ?: s('contact_email'));
+        $sample = reset($recipients) ?: mailing_sample_recipient();
         $ok = mailing_send_one(['audience' => $form['audience'], 'subject' => $form['subject'], 'body' => $form['body']], array_merge($sample, ['email' => $me]), true);
-        flash($ok ? 'E-mail de test envoyé à ' . $me . ' (avec les informations de ' . ($sample['first_name'] ?: $sample['email']) . ').' : 'Échec de l’envoi : ' . mail_last_error(), $ok ? 'ok' : 'err');
+        flash($ok ? 'E-mail de test envoyé à ' . $me . ' (avec les informations ' . ($recipients ? 'de ' . ($sample['first_name'] ?: $sample['email']) : 'd’un client fictif') . ').' : 'Échec de l’envoi : ' . mail_last_error(), $ok ? 'ok' : 'err');
         redirect('emails.php');
     }
     if ($do === 'send') {
@@ -176,7 +177,7 @@ admin_header('E-mails clients', 'emails');
         $counts[$a] = $a === 'un' ? 1 : count(mailing_recipients($a));
     }
     $clients = db()->query("SELECT email, first_name, last_name FROM bookings WHERE paid_at IS NOT NULL GROUP BY lower(email) ORDER BY MAX(start_at) DESC LIMIT 500")->fetchAll();
-    $preview = isset($_GET['apercu']) ? mailing_recipients($draft['audience'], $draft['to']) : [];
+    $preview = isset($_GET['apercu']) ? (mailing_recipients($draft['audience'], $draft['to']) ?: ['exemple' => mailing_sample_recipient()]) : [];
 ?>
 <form method="post" class="card">
   <?= csrf_field() ?>
@@ -210,7 +211,7 @@ admin_header('E-mails clients', 'emails');
 </form>
 <?php if (isset($_GET['apercu']) && $preview): $first = reset($preview); $vars = mailing_vars($first); ?>
 <div class="card">
-  <h2>Aperçu <small class="muted" style="font-family:Inter,sans-serif;font-size:.9rem">pour <?= e($first['email']) ?><?= count($preview) > 1 ? ' (+ ' . (count($preview) - 1) . ' autres)' : '' ?></small></h2>
+  <h2>Aperçu <small class="muted" style="font-family:Inter,sans-serif;font-size:.9rem"><?= isset($preview['exemple']) ? 'avec un client fictif' : 'pour ' . e($first['email']) ?><?= count($preview) > 1 ? ' (+ ' . (count($preview) - 1) . ' autres)' : '' ?></small></h2>
   <p><strong>Objet :</strong> <?= e(strtr($draft['subject'], $vars)) ?></p>
   <div style="border:1px solid var(--line);border-radius:10px;padding:16px"><?= mailing_html($draft['body'], $vars) ?></div>
 </div>

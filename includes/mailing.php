@@ -54,6 +54,12 @@ function mailing_recipients(string $audience, string $single = ''): array
     return $out;
 }
 
+/** Destinataire fictif pour les tests et aperçus (aucun client encore, ou adresse non saisie). */
+function mailing_sample_recipient(): array
+{
+    return ['email' => 'client@exemple.fr', 'first_name' => 'Camille', 'last_name' => 'Martin', 'booking' => mail_sample_booking()];
+}
+
 /** Variables disponibles dans le sujet et le message. */
 function mailing_vars(array $r): array
 {
