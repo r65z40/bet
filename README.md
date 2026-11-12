@@ -47,13 +47,13 @@ Page `reservation.php` : formule **à la journée** (24 h, 48 h ou 72 h, de 10 h
 - **Disponibilités** : réservations payées, paiements en cours (créneau bloqué 35 min), blocages manuels et **événements de l'agenda Google** ; **temps mort de 2 h** autour de chacun. Délai minimum 48 h, maximum 18 mois.
 - **Après paiement** : confirmation immédiate, facture numérotée (F2026-0001…), e-mail au client (récapitulatif, facture, « Ajouter à mon agenda ») et alerte au propriétaire.
 - **Admin › Réservations** : liste, planning mensuel, fiche (caution, notes, renvoi d'e-mail), **annulation avec remboursement** automatique Stripe/PayPal (montant proposé selon les conditions d'annulation) et avoir (A2026-0001…), blocage de créneaux.
-- **Agenda** : l'« adresse secrète iCal » de Google Agenda bloque les créneaux (lecture toutes les 10 min et juste avant chaque paiement) ; un lien d'abonnement privé affiche les réservations dans l'iPhone.
+- **Agenda unique (Google)** : le site **écrit** chaque réservation payée et chaque blocage de l'admin dans l'agenda Google de la salle (compte de service, guide pas à pas dans *Réglages › Agenda Google*) et **lit** ce même agenda (adresse secrète iCal, toutes les 10 min et juste avant chaque paiement) : ce que vous y ajoutez depuis l'iPhone bloque les réservations. Les événements écrits par le site sont reconnus et ne sont pas comptés deux fois ; une annulation les retire. Les locations de plus d'un jour sont découpées par jour (10 h → 23 h 59, puis minuit → 10 h) pour remplir la colonne de chaque jour. Un lien d'abonnement iCal privé reste disponible en lecture seule.
 
 ### Mise en service (une fois)
 1. *Admin › Réservations › Réglages › Société* : compléter forme juridique, RCS, vérifier SIREN et TVA.
 2. *E-mails* : choisir le fournisseur (Gmail, OVH ou autre serveur SMTP), saisir l'identifiant et le mot de passe (Gmail : **mot de passe d'application** — Compte Google › Sécurité › Validation en deux étapes › Mots de passe des applications ; OVH : mot de passe de la boîte), cliquer « Envoyer un e-mail de test ».
 3. *Paiement* : clé secrète Stripe (`sk_test_…` pour tester), webhook Stripe vers `https://lasallern6.fr/stripe-webhook.php` (événement `checkout.session.completed`), Client ID + Secret PayPal (mode sandbox pour tester). Bouton « Tester la connexion ».
-4. *Agenda Google* : coller l'adresse secrète iCal ; ajouter le lien d'abonnement dans l'iPhone.
+4. *Agenda Google* : suivre le guide de la page (compte de service Google, partage de l'agenda), coller l'ID de l'agenda, la clé JSON et l'adresse secrète iCal, puis « Écrire toutes les réservations à venir dans l'agenda ». Sur l'iPhone, afficher cet agenda Google (Réglages › Calendrier › Comptes › Google).
 5. *Annulation & conditions* : faire relire les conditions de location.
 6. Tester une réservation en mode test, puis passer les clés en production.
 

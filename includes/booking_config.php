@@ -133,8 +133,16 @@ const BOOKING_SETTINGS = [
     'agenda' => [
         'title' => 'Agenda Google',
         'fields' => [
-            'bk_gcal_url' => ['label' => 'Adresse secrète au format iCal de votre agenda Google', 'type' => 'secret', 'default' => '',
-                'help' => 'Google Agenda (sur ordinateur) › Paramètres › votre agenda › « Intégrer l’agenda » › « Adresse secrète au format iCal ». Chaque événement de cet agenda bloque les réservations (avec le temps mort).'],
+            'bk_gcal_url' => ['label' => 'Lecture — adresse secrète au format iCal de l’agenda', 'type' => 'secret', 'default' => '',
+                'help' => 'Google Agenda (sur ordinateur) › Paramètres › votre agenda › « Intégrer l’agenda » › « Adresse secrète au format iCal ». Chaque événement que vous y ajoutez bloque les réservations (avec le temps mort).'],
+            'bk_gcal_calendar_id' => ['label' => 'Écriture — ID de l’agenda', 'default' => '',
+                'help' => 'Même page « Intégrer l’agenda » › « ID de l’agenda » (ex. abc123@group.calendar.google.com, ou votre adresse Gmail pour l’agenda principal).'],
+            'bk_gcal_sa' => ['label' => 'Écriture — clé du compte de service Google (contenu du fichier JSON)', 'type' => 'secret', 'default' => '',
+                'help' => 'Voir le guide ci-dessus. Collez tout le contenu du fichier .json téléchargé.'],
+            'bk_cal_split' => ['label' => 'Affichage des locations de plus d’un jour', 'type' => 'select', 'default' => '1', 'options' => [
+                '1' => 'Un bloc par jour (10 h → minuit, puis minuit → 10 h) : remplit la colonne de chaque jour',
+                '0' => 'Un seul événement (affiché en bande « journée entière » en haut)',
+            ]],
         ],
     ],
 ];

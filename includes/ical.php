@@ -37,14 +37,16 @@ function gcal_sync_if_needed(bool $force = false): void
         $pdo->beginTransaction();
         $pdo->exec('DELETE FROM ext_events');
         $ins = $pdo->prepare('INSERT INTO ext_events(uid, start_at, end_at, summary) VALUES(?,?,?,?)');
+        $count = 0;
         foreach ($events as $ev) {
-            if (str_starts_with($ev['uid'], 'rn6-')) {
-                continue; // nos propres réservations, si le flux du site a été importé dans cet agenda
+            if (str_starts_with(strtolower($ev['uid']), 'rn6')) {
+                continue; // événements écrits par le site lui-même (réservations, blocages) : déjà connus
             }
+            $count++;
             $ins->execute([$ev['uid'], $ev['start']->format(BK_FMT), $ev['end']->format(BK_FMT), mb_substr($ev['summary'], 0, 200)]);
         }
         $pdo->commit();
-        save_setting('_gcal_count', (string)count($events));
+        save_setting('_gcal_count', (string)$count);
         save_setting('_gcal_last_ok', (string)time());
         save_setting('_gcal_error', '');
     } catch (Throwable $e) {

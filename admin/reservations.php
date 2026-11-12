@@ -17,9 +17,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } else {
             db()->prepare('INSERT INTO booking_blocks(start_at, end_at, label) VALUES(?,?,?)')
                 ->execute([str_replace('T', ' ', $from) . ':00', str_replace('T', ' ', $to) . ':00', $label]);
+            $st = db()->prepare('SELECT * FROM booking_blocks WHERE id = ?');
+            $st->execute([(int)db()->lastInsertId()]);
+            gcal_sync_block($st->fetch());
             flash('Créneau bloqué : il n’est plus réservable sur le site.');
         }
     } elseif ($do === 'unblock') {
+        $st = db()->prepare('SELECT * FROM booking_blocks WHERE id = ?');
+        $st->execute([(int)($_POST['id'] ?? 0)]);
+        if ($bl = $st->fetch()) {
+            gcal_sync_block($bl, true);
+        }
         db()->prepare('DELETE FROM booking_blocks WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
         flash('Blocage supprimé.');
     }

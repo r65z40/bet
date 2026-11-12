@@ -270,5 +270,6 @@ function bk_cancel_locked(array $b, float $amount, bool $notify): float
     if ($notify && $b['status'] === 'confirmed') {
         bk_mail_cancelled(bk_get((int)$b['id']), $amount);
     }
+    gcal_sync_booking(bk_get((int)$b['id'])); // retirée de Google Agenda
     return $amount;
 }

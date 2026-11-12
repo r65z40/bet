@@ -429,6 +429,7 @@ function bk_confirm_paid(int $id, string $provider, string $paymentRef, int $amo
     $b = bk_get($id);
     bk_mail_confirmation($b);
     bk_mail_admin_new($b, $err);
+    gcal_sync_booking($b);
     return true;
 }
 

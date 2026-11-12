@@ -64,5 +64,6 @@ require_once __DIR__ . '/mailer.php';
 require_once __DIR__ . '/mail_templates.php';
 require_once __DIR__ . '/mailing.php';
 require_once __DIR__ . '/ical.php';
+require_once __DIR__ . '/gcal_write.php';
 require_once __DIR__ . '/payments.php';
 require_once __DIR__ . '/layout.php';

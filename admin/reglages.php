@@ -23,12 +23,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash('Réglages enregistrés.');
         }
         if ($current === 'agenda') {
+            if (s('bk_gcal_sa') !== '' && !gcal_service_account()) {
+                flash('La clé collée n’est pas une clé de compte de service Google valide (fichier .json complet attendu).', 'err');
+            }
             gcal_sync_if_needed(true);
             flash(s('_gcal_error') === '' ? 'Agenda Google relu : ' . (int)s('_gcal_count') . ' événement(s) à venir.' : 'Agenda Google : ' . s('_gcal_error'), s('_gcal_error') === '' ? 'ok' : 'err');
         }
     } elseif ($do === 'sync') {
         gcal_sync_if_needed(true);
         flash(s('_gcal_error') === '' ? 'Agenda Google relu : ' . (int)s('_gcal_count') . ' événement(s) à venir.' : 'Agenda Google : ' . s('_gcal_error'), s('_gcal_error') === '' ? 'ok' : 'err');
+    } elseif ($do === 'gpush') {
+        if (!gcal_write_enabled()) {
+            flash('Renseignez d’abord l’ID de l’agenda et la clé du compte de service.', 'err');
+        } else {
+            [$ok, $fail] = gcal_full_sync();
+            admin_log('Synchronisation complète vers Google Agenda');
+            flash($fail ? 'Google Agenda : ' . s('_gcal_push_error') : 'Google Agenda est à jour (' . $ok . ' réservation(s) ou blocage(s) traité(s)).', $fail ? 'err' : 'ok');
+        }
     } elseif ($do === 'newtoken') {
         save_setting('bk_ics_token', bin2hex(random_bytes(16)));
         flash('Nouveau lien d’abonnement créé : l’ancien ne fonctionne plus.');
@@ -85,23 +96,43 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
     <div class="hint">Le texte et l’apparence des e-mails envoyés (confirmation, annulation, alertes…) se modifient dans <a href="modeles.php">Modèles d’e-mails</a>.</div>
     <?php if (s('_mail_last_error') !== ''): ?><div class="flash flash-err">Dernière erreur d’envoi : <?= e(s('_mail_last_error')) ?></div><?php endif; ?>
 <?php elseif ($current === 'agenda'): ?>
+    <?php $sa = gcal_service_account(); ?>
     <div class="card">
-      <h2>1. Votre agenda Google bloque les réservations</h2>
-      <p class="muted">Ajoutez un événement dans Google Agenda (depuis l’iPhone, l’ordinateur…) : le créneau devient indisponible sur le site, temps mort compris. Lecture automatique toutes les 10 minutes environ, et juste avant chaque paiement.</p>
-      <p>État : <?php if (s('bk_gcal_url') === ''): ?><span class="pill">non configuré</span>
+      <h2>Un seul agenda Google pour tout</h2>
+      <p class="muted" style="margin-top:-6px">Le site <strong>écrit</strong> chaque réservation payée (et chaque blocage fait ici) dans votre agenda Google, et <strong>lit</strong> ce même agenda : tout ce que vous y ajoutez depuis l’iPhone bloque les réservations, temps mort compris. Sur l’iPhone, il suffit d’afficher cet agenda Google.</p>
+      <p><strong>Lecture</strong> (vos blocages → site) :
+        <?php if (s('bk_gcal_url') === ''): ?><span class="pill">non configurée</span>
         <?php elseif (s('_gcal_error') !== ''): ?><span class="pill" style="background:#fdecea;color:#b42318">erreur</span> <?= e(s('_gcal_error')) ?>
-        <?php else: ?><span class="pill gold">actif</span> <?= (int)s('_gcal_count') ?> événement(s) à venir — dernière lecture <?= s('_gcal_last_ok') ? e(date('d/m/Y H:i', (int)s('_gcal_last_ok'))) : '—' ?><?php endif; ?></p>
-      <form method="post"><?= csrf_field() ?><button class="btn light sm" name="do" value="sync">↻ Relire l’agenda maintenant</button></form>
+        <?php else: ?><span class="pill gold">active</span> <?= (int)s('_gcal_count') ?> événement(s) à venir — lu le <?= s('_gcal_last_ok') ? e(date('d/m/Y à H:i', (int)s('_gcal_last_ok'))) : '—' ?><?php endif; ?></p>
+      <p><strong>Écriture</strong> (réservations → agenda) :
+        <?php if (!gcal_write_enabled()): ?><span class="pill">non configurée</span>
+        <?php elseif (s('_gcal_push_error') !== ''): ?><span class="pill" style="background:#fdecea;color:#b42318">erreur</span> <?= e(s('_gcal_push_error')) ?>
+        <?php else: ?><span class="pill gold">active</span> compte de service <code><?= e($sa['client_email']) ?></code><?php endif; ?></p>
+      <form method="post" class="actions"><?= csrf_field() ?>
+        <button class="btn light sm" name="do" value="sync">↻ Relire l’agenda</button>
+        <button class="btn light sm" name="do" value="gpush">⇪ Écrire toutes les réservations à venir dans l’agenda</button>
+      </form>
     </div>
-    <div class="card">
-      <h2>2. Les réservations du site dans votre iPhone</h2>
-      <p class="muted">Lien d’abonnement privé (ne le partagez pas) :</p>
+    <details class="card">
+      <summary><strong>Guide : autoriser le site à écrire dans votre agenda (une fois, sur ordinateur, ~10 min)</strong></summary>
+      <ol style="line-height:1.7;margin-top:12px">
+        <li>Ouvrez <strong>console.cloud.google.com</strong> avec votre compte Google, créez un projet (ex. « Salle RN6 »).</li>
+        <li>Menu <strong>API et services › Bibliothèque</strong> : cherchez « Google Calendar API » et cliquez sur <strong>Activer</strong>.</li>
+        <li><strong>API et services › Identifiants › Créer des identifiants › Compte de service</strong> : nom « site-rn6 », puis <strong>OK</strong> (aucun rôle nécessaire).</li>
+        <li>Ouvrez ce compte de service › onglet <strong>Clés › Ajouter une clé › Créer une clé › JSON</strong> : un fichier se télécharge. Ouvrez-le avec le Bloc-notes et collez <strong>tout</strong> son contenu dans le champ « clé du compte de service » ci-dessous.</li>
+        <li>Dans <strong>Google Agenda</strong> › Paramètres de l’agenda de la salle › <strong>Partager avec des personnes</strong> : ajoutez l’adresse du compte de service (elle finit par <code>.iam.gserviceaccount.com</code>) avec le droit <strong>« Apporter des modifications aux événements »</strong>.</li>
+        <li>Sur la même page, section <strong>Intégrer l’agenda</strong> : copiez l’<strong>ID de l’agenda</strong> et l’<strong>adresse secrète au format iCal</strong> dans les champs ci-dessous, puis Enregistrer.</li>
+        <li>Cliquez sur <strong>« Écrire toutes les réservations à venir dans l’agenda »</strong> : elles apparaissent dans Google Agenda et sur votre iPhone.</li>
+      </ol>
+      <p class="muted">Conseil : utilisez un agenda dédié à la salle (Google Agenda › Autres agendas › + › Créer un agenda) plutôt que votre agenda personnel, sinon vos rendez-vous personnels bloqueraient aussi la salle.</p>
+    </details>
+    <details class="card">
+      <summary><strong>Autre possibilité : abonnement direct depuis l’iPhone (lecture seule)</strong></summary>
+      <p class="muted" style="margin-top:12px">Lien d’abonnement privé (ne le partagez pas) :</p>
       <p><code style="word-break:break-all"><?= e(bk_url('calendrier.php?k=' . s('bk_ics_token'))) ?></code></p>
-      <p class="muted"><strong>iPhone</strong> : Réglages › Calendrier › Comptes › Ajouter un compte › Autre › « Ajouter un calendrier avec abonnement » › collez le lien (mise à jour toutes les 15 min).<br>
-        <strong>Google Agenda</strong> (ordinateur) : Autres agendas › + › « À partir de l’URL » (Google ne le met à jour que quelques fois par jour).<br>
-        Ne l’ajoutez pas dans le <em>même</em> agenda que celui saisi ci-dessous : il s’agit d’un agenda séparé.</p>
+      <p class="muted">iPhone : Réglages › Calendrier › Comptes › Ajouter un compte › Autre › « Ajouter un calendrier avec abonnement ». Inutile si l’écriture dans Google Agenda est activée.</p>
       <form method="post"><?= csrf_field() ?><button class="btn danger sm" name="do" value="newtoken" onclick="return confirm('Créer un nouveau lien ? L’ancien abonnement cessera de fonctionner.')">Changer le lien</button></form>
-    </div>
+    </details>
 <?php endif; ?>
 
     <form method="post" class="card">
