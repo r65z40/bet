@@ -16,7 +16,8 @@ function admin_header(string $title, string $active = ''): void
         'textes'   => ['textes.php', '✏️', 'Textes'],
         'sections' => ['sections.php', '⇅', 'Sections'],
         'contenus' => ['listes.php', '☰', 'Listes & cartes'],
-        'tarifs'   => ['listes.php?g=tarif_jours', '€', 'Tarifs'],
+        'resa'     => ['reservations.php', '📅', 'Réservations'],
+        'tarifs'   => ['reglages.php?s=tarifs', '€', 'Tarifs & options'],
         'photos'   => ['photos.php', '📷', 'Photos'],
         'avis'     => ['avis.php', '★', 'Avis'],
         'stats'    => ['stats.php', '📊', 'Statistiques'],
@@ -71,11 +72,57 @@ function field(string $name, string $label, string $value, string $type = 'text'
     } elseif ($type === 'textarea') {
         $rows = max(3, min(10, substr_count($value, "\n") + 2, (int)ceil(mb_strlen($value) / 90) + 1));
         $html .= '<textarea id="' . $id . '" name="' . e($name) . '" rows="' . $rows . '">' . e($value) . '</textarea>';
+    } elseif ($type === 'secret') {
+        $html .= '<input id="' . $id . '" type="password" name="' . e($name) . '" value="" autocomplete="new-password" placeholder="'
+            . ($value !== '' ? '•••••••• enregistré — laisser vide pour conserver' : 'non renseigné') . '">';
+        if ($value !== '') {
+            $html .= '<small><label style="font-weight:600"><input type="checkbox" name="' . e($name) . '__clear" value="1"> Effacer la valeur enregistrée</label></small>';
+        }
     } else {
-        $html .= '<input id="' . $id . '" type="' . e($type) . '" name="' . e($name) . '" value="' . e($value) . '">';
+        $html .= '<input id="' . $id . '" type="' . e($type) . '" name="' . e($name) . '" value="' . e($value) . '"' . ($type === 'number' ? ' step="any"' : '') . '>';
     }
     if ($help !== '') {
         $html .= '<small>' . e($help) . '</small>';
     }
     return $html . '</label>';
+}
+
+/** Enregistre les champs d'une section de réglages ; retourne la liste des erreurs. */
+function save_settings_fields(array $fields): array
+{
+    $errors = [];
+    foreach ($fields as $key => $f) {
+        $type = $f['type'] ?? 'text';
+        $v = trim(str_replace("\r\n", "\n", (string)($_POST[$key] ?? '')));
+        if ($type === 'secret') {
+            if (!empty($_POST[$key . '__clear'])) {
+                save_setting($key, '');
+            } elseif ($v !== '') {
+                save_setting($key, $v);
+            }
+            continue;
+        }
+        if ($type === 'email' && $v !== '' && !filter_var($v, FILTER_VALIDATE_EMAIL)) {
+            $errors[] = $f['label'] . ' : adresse e-mail invalide.';
+            continue;
+        }
+        if ($type === 'select' && !isset($f['options'][$v])) {
+            continue;
+        }
+        if ($type === 'url' && $v !== '' && !preg_match('#^https?://#i', $v)) {
+            $errors[] = $f['label'] . ' : le lien doit commencer par https://';
+            continue;
+        }
+        if ($type === 'number' && $v !== '' && !is_numeric(str_replace(',', '.', $v))) {
+            $errors[] = $f['label'] . ' : nombre attendu.';
+            continue;
+        }
+        if ($type === 'time' && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $v)) {
+            $errors[] = $f['label'] . ' : heure attendue (ex. 10:00).';
+            continue;
+        }
+        save_setting($key, mb_substr($v, 0, 20000));
+    }
+    settings(true);
+    return $errors;
 }

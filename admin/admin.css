@@ -24,7 +24,7 @@ button.link{background:none;border:0;color:#fff;cursor:pointer;font:inherit;padd
 .field{display:block;margin-bottom:14px}
 .field>span{display:block;font-weight:700;font-size:.88rem;margin-bottom:5px;color:var(--navy)}
 .field small{display:block;color:var(--muted);margin-top:4px;font-size:.82rem}
-input[type=text],input[type=email],input[type=url],input[type=number],input[type=password],textarea,select{width:100%;padding:10px 12px;border:1px solid #cfd6de;border-radius:9px;font:inherit;background:#fff;color:var(--ink)}
+input[type=text],input[type=email],input[type=url],input[type=number],input[type=password],input[type=time],input[type=datetime-local],textarea,select{width:100%;padding:10px 12px;border:1px solid #cfd6de;border-radius:9px;font:inherit;background:#fff;color:var(--ink)}
 textarea{resize:vertical}
 input:focus,textarea:focus,select:focus{outline:2px solid var(--gold2);border-color:var(--gold)}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 16px;border-radius:9px;border:1px solid transparent;background:var(--navy);color:#fff;font:inherit;font-weight:700;cursor:pointer;text-decoration:none}

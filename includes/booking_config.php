@@ -1,0 +1,139 @@
+<?php
+/**
+ * Réglages du système de réservation (modifiables dans Admin › Réservations › Réglages).
+ * Les valeurs « default » ne servent qu'à l'initialisation.
+ * Tous les prix sont saisis HT ; le site affiche et encaisse le TTC.
+ */
+
+const BOOKING_DEFAULT_CGV = <<<'TXT'
+# 1. Objet
+Les présentes conditions régissent la location de La Salle RN6, 71 C route d’Auxerre, 89380 Appoigny, réservée sur le site internet.
+
+# 2. Réservation et paiement
+La réservation est ferme dès le paiement intégral du prix TTC en ligne (carte bancaire ou PayPal). Un e-mail de confirmation et une facture sont envoyés au client.
+
+# 3. Durée et horaires
+Location de 24 heures (horaires indiqués lors de la réservation) ou location à l’heure, entre 8 h et 21 h, pour une durée minimum de 2 heures. Les horaires réservés doivent être respectés, installation et rangement compris.
+
+# 4. Capacité
+La capacité maximale de la salle est de 120 personnes assises. Le client s’engage à ne pas la dépasser.
+
+# 5. Caution et état des lieux
+Une caution de 2 × le montant du loyer HT est remise par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie, déduction faite des éventuelles dégradations, du ménage non effectué ou du matériel manquant.
+
+# 6. Annulation par le client
+Toute annulation doit être faite par e-mail. **Au moins 30 jours avant** la date : remboursement de 80 % du montant payé. **Entre 30 et 7 jours avant** : remboursement de 50 %. **Moins de 7 jours avant** : aucun remboursement.
+
+# 7. Responsabilité et assurance
+Le client est responsable de la salle, du matériel et de ses invités pendant toute la durée de la location. Il doit disposer d’une assurance responsabilité civile couvrant l’événement.
+
+# 8. Règlement intérieur
+Respect du voisinage, du volume sonore, de l’interdiction de fumer à l’intérieur et des consignes de sécurité. La salle est rendue rangée et propre.
+
+# 9. Données personnelles
+Les informations demandées servent uniquement à la gestion de la réservation et à la facturation. Elles sont conservées pendant la durée légale de conservation des pièces comptables.
+TXT;
+
+const BOOKING_SETTINGS = [
+    'regles' => [
+        'title' => 'Horaires & règles',
+        'fields' => [
+            'bk_day_start'        => ['label' => 'Heure de début et de fin des locations 24 h', 'default' => '10:00', 'type' => 'time', 'help' => 'Ex. 10:00 = du jour J 10 h au lendemain 10 h.'],
+            'bk_hour_open'        => ['label' => 'Location à l’heure : ouverture', 'default' => '08:00', 'type' => 'time'],
+            'bk_hour_close'       => ['label' => 'Location à l’heure : fermeture (fin au plus tard)', 'default' => '21:00', 'type' => 'time'],
+            'bk_hour_step'        => ['label' => 'Location à l’heure : pas des horaires', 'default' => '60', 'type' => 'select', 'options' => ['30' => 'Toutes les 30 minutes', '60' => 'Toutes les heures']],
+            'bk_min_hours'        => ['label' => 'Durée minimum à l’heure (heures)', 'default' => '2', 'type' => 'number'],
+            'bk_buffer_hours'     => ['label' => 'Temps mort entre deux locations (heures)', 'default' => '2', 'type' => 'number', 'help' => 'S’applique aussi aux événements de votre agenda Google et aux blocages.'],
+            'bk_min_notice_hours' => ['label' => 'Délai minimum avant le début (heures)', 'default' => '48', 'type' => 'number'],
+            'bk_max_months'       => ['label' => 'Réservation possible jusqu’à (mois à l’avance)', 'default' => '18', 'type' => 'number'],
+            'bk_max_guests'       => ['label' => 'Nombre maximum de personnes', 'default' => '120', 'type' => 'number'],
+            'bk_event_types'      => ['label' => 'Types d’événement proposés (un par ligne)', 'type' => 'textarea', 'default' => "Mariage\nAnniversaire\nBaptême / communion\nCocktail / vin d’honneur\nRepas de famille\nSéminaire / réunion professionnelle\nFormation / conférence\nAutre"],
+        ],
+    ],
+    'tarifs' => [
+        'title' => 'Tarifs',
+        'fields' => [
+            'bk_price_1' => ['label' => 'Lundi — prix 24 h HT (€)', 'default' => '250', 'type' => 'number'],
+            'bk_price_2' => ['label' => 'Mardi — prix 24 h HT (€)', 'default' => '250', 'type' => 'number'],
+            'bk_price_3' => ['label' => 'Mercredi — prix 24 h HT (€)', 'default' => '300', 'type' => 'number'],
+            'bk_price_4' => ['label' => 'Jeudi — prix 24 h HT (€)', 'default' => '250', 'type' => 'number'],
+            'bk_price_5' => ['label' => 'Vendredi — prix 24 h HT (€)', 'default' => '300', 'type' => 'number'],
+            'bk_price_6' => ['label' => 'Samedi — prix 24 h HT (€)', 'default' => '350', 'type' => 'number'],
+            'bk_price_7' => ['label' => 'Dimanche — prix 24 h HT (€)', 'default' => '350', 'type' => 'number'],
+            'bk_coef_rules' => ['label' => 'Location à l’heure : coefficients selon la durée', 'type' => 'textarea', 'default' => "2 = 1,8\n6 = 1,5\n24 = 1,2",
+                'help' => 'Une règle par ligne « moins de X heures = coefficient ». Prix = prix du jour × (heures ÷ 24) × coefficient. Voir la simulation ci-dessous.'],
+            'bk_hour_cap'      => ['label' => 'Plafond de la location à l’heure', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Jamais plus cher que la location 24 h du même jour', '0' => 'Pas de plafond']],
+            'bk_vat_rate'      => ['label' => 'Taux de TVA (%)', 'default' => '20', 'type' => 'number'],
+            'bk_asso_discount' => ['label' => 'Remise association à but non lucratif (%)', 'default' => '15', 'type' => 'number'],
+            'bk_deposit_text'  => ['label' => 'Caution (texte affiché au client)', 'type' => 'textarea', 'default' => 'Une caution de 2 × le montant du loyer HT est demandée par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie.'],
+        ],
+    ],
+    'annulation' => [
+        'title' => 'Annulation & conditions',
+        'fields' => [
+            'bk_cancel_rules' => ['label' => 'Remboursement en cas d’annulation', 'type' => 'textarea', 'default' => "30 = 80\n7 = 50",
+                'help' => 'Une règle par ligne « au moins X jours avant = % remboursé ». En dessous du plus petit délai : 0 %. Utilisé pour proposer le montant du remboursement dans l’admin.'],
+            'bk_cgv' => ['label' => 'Conditions générales de location (page publique)', 'type' => 'textarea', 'default' => BOOKING_DEFAULT_CGV,
+                'help' => 'Texte à faire relire par votre comptable ou un juriste. **gras** autorisé. Les lignes commençant par « # » deviennent des titres.'],
+        ],
+    ],
+    'paiement' => [
+        'title' => 'Paiement (Stripe & PayPal)',
+        'fields' => [
+            'bk_stripe_enabled'  => ['label' => 'Carte bancaire (Stripe)', 'type' => 'select', 'default' => '0', 'options' => ['1' => 'Activé', '0' => 'Désactivé']],
+            'bk_stripe_secret'   => ['label' => 'Stripe — clé secrète', 'type' => 'secret', 'default' => '', 'help' => 'Stripe › Développeurs › Clés API › « Clé secrète » (sk_test_… pour tester, sk_live_… en production).'],
+            'bk_stripe_webhook'  => ['label' => 'Stripe — secret du webhook', 'type' => 'secret', 'default' => '', 'help' => 'Stripe › Développeurs › Webhooks › Ajouter un endpoint : l’adresse est indiquée en haut de cette page, événement « checkout.session.completed ». Copiez ensuite le « Secret de signature » (whsec_…).'],
+            'bk_paypal_enabled'  => ['label' => 'PayPal', 'type' => 'select', 'default' => '0', 'options' => ['1' => 'Activé', '0' => 'Désactivé']],
+            'bk_paypal_mode'     => ['label' => 'PayPal — mode', 'type' => 'select', 'default' => 'sandbox', 'options' => ['sandbox' => 'Test (sandbox)', 'live' => 'Production (vrais paiements)']],
+            'bk_paypal_client'   => ['label' => 'PayPal — Client ID', 'type' => 'text', 'default' => '', 'help' => 'developer.paypal.com › Apps & Credentials › votre application (Live ou Sandbox selon le mode).'],
+            'bk_paypal_secret'   => ['label' => 'PayPal — Secret', 'type' => 'secret', 'default' => ''],
+        ],
+    ],
+    'emails' => [
+        'title' => 'E-mails',
+        'fields' => [
+            'bk_notify_email' => ['label' => 'Adresse qui reçoit les alertes « nouvelle réservation »', 'type' => 'email', 'default' => 'lasallern6@gmail.com'],
+            'bk_mail_from'    => ['label' => 'Nom de l’expéditeur', 'default' => 'La Salle RN6'],
+            'bk_smtp_host'    => ['label' => 'Serveur SMTP', 'default' => 'smtp.gmail.com'],
+            'bk_smtp_port'    => ['label' => 'Port', 'default' => '587', 'type' => 'number'],
+            'bk_smtp_secure'  => ['label' => 'Chiffrement', 'type' => 'select', 'default' => 'tls', 'options' => ['tls' => 'STARTTLS (port 587)', 'ssl' => 'SSL (port 465)', 'none' => 'Aucun (déconseillé)']],
+            'bk_smtp_user'    => ['label' => 'Identifiant SMTP (adresse Gmail)', 'default' => 'lasallern6@gmail.com'],
+            'bk_smtp_pass'    => ['label' => 'Mot de passe d’application Gmail', 'type' => 'secret', 'default' => '',
+                'help' => 'Pas votre mot de passe Gmail habituel : compte Google › Sécurité › Validation en deux étapes (à activer) › Mots de passe des applications › créer « Site RN6 » › copier les 16 lettres ici. Laisser vide pour utiliser l’envoi d’OVH (moins fiable).'],
+        ],
+    ],
+    'societe' => [
+        'title' => 'Société (factures)',
+        'fields' => [
+            'bk_company_name'    => ['label' => 'Dénomination', 'default' => 'La Salle RN6'],
+            'bk_company_form'    => ['label' => 'Forme juridique et capital (ex. SAS au capital de 1 000 €)', 'default' => ''],
+            'bk_company_address' => ['label' => 'Adresse du siège', 'type' => 'textarea', 'default' => "71 C route d’Auxerre\n89380 Appoigny"],
+            'bk_company_siren'   => ['label' => 'SIREN / SIRET', 'default' => '131 463 846'],
+            'bk_company_rcs'     => ['label' => 'RCS (ville)', 'default' => ''],
+            'bk_company_vat'     => ['label' => 'N° de TVA intracommunautaire', 'default' => 'FR26131463846'],
+            'bk_invoice_footer'  => ['label' => 'Mentions en bas de facture', 'type' => 'textarea', 'default' => 'Facture acquittée. Pas d’escompte pour paiement anticipé. En cas de retard de paiement : pénalités au taux légal et indemnité forfaitaire de 40 € pour frais de recouvrement (clients professionnels).'],
+        ],
+    ],
+    'agenda' => [
+        'title' => 'Agenda Google',
+        'fields' => [
+            'bk_gcal_url' => ['label' => 'Adresse secrète au format iCal de votre agenda Google', 'type' => 'secret', 'default' => '',
+                'help' => 'Google Agenda (sur ordinateur) › Paramètres › votre agenda › « Intégrer l’agenda » › « Adresse secrète au format iCal ». Chaque événement de cet agenda bloque les réservations (avec le temps mort).'],
+        ],
+    ],
+];
+
+const BOOKING_DEFAULT_OPTIONS = [
+    ['label' => 'Écran 98 pouces + sonorisation', 'description' => 'Écran grand format, sono et micros sans fil.', 'price' => 150, 'unit' => 'forfait'],
+    ['label' => 'Vaisselle', 'description' => 'Assiettes, verres et couverts pour tous vos invités.', 'price' => 2, 'unit' => 'personne'],
+    ['label' => 'Préparation & mise en place', 'description' => 'Installation des tables et chaises selon votre plan.', 'price' => 250, 'unit' => 'forfait'],
+];
+
+const OPTION_UNITS = ['forfait' => 'forfait', 'personne' => 'par personne'];
+
+const BOOKING_STATUSES = [
+    'pending'   => ['En attente de paiement', 'gray'],
+    'confirmed' => ['Confirmée (payée)', 'green'],
+    'cancelled' => ['Annulée', 'red'],
+    'expired'   => ['Paiement abandonné', 'gray'],
+];

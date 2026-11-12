@@ -17,7 +17,10 @@ $t = stats_summary($today, $today);
 $w = stats_summary(date('Y-m-d', strtotime('-6 days')), $today);
 $m = stats_summary(date('Y-m-d', strtotime('-29 days')), $today);
 $nbPhotos = (int)db()->query('SELECT COUNT(*) FROM photos WHERE visible = 1')->fetchColumn();
-$nbTarifs = (int)db()->query("SELECT COUNT(*) FROM items WHERE grp LIKE 'tarif_%' AND visible = 1")->fetchColumn();
+bk_expire_pending();
+$nextBookings = db()->prepare("SELECT * FROM bookings WHERE status = 'confirmed' AND end_at > ? ORDER BY start_at LIMIT 5");
+$nextBookings->execute([bk_now()->format(BK_FMT)]);
+$nextBookings = $nextBookings->fetchAll();
 
 $checks = [];
 if (stripos((string)($_SERVER['SERVER_SOFTWARE'] ?? ''), 'nginx') !== false) {
@@ -54,6 +57,19 @@ admin_header('Tableau de bord', 'index');
 
 <?php foreach ($checks as $c): ?><div class="flash flash-err">⚠ <?= e($c) ?></div><?php endforeach; ?>
 
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">📅 Prochaines réservations</h2><a href="reservations.php">Toutes les réservations →</a></div>
+  <?php if (!$nextBookings): ?><p class="muted">Aucune réservation à venir.</p><?php else: ?>
+  <table style="margin-top:8px">
+    <?php foreach ($nextBookings as $nb): ?>
+      <tr><td><strong><?= e(fr_date(bk_dt($nb['start_at']))) ?></strong> <span class="muted"><?= $nb['mode'] === 'day' ? '24 h' : e(substr($nb['start_at'], 11, 5) . '–' . substr($nb['end_at'], 11, 5)) ?></span></td>
+        <td><?= e($nb['first_name'] . ' ' . $nb['last_name']) ?> — <?= e($nb['event_type']) ?>, <?= (int)$nb['guests'] ?> pers.</td>
+        <td class="num"><?= money2((float)$nb['total_ttc']) ?></td><td><a href="reservation.php?id=<?= (int)$nb['id'] ?>">Ouvrir</a></td></tr>
+    <?php endforeach; ?>
+  </table>
+  <?php endif; ?>
+</div>
+
 <div class="kpis">
   <div class="kpi"><b><?= $t['visitors'] ?></b><span>Visiteurs aujourd’hui</span></div>
   <div class="kpi"><b><?= $w['visitors'] ?></b><span>Visiteurs sur 7 jours</span></div>
@@ -70,7 +86,7 @@ admin_header('Tableau de bord', 'index');
 <div class="grid g3">
   <a class="card" href="sections.php" style="text-decoration:none"><h2>⇅ Sections</h2><p class="muted">Ordre des blocs de la page d’accueil (avis, photos, tarifs…).</p></a>
   <a class="card" href="textes.php" style="text-decoration:none"><h2>✏️ Textes</h2><p class="muted">Titres, descriptions, coordonnées, référencement.</p></a>
-  <a class="card" href="listes.php?g=tarif_jours" style="text-decoration:none"><h2>€ Tarifs</h2><p class="muted"><?= $nbTarifs ?> lignes de tarifs affichées.</p></a>
+  <a class="card" href="reglages.php?s=tarifs" style="text-decoration:none"><h2>€ Tarifs & options</h2><p class="muted">Prix 24 h, location à l’heure, options payantes.</p></a>
   <a class="card" href="photos.php" style="text-decoration:none"><h2>📷 Photos</h2><p class="muted"><?= $nbPhotos ?> photos dans la galerie.</p></a>
   <a class="card" href="avis.php" style="text-decoration:none"><h2>★ Avis</h2><p class="muted">Avis Google et 1001Salles affichés sur le site.</p></a>
   <a class="card" href="listes.php" style="text-decoration:none"><h2>☰ Listes</h2><p class="muted">Points forts, équipements, mobilier, accès…</p></a>

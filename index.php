@@ -546,13 +546,12 @@ $jsonLd  = [
 <?php endif; ?>
         </div>
 
-<?php $jours = items('tarif_jours'); if ($jours): ?>
-        <div class="price-grid" aria-label="Tarifs de location par jour" style="grid-template-columns:repeat(<?= min(7, count($jours)) ?>,1fr)">
-<?php foreach ($jours as $it): ?>
-          <div class="day-price"><strong><?= e($it['title']) ?></strong><span><?= e($it['value']) ?></span></div>
+        <div class="price-grid" aria-label="Tarifs de location 24 h par jour de début">
+<?php foreach (['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'] as $i => $jour): ?>
+          <div class="day-price"><strong><?= $jour ?></strong><span><?= money(ttc(bk_day_price($i + 1))) ?></span></div>
 <?php endforeach; ?>
         </div>
-<?php endif; ?>
+        <p class="pricing-foot" style="margin-top:14px">Location 24 h de <?= e(str_replace(':', 'h', s('bk_day_start'))) ?> à <?= e(str_replace(':', 'h', s('bk_day_start'))) ?>, au tarif du jour d’arrivée. <strong>Location à l’heure</strong> possible de <?= e(str_replace(':', 'h', s('bk_hour_open'))) ?> à <?= e(str_replace(':', 'h', s('bk_hour_close'))) ?> (<?= e(fr_hours(bk_num('bk_min_hours', 2))) ?> minimum) : le prix s’affiche lors de la <a href="reservation.php" data-track="reserver">réservation en ligne</a>.</p>
 
 <?php $infos = items('tarif_infos'); if ($infos): ?>
         <div class="pricing-info" aria-label="Informations tarifaires complémentaires">
@@ -562,11 +561,14 @@ $jsonLd  = [
         </div>
 <?php endif; ?>
 
-<?php $options = items('tarif_options'); if ($options): ?>
+<?php $bookOpts = bk_options(); $options = items('tarif_options'); if ($bookOpts || $options): ?>
         <div class="pricing-panels">
           <div class="pricing-card">
             <h3><?= e(s('tarifs_options_title')) ?></h3>
             <ul class="price-list">
+<?php foreach ($bookOpts as $o): ?>
+              <li><span><?= e($o['label']) ?></span><strong><?= money(ttc((float)$o['price'])) ?><?= $o['unit'] === 'personne' ? ' / personne' : '' ?></strong></li>
+<?php endforeach; ?>
 <?php foreach ($options as $it): ?>
               <li><span><?= rich($it['text']) ?></span><strong><?= e($it['value']) ?></strong></li>
 <?php endforeach; ?>

@@ -20,7 +20,7 @@ $before = stats_summary($prevFrom, $prevTo);
 $byMonth = $days > 90;
 $series = stats_series($byMonth ? date('Y-m-01', strtotime($from)) : $from, $to, $byMonth);
 
-$pageLabels = ['accueil' => 'Accueil', 'plan' => 'Plan de la salle', 'reservation' => 'Réserver en ligne'];
+$pageLabels = ['accueil' => 'Accueil', 'plan' => 'Plan de la salle', 'reservation' => 'Réserver en ligne', 'conditions' => 'Conditions de location', 'ma-reservation' => 'Espace client'];
 
 admin_header('Statistiques', 'stats');
 ?>

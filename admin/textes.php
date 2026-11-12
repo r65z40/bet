@@ -12,23 +12,7 @@ $fields = $sections[$current]['fields'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
-    $errors = [];
-    foreach ($fields as $key => $f) {
-        $v = trim(str_replace("\r\n", "\n", (string)($_POST[$key] ?? '')));
-        $type = $f['type'] ?? 'text';
-        if ($type === 'email' && $v !== '' && !filter_var($v, FILTER_VALIDATE_EMAIL)) {
-            $errors[] = $f['label'] . ' : adresse e-mail invalide.';
-            continue;
-        }
-        if ($type === 'select' && !isset($f['options'][$v])) {
-            continue;
-        }
-        if ($type === 'url' && $v !== '' && !preg_match('#^https?://#i', $v)) {
-            $errors[] = $f['label'] . ' : le lien doit commencer par https://';
-            continue;
-        }
-        save_setting($key, mb_substr($v, 0, 5000));
-    }
+    $errors = save_settings_fields($fields);
     foreach ($errors as $err) {
         flash($err, 'err');
     }

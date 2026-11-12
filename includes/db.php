@@ -111,6 +111,80 @@ function install_schema(PDO $pdo): void
             visitor TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_clicks_day ON clicks(day);
+        CREATE TABLE IF NOT EXISTS bookings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ref TEXT NOT NULL UNIQUE,
+            token TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending',
+            mode TEXT NOT NULL DEFAULT 'day',
+            start_at TEXT NOT NULL,
+            end_at TEXT NOT NULL,
+            hours REAL NOT NULL DEFAULT 24,
+            guests INTEGER NOT NULL DEFAULT 0,
+            event_type TEXT NOT NULL DEFAULT '',
+            first_name TEXT NOT NULL DEFAULT '',
+            last_name TEXT NOT NULL DEFAULT '',
+            email TEXT NOT NULL DEFAULT '',
+            phone TEXT NOT NULL DEFAULT '',
+            company TEXT NOT NULL DEFAULT '',
+            is_asso INTEGER NOT NULL DEFAULT 0,
+            asso_name TEXT NOT NULL DEFAULT '',
+            address TEXT NOT NULL DEFAULT '',
+            zip TEXT NOT NULL DEFAULT '',
+            city TEXT NOT NULL DEFAULT '',
+            message TEXT NOT NULL DEFAULT '',
+            lines_json TEXT NOT NULL DEFAULT '[]',
+            subtotal_ht REAL NOT NULL DEFAULT 0,
+            discount_ht REAL NOT NULL DEFAULT 0,
+            total_ht REAL NOT NULL DEFAULT 0,
+            vat REAL NOT NULL DEFAULT 0,
+            total_ttc REAL NOT NULL DEFAULT 0,
+            provider TEXT NOT NULL DEFAULT '',
+            provider_order TEXT NOT NULL DEFAULT '',
+            payment_ref TEXT NOT NULL DEFAULT '',
+            paid_at TEXT,
+            hold_until TEXT,
+            invoice_number TEXT NOT NULL DEFAULT '',
+            refunded_amount REAL NOT NULL DEFAULT 0,
+            credit_number TEXT NOT NULL DEFAULT '',
+            cancelled_at TEXT,
+            deposit_status TEXT NOT NULL DEFAULT '',
+            admin_notes TEXT NOT NULL DEFAULT '',
+            visitor TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            cgv_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_bookings_dates ON bookings(start_at, end_at);
+        CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
+        CREATE TABLE IF NOT EXISTS booking_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            booking_id INTEGER NOT NULL,
+            at TEXT NOT NULL,
+            message TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS booking_options (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            label TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT '',
+            price REAL NOT NULL DEFAULT 0,
+            unit TEXT NOT NULL DEFAULT 'forfait',
+            position INTEGER NOT NULL DEFAULT 0,
+            visible INTEGER NOT NULL DEFAULT 1
+        );
+        CREATE TABLE IF NOT EXISTS booking_blocks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            start_at TEXT NOT NULL,
+            end_at TEXT NOT NULL,
+            label TEXT NOT NULL DEFAULT ''
+        );
+        CREATE TABLE IF NOT EXISTS ext_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            uid TEXT NOT NULL DEFAULT '',
+            start_at TEXT NOT NULL,
+            end_at TEXT NOT NULL,
+            summary TEXT NOT NULL DEFAULT ''
+        );
+        CREATE INDEX IF NOT EXISTS idx_ext_dates ON ext_events(start_at, end_at);
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             author TEXT NOT NULL,
@@ -183,6 +257,34 @@ function migrate(PDO $pdo): void
         foreach ($section['fields'] as $key => $f) {
             $set->execute([$key, $f['default'] ?? '']);
         }
+    }
+    foreach (BOOKING_SETTINGS as $section) {
+        foreach ($section['fields'] as $key => $f) {
+            $set->execute([$key, $f['default'] ?? '']);
+        }
+    }
+    // v4 : les tarifs de l'accueil viennent du système de réservation (affichage TTC)
+    if ((int)setting_raw($pdo, '_schema_version') < 4 && setting_raw($pdo, '_seeded') !== null) {
+        $pdo->prepare("UPDATE items SET visible = 0 WHERE grp = 'tarif_options' AND text IN (?, ?, ?)")
+            ->execute(['Location Ecran + sono', 'Location de vaisselle', 'Préparation & mise en place des tables et chaises selon vos plans']);
+        $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'tarifs_subtitle' AND value = ?")
+            ->execute(['Prix TTC (TVA 20 % incluse), pour une location de 24 h selon le jour d’arrivée.', 'Tarifs hors taxes. La TVA au taux de 20 % s’ajoute au montant total.']);
+        $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'tarifs_badge' AND value = ?")
+            ->execute(['Prix TTC · paiement en ligne sécurisé', 'Tarifs HT · TVA 20 % non incluse']);
+        $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'resa_lead' AND value = ?")
+            ->execute(['Consultez les disponibilités, choisissez votre créneau et vos options, et réglez en ligne en toute sécurité.', 'Consultez les disponibilités de la salle et choisissez directement votre créneau de location.']);
+        $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'resa_notice' AND value = ?")
+            ->execute(['Choisissez votre formule et une date disponible, ajoutez vos options puis réglez en ligne : la salle vous est réservée immédiatement.', 'Choisissez une date disponible dans l’agenda ci-dessous puis suivez les étapes de réservation.']);
+    }
+    // Lien secret du flux agenda (abonnement depuis l'iPhone / Google Agenda)
+    $set->execute(['bk_ics_token', bin2hex(random_bytes(16))]);
+    // Options réservables initiales (une seule fois)
+    if (setting_raw($pdo, '_options_seeded') === null) {
+        $ins = $pdo->prepare('INSERT INTO booking_options(label, description, price, unit, position) VALUES(?,?,?,?,?)');
+        foreach (BOOKING_DEFAULT_OPTIONS as $i => $o) {
+            $ins->execute([$o['label'], $o['description'], $o['price'], $o['unit'], $i + 1]);
+        }
+        $pdo->exec("INSERT OR REPLACE INTO settings(key, value) VALUES('_options_seeded', '1')");
     }
     $pdo->prepare("INSERT OR REPLACE INTO settings(key, value) VALUES('_schema_version', ?)")->execute([(string)SCHEMA_VERSION]);
 }

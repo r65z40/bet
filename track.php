@@ -6,7 +6,7 @@ $kind = (string)($_POST['k'] ?? '');
 $page = (string)($_POST['p'] ?? '');
 if ($_SERVER['REQUEST_METHOD'] === 'POST'
     && isset(CLICK_KINDS[$kind])
-    && in_array($page, ['accueil', 'plan', 'reservation'], true)
+    && in_array($page, ['accueil', 'plan', 'reservation', 'conditions', 'ma-reservation'], true)
     && !is_bot($_SERVER['HTTP_USER_AGENT'] ?? '')
     && empty($_SESSION['admin_id'])
     && same_origin()

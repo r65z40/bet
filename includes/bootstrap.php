@@ -50,6 +50,12 @@ if (session_status() === PHP_SESSION_NONE
 }
 
 require_once __DIR__ . '/content.php';
+require_once __DIR__ . '/booking_config.php';
 require_once __DIR__ . '/db.php';
 require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/stats.php';
+require_once __DIR__ . '/booking.php';
+require_once __DIR__ . '/mailer.php';
+require_once __DIR__ . '/ical.php';
+require_once __DIR__ . '/payments.php';
+require_once __DIR__ . '/layout.php';

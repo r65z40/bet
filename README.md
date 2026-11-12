@@ -36,6 +36,24 @@ C'est tout : la base `data/site.sqlite` est créée automatiquement et pré-remp
 
 Dans les textes, `**mot**` affiche le mot en **gras**.
 
+## Réservation en ligne (remplace SuperSaaS)
+
+Page `reservation.php` : formule **24 h** (heure fixe, tarif du jour d'arrivée) ou **à l'heure** (8 h–21 h, 2 h minimum), calendrier des disponibilités, type d'événement, nombre de personnes, options payantes, remise association, coordonnées, acceptation des conditions, puis **paiement intégral** par **Stripe** (carte) ou **PayPal**.
+
+- **Prix** : saisis HT dans *Admin › Tarifs & options*, affichés et encaissés TTC. Location à l'heure = prix du jour × heures ÷ 24 × coefficient (règles modifiables, simulation dans l'admin), plafonnée au prix 24 h.
+- **Disponibilités** : réservations payées, paiements en cours (créneau bloqué 35 min), blocages manuels et **événements de l'agenda Google** ; **temps mort de 2 h** autour de chacun. Délai minimum 48 h, maximum 18 mois.
+- **Après paiement** : confirmation immédiate, facture numérotée (F2026-0001…), e-mail au client (récapitulatif, facture, « Ajouter à mon agenda ») et alerte au propriétaire.
+- **Admin › Réservations** : liste, planning mensuel, fiche (caution, notes, renvoi d'e-mail), **annulation avec remboursement** automatique Stripe/PayPal (montant proposé selon les conditions d'annulation) et avoir (A2026-0001…), blocage de créneaux.
+- **Agenda** : l'« adresse secrète iCal » de Google Agenda bloque les créneaux (lecture toutes les 10 min et juste avant chaque paiement) ; un lien d'abonnement privé affiche les réservations dans l'iPhone.
+
+### Mise en service (une fois)
+1. *Admin › Réservations › Réglages › Société* : compléter forme juridique, RCS, vérifier SIREN et TVA.
+2. *E-mails* : créer un **mot de passe d'application Gmail** (Compte Google › Sécurité › Validation en deux étapes › Mots de passe des applications), le coller, cliquer « Envoyer un e-mail de test ».
+3. *Paiement* : clé secrète Stripe (`sk_test_…` pour tester), webhook Stripe vers `https://lasallern6.fr/stripe-webhook.php` (événement `checkout.session.completed`), Client ID + Secret PayPal (mode sandbox pour tester). Bouton « Tester la connexion ».
+4. *Agenda Google* : coller l'adresse secrète iCal ; ajouter le lien d'abonnement dans l'iPhone.
+5. *Annulation & conditions* : faire relire les conditions de location.
+6. Tester une réservation en mode test, puis passer les clés en production.
+
 ## Statistiques et RGPD
 
 Mesure maison, sans Google Analytics ni cookie : l'adresse IP n'est jamais enregistrée (seulement un hash anonyme qui change chaque jour). Les robots et l'administrateur connecté ne sont pas comptés. Les données de plus de 25 mois sont effacées automatiquement. Aucun bandeau cookies n'est donc nécessaire pour ces statistiques.
@@ -43,7 +61,13 @@ Mesure maison, sans Google Analytics ni cookie : l'adresse IP n'est jamais enreg
 ## Structure
 
 ```
-index.php, plan.php, reservation.php   pages publiques (même design que l'ancien site HTML)
+index.php, plan.php                    pages publiques (même design que l'ancien site HTML)
+reservation.php, api.php               tunnel de réservation et son API (disponibilités, prix, création)
+paiement.php, retour-paiement.php      lancement / retour du paiement Stripe ou PayPal
+stripe-webhook.php                     confirmation par Stripe (même si le client ferme la page)
+ma-reservation.php, facture.php        espace client (lien secret) et facture / avoir imprimables
+calendrier.php                         flux iCal privé des réservations (abonnement iPhone)
+conditions.php                         conditions générales de location
 track.php                              réception des clics pour les stats
 admin/                                 administration
 includes/                              code commun (base, fonctions, contenus par défaut) — non accessible du web

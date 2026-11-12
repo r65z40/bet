@@ -65,9 +65,9 @@ const SETTINGS_SCHEMA = [
         'title' => 'Section « Tarifs »',
         'fields' => [
             'tarifs_title'         => ['label' => 'Titre', 'default' => 'Tarifs de location'],
-            'tarifs_subtitle'      => ['label' => 'Sous-titre', 'default' => 'Tarifs hors taxes. La TVA au taux de 20 % s’ajoute au montant total.'],
-            'tarifs_badge'         => ['label' => 'Pastille', 'default' => 'Tarifs HT · TVA 20 % non incluse'],
-            'tarifs_options_title' => ['label' => 'Titre du bloc options', 'default' => 'Options & services'],
+            'tarifs_subtitle'      => ['label' => 'Sous-titre', 'default' => 'Prix TTC (TVA 20 % incluse), pour une location de 24 h selon le jour d’arrivée.'],
+            'tarifs_badge'         => ['label' => 'Pastille', 'default' => 'Prix TTC · paiement en ligne sécurisé'],
+            'tarifs_options_title' => ['label' => 'Titre du bloc options (les options payantes se gèrent dans Tarifs & options)', 'default' => 'Options & services'],
             'tarifs_foot'          => ['label' => 'Phrase sous les tarifs (l’e-mail est ajouté à la fin)', 'default' => 'Pour toute demande particulière, réservation ou précision sur les conditions de location, contactez-nous à'],
         ],
     ],
@@ -129,11 +129,9 @@ const SETTINGS_SCHEMA = [
             ]],
             'resa_meta_title'     => ['label' => 'Titre Google', 'default' => 'Réserver en ligne | La Salle RN6'],
             'resa_title'          => ['label' => 'Titre', 'default' => 'Réservez La Salle RN6'],
-            'resa_lead'           => ['label' => 'Introduction', 'type' => 'textarea', 'default' => 'Consultez les disponibilités de la salle et choisissez directement votre créneau de location.'],
+            'resa_lead'           => ['label' => 'Introduction', 'type' => 'textarea', 'default' => 'Consultez les disponibilités, choisissez votre créneau et vos options, et réglez en ligne en toute sécurité.'],
             'resa_notice_title'   => ['label' => 'Encadré — titre', 'default' => 'Réservation de la salle'],
-            'resa_notice'         => ['label' => 'Encadré — texte', 'type' => 'textarea', 'default' => 'Choisissez une date disponible dans l’agenda ci-dessous puis suivez les étapes de réservation.'],
-            'supersaas_account'   => ['label' => 'SuperSaaS — compte', 'default' => '641423:lasallern6', 'help' => 'Ne modifier que si vous changez de compte SuperSaaS.'],
-            'supersaas_schedule'  => ['label' => 'SuperSaaS — agenda', 'default' => '851719:Location_Salle_RN6'],
+            'resa_notice'         => ['label' => 'Encadré — texte', 'type' => 'textarea', 'default' => 'Choisissez votre formule et une date disponible, ajoutez vos options puis réglez en ligne : la salle vous est réservée immédiatement.'],
         ],
     ],
 ];
@@ -150,9 +148,8 @@ const ITEM_GROUPS = [
     'acces'         => ['label' => 'Adresse & accès', 'menu' => 'contenus', 'fields' => ['text' => 'Élément']],
     'evenements'    => ['label' => 'Pour quels événements ?', 'menu' => 'contenus', 'fields' => ['text' => 'Élément']],
     'plan_facts'    => ['label' => 'Page plan — surfaces', 'menu' => 'contenus', 'fields' => ['title' => 'Valeur', 'text' => 'Libellé']],
-    'tarif_jours'   => ['label' => 'Tarifs par jour', 'menu' => 'tarifs', 'fields' => ['title' => 'Jour', 'value' => 'Prix']],
     'tarif_infos'   => ['label' => 'Infos tarifaires (caution…)', 'menu' => 'tarifs', 'fields' => ['title' => 'Titre', 'text' => 'Texte']],
-    'tarif_options' => ['label' => 'Options & services', 'menu' => 'tarifs', 'fields' => ['text' => 'Prestation', 'value' => 'Prix']],
+    'tarif_options' => ['label' => 'Lignes ajoutées aux options (remise, parking…)', 'menu' => 'tarifs', 'fields' => ['text' => 'Libellé', 'value' => 'Valeur']],
 ];
 
 const DEFAULT_ITEMS = [
@@ -204,23 +201,11 @@ const DEFAULT_ITEMS = [
         ['title' => '8,56 m²', 'text' => 'Cuisine'],
         ['title' => '26,34 m²', 'text' => 'Stockage / réserves'],
     ],
-    'tarif_jours' => [
-        ['title' => 'Lundi', 'value' => '250 €'],
-        ['title' => 'Mardi', 'value' => '250 €'],
-        ['title' => 'Mercredi', 'value' => '300 €'],
-        ['title' => 'Jeudi', 'value' => '250 €'],
-        ['title' => 'Vendredi', 'value' => '300 €'],
-        ['title' => 'Samedi', 'value' => '350 €'],
-        ['title' => 'Dimanche', 'value' => '350 €'],
-    ],
     'tarif_infos' => [
         ['title' => 'Caution pour la salle :', 'text' => '2 × le montant du loyer HT.'],
         ['title' => 'Eau & électricité :', 'text' => 'comprises dans le prix de location.'],
     ],
     'tarif_options' => [
-        ['text' => 'Location Ecran + sono', 'value' => '150 € HT'],
-        ['text' => 'Location de vaisselle', 'value' => '2 € HT / personne'],
-        ['text' => 'Préparation & mise en place des tables et chaises selon vos plans', 'value' => '250 € HT'],
         ['text' => 'Remise association à but non lucratif', 'value' => '− 15 %'],
         ['text' => 'Parking', 'value' => 'Gratuit + accès PMR'],
     ],
@@ -247,7 +232,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 /**
  * Sections de la page d'accueil dont l'ordre et l'affichage se règlent dans

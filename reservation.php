@@ -1,50 +1,160 @@
 <?php
+/** Tunnel de réservation en ligne : formule, date, événement & options, coordonnées, paiement. */
 require __DIR__ . '/includes/bootstrap.php';
 track_visit('reservation');
-$name = s('site_name');
-$siteUrl = rtrim(s('site_url'), '/');
 $maintenance = s('resa_maintenance') === '1';
-?><!doctype html>
-<html lang="fr">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title><?= e(s('resa_meta_title')) ?></title>
-<meta name="description" content="<?= e(s('resa_lead')) ?>">
-<meta name="robots" content="<?= $maintenance ? 'noindex, follow' : 'index, follow' ?>"><link rel="canonical" href="<?= e($siteUrl) ?>/reservation.php"><link rel="icon" href="favicon.ico" sizes="any"><link rel="icon" href="logo-rn6.png" type="image/png">
-<style>
-:root{--navy:#071c35;--gold:#c79a38;--gold2:#f2d47b;--cream:#fbf8f1;--white:#fff;--ink:#152131;--muted:#617083;--line:rgba(7,28,53,.10)}*{box-sizing:border-box}body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--ink);background:var(--cream);line-height:1.6}.wrap{width:min(1160px,calc(100% - 36px));margin:auto}header{position:sticky;top:0;z-index:50;background:rgba(5,18,31,.96);border-bottom:1px solid rgba(255,255,255,.10);box-shadow:0 8px 28px rgba(0,0,0,.12)}.nav{min-height:76px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:800;color:#fff}.brand-mark{width:48px;height:48px;border:2px solid #273CF5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:.9rem;background:#fff;font-weight:900;letter-spacing:-.04em}.rn{color:#273CF5}.six{color:#B50E0E}.brand small{display:block;font-size:.68rem;letter-spacing:.16em;color:var(--gold2);text-transform:uppercase}.back{color:#fff;text-decoration:none;font-weight:800;padding:10px 14px;border:1px solid rgba(255,255,255,.2);border-radius:10px}.hero{padding:60px 0 28px;text-align:center}.eyebrow{font-size:.8rem;font-weight:900;letter-spacing:.2em;text-transform:uppercase;color:#8f6818}h1{font-family:Georgia,"Times New Roman",serif;color:var(--navy);font-size:clamp(2.5rem,6vw,4.5rem);line-height:1;margin:12px 0 16px}.hero p{max-width:760px;margin:0 auto;color:var(--muted);font-size:1.05rem}.booking{padding:18px 0 70px}.booking-card{background:#fff;border:1px solid var(--line);border-radius:22px;padding:20px;box-shadow:0 18px 55px rgba(7,28,53,.10);min-height:650px}.notice{display:flex;gap:12px;align-items:flex-start;background:#fff8e8;border:1px solid rgba(199,154,56,.28);border-radius:14px;padding:14px 16px;margin-bottom:18px;color:#5f4b22}.notice strong{color:var(--navy)}footer{border-top:1px solid var(--line);padding:24px 0 38px;color:#768394;font-size:.9rem;background:#fff}.foot{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}@media(max-width:620px){.wrap{width:min(100% - 24px,1160px)}.nav{min-height:66px}.brand span{font-size:.9rem}.back{font-size:.88rem;padding:9px 10px}.hero{padding:42px 0 20px}.booking-card{padding:10px;border-radius:16px}.notice{font-size:.9rem}}
-/* Mode maintenance */
-.maint{background:#fff;border:1px solid var(--line);border-radius:22px;padding:56px 36px;box-shadow:0 18px 55px rgba(7,28,53,.10);text-align:center;max-width:820px;margin:0 auto}
-.maint-icon{width:78px;height:78px;margin:0 auto 22px;border-radius:50%;display:grid;place-items:center;font-size:2.1rem;background:#fff8e8;border:1px solid rgba(199,154,56,.35)}
-.maint h2{font-family:Georgia,"Times New Roman",serif;color:var(--navy);font-size:clamp(1.6rem,3.4vw,2.3rem);line-height:1.15;margin:0 0 16px}
-.maint p{color:#425166;font-size:1.06rem;margin:0 auto;max-width:620px}
-.maint-actions{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:30px}
-.maint-actions a{display:inline-flex;align-items:center;gap:8px;padding:14px 20px;border-radius:10px;text-decoration:none;font-weight:900}
-.maint-actions .primary{background:linear-gradient(135deg,#f0cf72,#d8a83f);color:#152131;box-shadow:0 12px 30px rgba(0,0,0,.12)}
-.maint-actions .secondary{border:1px solid var(--line);color:var(--navy);background:#fff}
-@media(max-width:620px){.maint{padding:38px 20px}.maint-actions a{width:100%;justify-content:center}}
-</style>
-</head><body>
-<header><div class="wrap nav"><a class="brand" href="./" aria-label="Accueil <?= e($name) ?>"><div class="brand-mark"><span class="rn">RN</span><span class="six">6</span></div><span><?= e($name) ?><small><?= e(s('site_location')) ?></small></span></a><a class="back" href="./">← Retour au site</a></div></header>
-<main><section class="hero"><div class="wrap"><div class="eyebrow">Réservation en ligne</div><h1><?= e(s('resa_title')) ?></h1><?php if (!$maintenance): ?><p><?= rich(s('resa_lead')) ?></p><?php endif; ?></div></section>
-<?php if ($maintenance): ?>
-<section class="booking"><div class="wrap"><div class="maint" role="status">
-  <div class="maint-icon" aria-hidden="true">🛠</div>
-  <h2><?= e(s('resa_maint_title')) ?></h2>
-  <p><?= rich(s('resa_maint_message')) ?></p>
+$providers = payment_providers();
+
+if ($maintenance) {
+    public_header(s('resa_meta_title'), s('resa_lead'), false);
+    ?>
+<section class="page-hero"><div class="wrap"><div class="eyebrow">Réservation en ligne</div><h1><?= e(s('resa_title')) ?></h1></div></section>
+<section class="booking"><div class="wrap"><div class="card" role="status" style="max-width:820px;margin:0 auto;text-align:center;padding:50px 30px">
+  <div style="font-size:2.2rem">🛠</div>
+  <h2 style="font-size:1.9rem;margin:10px 0 14px"><?= e(s('resa_maint_title')) ?></h2>
+  <p class="muted" style="max-width:620px;margin:0 auto;font-size:1.05rem"><?= rich(s('resa_maint_message')) ?></p>
 <?php if (s('resa_maint_contact') !== '0'): ?>
-  <div class="maint-actions">
-    <a class="primary" href="<?= e(mailto()) ?>" data-track="email">✉ Nous contacter</a>
-    <a class="secondary" href="./">← Retour au site</a>
+  <p style="margin-top:26px"><a class="btn btn-gold" href="<?= e(mailto()) ?>" data-track="email">✉ Nous contacter</a> <a class="btn btn-light" href="./">← Retour au site</a></p>
+<?php endif; ?>
+</div></div></section>
+<?php
+    public_footer('reservation');
+    exit;
+}
+
+// Données pour le JavaScript du tunnel
+$minH = bk_num('bk_min_hours', 2);
+$dayPricesTtc = [];
+$hourFrom = PHP_FLOAT_MAX;
+$ref = bk_now()->modify('monday next week');
+for ($i = 1; $i <= 7; $i++) {
+    $dayPricesTtc[$i] = ttc(bk_day_price($i));
+    $hourFrom = min($hourFrom, ttc(bk_rental_price('hour', $ref->modify('+' . ($i - 1) . ' days'), $minH)));
+}
+[$dh, $dm] = bk_time('bk_day_start', '10:00');
+$config = [
+    'dayStart' => sprintf('%02dh%02d', $dh, $dm),
+    'dayPrices' => $dayPricesTtc,
+    'minHours' => $minH,
+    'step' => max(15, (int)s('bk_hour_step') ?: 60),
+    'maxGuests' => (int)bk_num('bk_max_guests', 120),
+    'maxMonths' => (int)bk_num('bk_max_months', 18),
+    'today' => bk_now()->format('Y-m'),
+    'options' => array_map(fn($o) => ['id' => (int)$o['id'], 'unit' => $o['unit'], 'ttc' => ttc((float)$o['price'])], bk_options()),
+];
+public_header(s('resa_meta_title'), s('resa_lead'), true);
+?>
+<section class="page-hero"><div class="wrap"><div class="eyebrow">Réservation en ligne</div><h1><?= e(s('resa_title')) ?></h1><p><?= rich(s('resa_lead')) ?></p></div></section>
+
+<section class="booking"><div class="wrap">
+<?php if (!$providers): ?>
+  <div class="alert alert-err" style="max-width:820px;margin:0 auto 18px">Le paiement en ligne n’est pas encore configuré. Pour réserver, contactez-nous : <a href="<?= e(mailto()) ?>"><?= e(s('contact_email')) ?></a></div>
+<?php endif; ?>
+<form id="bk" class="bk-grid" novalidate>
+  <div>
+    <div class="notice" style="margin-bottom:18px"><span>ℹ️</span><div><strong><?= e(s('resa_notice_title')) ?></strong><br><?= rich(s('resa_notice')) ?></div></div>
+
+    <section class="card step" id="step1">
+      <div class="step-head"><span class="step-num">1</span><h2>Votre formule</h2></div>
+      <div class="formulas">
+        <button type="button" class="formula" data-mode="day" aria-pressed="false">
+          <strong>Location 24 h</strong>
+          <span>De <?= e($config['dayStart']) ?> à <?= e($config['dayStart']) ?> le lendemain</span>
+          <em>à partir de <?= money(min($dayPricesTtc)) ?> TTC</em>
+        </button>
+        <button type="button" class="formula" data-mode="hour" aria-pressed="false">
+          <strong>Location à l’heure</strong>
+          <span>Entre <?= e(str_replace(':', 'h', s('bk_hour_open'))) ?> et <?= e(str_replace(':', 'h', s('bk_hour_close'))) ?>, <?= e(fr_hours($minH)) ?> minimum</span>
+          <em>à partir de <?= money($hourFrom) ?> TTC</em>
+        </button>
+      </div>
+    </section>
+
+    <section class="card step locked" id="step2">
+      <div class="step-head"><span class="step-num">2</span><h2>Votre date</h2></div>
+      <div class="cal-head">
+        <button type="button" class="cal-nav" id="calPrev" aria-label="Mois précédent">‹</button>
+        <strong id="calTitle" aria-live="polite"></strong>
+        <button type="button" class="cal-nav" id="calNext" aria-label="Mois suivant">›</button>
+      </div>
+      <div class="cal" id="cal" role="grid" aria-label="Calendrier des disponibilités"></div>
+      <div class="cal-legend"><span><i style="background:#eaf6ee;border:1px solid #c8e8d2"></i>Disponible</span><span id="legendPartial"><i style="background:#fff7e6;border:1px solid #f0dca8"></i>Partiellement disponible</span><span><i style="background:#f1f3f6"></i>Indisponible</span></div>
+      <div class="slots" id="slots" hidden>
+        <strong>Heure d’arrivée</strong>
+        <div class="chips" id="startChips" role="group" aria-label="Heure d’arrivée"></div>
+        <label class="f" style="max-width:260px"><span>Durée</span><select id="duration"></select></label>
+      </div>
+    </section>
+
+    <section class="card step locked" id="step3">
+      <div class="step-head"><span class="step-num">3</span><h2>Votre événement</h2></div>
+      <div class="row2">
+        <label class="f"><span>Type d’événement</span>
+          <select name="event_type" id="event_type" required>
+            <option value="">Choisir…</option>
+            <?php foreach (bk_event_types() as $t): ?><option><?= e($t) ?></option><?php endforeach; ?>
+          </select></label>
+        <label class="f"><span>Nombre de personnes <i>(max. <?= (int)$config['maxGuests'] ?>)</i></span>
+          <input type="number" name="guests" id="guests" min="1" max="<?= (int)$config['maxGuests'] ?>" inputmode="numeric" required></label>
+      </div>
+<?php $opts = bk_options(); if ($opts): ?>
+      <strong style="display:block;margin:6px 0 10px;color:var(--navy)">Options</strong>
+      <div class="opts">
+        <?php foreach ($opts as $o): ?>
+        <label class="opt">
+          <input type="checkbox" name="options" value="<?= (int)$o['id'] ?>">
+          <div><strong><?= e($o['label']) ?></strong><?php if ($o['description'] !== ''): ?><small><?= e($o['description']) ?></small><?php endif; ?></div>
+          <b><?= money2(ttc((float)$o['price'])) ?><?= $o['unit'] === 'personne' ? ' / pers.' : '' ?></b>
+        </label>
+        <?php endforeach; ?>
+      </div>
+<?php endif; ?>
+<?php if (bk_num('bk_asso_discount') > 0): ?>
+      <label class="check" style="margin-top:16px"><input type="checkbox" name="asso" id="asso"> <span><strong>Je réserve pour une association à but non lucratif</strong> — remise de <?= e(rating_label((string)bk_num('bk_asso_discount'))) ?> %</span></label>
+      <label class="f" id="assoWrap" hidden><span>Nom de l’association</span><input type="text" name="asso_name" maxlength="120"></label>
+<?php endif; ?>
+    </section>
+
+    <section class="card step locked" id="step4">
+      <div class="step-head"><span class="step-num">4</span><h2>Vos coordonnées</h2></div>
+      <div class="row2">
+        <label class="f"><span>Prénom</span><input type="text" name="first_name" autocomplete="given-name" maxlength="60" required></label>
+        <label class="f"><span>Nom</span><input type="text" name="last_name" autocomplete="family-name" maxlength="60" required></label>
+        <label class="f"><span>E-mail</span><input type="email" name="email" autocomplete="email" maxlength="120" required></label>
+        <label class="f"><span>Téléphone</span><input type="tel" name="phone" autocomplete="tel" maxlength="30" required></label>
+      </div>
+      <label class="f"><span>Société <i>(facultatif, apparaîtra sur la facture)</i></span><input type="text" name="company" autocomplete="organization" maxlength="120"></label>
+      <label class="f"><span>Adresse <i>(pour la facture)</i></span><input type="text" name="address" autocomplete="street-address" maxlength="200"></label>
+      <div class="row3">
+        <label class="f"><span>Code postal</span><input type="text" name="zip" autocomplete="postal-code" maxlength="12"></label>
+        <label class="f"><span>Ville</span><input type="text" name="city" autocomplete="address-level2" maxlength="80"></label>
+      </div>
+      <label class="f"><span>Message <i>(facultatif)</i></span><textarea name="message" rows="3" maxlength="2000" placeholder="Horaires d’arrivée des prestataires, questions…"></textarea></label>
+      <div class="hp" aria-hidden="true"><label>Site web <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
+    </section>
   </div>
-<?php endif; ?>
-</div></div></section></main>
-<?php else: ?>
-<section class="booking"><div class="wrap"><div class="notice"><span>ℹ️</span><div><strong><?= e(s('resa_notice_title')) ?></strong><br><?= rich(s('resa_notice')) ?></div></div><div class="booking-card">
-<script src="https://cdn.supersaas.net/widget.js"></script>
-<script class="supersaas-widget">var supersaas = new SuperSaaS(<?= json_encode(s('supersaas_account'), JSON_HEX_TAG) ?>, <?= json_encode(s('supersaas_schedule'), JSON_HEX_TAG) ?>, {"widget_type":"frame","view":"week","legend":"show","domain":"www.supersaas.fr"})</script>
-</div></div></section></main>
-<?php endif; ?>
-<footer><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?></span><span><a href="<?= e(mailto()) ?>" data-track="email" style="color:inherit"><?= e(s('contact_email')) ?></a></span></div></footer>
-<?= tracking_script('reservation') ?>
-</body></html>
+
+  <aside class="card summary step" id="summary" aria-live="polite">
+    <div class="step-head"><span class="step-num">5</span><h2>Récapitulatif</h2></div>
+    <div class="sum-slot" id="sumSlot">Choisissez une formule et une date.</div>
+    <ul class="sum-lines" id="sumLines"></ul>
+    <div class="sum-total"><span>Total TTC</span><strong id="sumTotal">—</strong></div>
+    <div class="sum-vat" id="sumVat"></div>
+    <div id="errors"></div>
+    <p class="notice" style="margin:14px 0 0;font-size:.86rem"><span>🔑</span><span><?= e(s('bk_deposit_text')) ?></span></p>
+    <label class="check"><input type="checkbox" name="cgv" id="cgv"> <span>J’accepte les <a href="conditions.php" target="_blank">conditions de location</a>.</span></label>
+    <div class="pay">
+<?php foreach ($providers as $key => $label): ?>
+      <button type="submit" class="btn <?= $key === 'paypal' ? 'btn-paypal' : 'btn-blue' ?>" data-provider="<?= e($key) ?>" disabled>
+        <?= $key === 'paypal' ? 'Payer avec <strong style="font-style:italic">PayPal</strong>' : '🔒 Payer par carte bancaire' ?>
+      </button>
+<?php endforeach; ?>
+    </div>
+    <p class="secure">Paiement sécurisé par <?= e(implode(' et ', array_map(fn($k) => $k === 'paypal' ? 'PayPal' : 'Stripe', array_keys($providers)))) ?>. Le montant total est réglé à la réservation.</p>
+  </aside>
+</form>
+</div></section>
+<div class="mobile-bar" id="mobileBar" hidden><div><small class="muted">Total TTC</small><br><strong id="barTotal">—</strong></div><a class="btn btn-gold" href="#summary">Récapitulatif ↓</a></div>
+<script>window.BK = <?= json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;</script>
+<script src="assets/booking.js?v=<?= @filemtime(ROOT . '/assets/booking.js') ?>" defer></script>
+<?php public_footer('reservation');

@@ -1,0 +1,80 @@
+<?php
+/** Espace client d'une réservation (lien secret envoyé par e-mail) : statut, récapitulatif, facture, agenda. */
+require __DIR__ . '/includes/bootstrap.php';
+
+$b = bk_find((string)($_GET['ref'] ?? ''), (string)($_GET['t'] ?? ''));
+if (!$b) {
+    http_response_code(404);
+    public_header('Réservation introuvable', '', false);
+    echo '<section class="page-hero"><div class="wrap"><h1>Réservation introuvable</h1><p>Vérifiez le lien reçu par e-mail ou contactez-nous.</p></div></section>';
+    public_footer();
+    exit;
+}
+if (isset($_GET['ics'])) {
+    header('Content-Type: text/calendar; charset=utf-8');
+    header('Content-Disposition: attachment; filename="reservation-' . $b['ref'] . '.ics"');
+    echo bk_client_ics($b);
+    exit;
+}
+header('Referrer-Policy: no-referrer'); // le lien contient un jeton secret
+$pending = in_array($b['status'], ['pending', 'expired'], true);
+[$statusLabel, $statusColor] = BOOKING_STATUSES[$b['status']] ?? ['—', 'gray'];
+$providers = payment_providers();
+public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false);
+?>
+<section class="page-hero"><div class="wrap">
+  <div class="eyebrow">Réservation <?= e($b['ref']) ?></div>
+  <h1><?= $b['status'] === 'confirmed' ? (isset($_GET['merci']) ? 'Merci, c’est réservé !' : 'Votre réservation') : ($b['status'] === 'cancelled' ? 'Réservation annulée' : 'Paiement non finalisé') ?></h1>
+  <p><span class="status <?= e($statusColor) ?>"><?= e($statusLabel) ?></span></p>
+</div></section>
+<section><div class="wrap" style="max-width:820px">
+<?php if (isset($_GET['merci']) && $b['status'] === 'confirmed'): ?>
+  <div class="alert alert-ok">Votre paiement a bien été reçu. Un e-mail de confirmation vient de vous être envoyé à <?= e($b['email']) ?>.</div>
+<?php elseif (isset($_GET['erreur'])): ?>
+  <div class="alert alert-err">Le paiement n’a pas pu être confirmé. Si votre compte a été débité, ne réessayez pas : contactez-nous à <?= e(s('contact_email')) ?>.</div>
+<?php elseif (isset($_GET['indispo'])): ?>
+  <div class="alert alert-err">Désolé, ce créneau a été réservé entre-temps. <a href="reservation.php">Choisir une autre date</a>.</div>
+<?php elseif (isset($_GET['annule']) && $pending): ?>
+  <div class="alert alert-err">Paiement annulé. Votre créneau reste réservé quelques minutes : vous pouvez réessayer ci-dessous.</div>
+<?php endif; ?>
+
+  <div class="card">
+    <h2><?= e(bk_slot_label($b)) ?></h2>
+    <p class="muted" style="margin:4px 0 14px"><?= e($b['event_type']) ?> · <?= (int)$b['guests'] ?> personne(s) · <?= e($b['first_name'] . ' ' . $b['last_name']) ?></p>
+    <ul class="sum-lines">
+<?php foreach (json_decode($b['lines_json'], true) ?: [] as $l): ?>
+      <li><span><?= e($l['label']) ?></span><span><?= money2(ttc((float)$l['total_ht'])) ?></span></li>
+<?php endforeach; ?>
+<?php if ((float)$b['discount_ht'] > 0): ?>
+      <li><span>Remise association</span><span>− <?= money2(ttc((float)$b['discount_ht'])) ?></span></li>
+<?php endif; ?>
+    </ul>
+    <div class="sum-total"><span>Total TTC</span><strong><?= money2((float)$b['total_ttc']) ?></strong></div>
+    <div class="sum-vat">dont TVA <?= money2((float)$b['vat']) ?> — total HT <?= money2((float)$b['total_ht']) ?></div>
+<?php if ((float)$b['refunded_amount'] > 0): ?>
+    <p class="alert alert-ok" style="margin-top:14px">Remboursé : <?= money2((float)$b['refunded_amount']) ?></p>
+<?php endif; ?>
+
+<?php if ($b['status'] === 'confirmed'): ?>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:22px">
+      <a class="btn btn-gold" href="<?= e(bk_client_url($b, 'facture.php')) ?>" target="_blank">🧾 Ma facture</a>
+      <a class="btn btn-light" href="<?= e(gcal_template_url($b)) ?>" target="_blank" rel="noopener">📅 Google Agenda</a>
+      <a class="btn btn-light" href="<?= e(bk_client_url($b)) ?>&amp;ics=1">📅 Apple / Outlook (.ics)</a>
+    </div>
+    <p class="notice" style="margin-top:20px"><span>🔑</span><span><?= e(s('bk_deposit_text')) ?></span></p>
+    <p class="muted" style="font-size:.92rem">Adresse : <?= e(s('address')) ?><?php if (s('maps_url')): ?> — <a href="<?= e(s('maps_url')) ?>" target="_blank" rel="noopener">itinéraire</a><?php endif; ?>.
+      Pour modifier ou annuler, écrivez-nous à <a href="<?= e(mailto()) ?>"><?= e(s('contact_email')) ?></a> (voir les <a href="conditions.php">conditions d’annulation</a>).</p>
+<?php elseif ($b['status'] === 'cancelled' && $b['credit_number'] !== ''): ?>
+    <p style="margin-top:18px"><a class="btn btn-light" href="<?= e(bk_client_url($b, 'facture.php')) ?>" target="_blank">🧾 Facture</a> <a class="btn btn-light" href="<?= e(bk_client_url($b, 'facture.php')) ?>&amp;avoir=1" target="_blank">🧾 Avoir (remboursement)</a></p>
+<?php elseif ($pending && $providers): ?>
+    <form method="post" action="paiement.php" class="pay" style="margin-top:22px">
+      <input type="hidden" name="ref" value="<?= e($b['ref']) ?>"><input type="hidden" name="t" value="<?= e($b['token']) ?>">
+      <?php foreach ($providers as $k => $label): ?>
+      <button class="btn <?= $k === 'paypal' ? 'btn-paypal' : 'btn-blue' ?>" name="provider" value="<?= e($k) ?>"><?= $k === 'paypal' ? 'Payer avec PayPal' : '🔒 Payer par carte bancaire' ?> — <?= money2((float)$b['total_ttc']) ?></button>
+      <?php endforeach; ?>
+    </form>
+    <p class="muted" style="font-size:.88rem;margin-top:12px">Sans paiement, la réservation n’est pas prise en compte et le créneau est libéré automatiquement.</p>
+<?php endif; ?>
+  </div>
+</div></section>
+<?php public_footer('ma-reservation');
