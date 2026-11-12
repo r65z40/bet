@@ -35,6 +35,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Throwable $e) {
             flash('Opération refusée : ' . $e->getMessage(), 'err');
         }
+    } elseif ($do === 'move' && $b['status'] === 'confirmed') {
+        $date = (string)($_POST['new_date'] ?? '');
+        $time = $b['mode'] === 'hour' ? (string)($_POST['new_time'] ?? '') : bk_dt($b['start_at'])->format('H:i');
+        $ns = preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) && preg_match('/^\d{2}:\d{2}$/', $time)
+            ? DateTimeImmutable::createFromFormat('!Y-m-d H:i', $date . ' ' . $time, bk_now()->getTimezone()) : false;
+        if (!$ns) {
+            flash('Date ou heure non valide.', 'err');
+            redirect('reservation.php?id=' . $id);
+        }
+        try {
+            $oldLabel = bk_slot_label($b);
+            $nb = bk_move($b, $ns);
+            bk_log($id, 'Action effectuée par ' . current_admin()['username']);
+            admin_log('Déplacement de la réservation ' . $b['ref'] . ' : ' . $oldLabel . ' → ' . bk_slot_label($nb));
+            $msg = 'Réservation déplacée : ' . bk_slot_label($nb) . '.';
+            if (!empty($_POST['notify'])) {
+                $msg .= bk_mail_moved($nb, $oldLabel) ? ' Le client a été prévenu par e-mail.' : ' ⚠ L’e-mail au client n’a pas pu être envoyé : ' . mail_last_error();
+            }
+            // Tarif différent à la nouvelle date (week-end, date spéciale…) : information seulement
+            $lines = json_decode($b['lines_json'], true) ?: [];
+            $paidRental = (float)($lines[0]['total_ht'] ?? 0);
+            $newRental = bk_rental_price($b['mode'], $ns, (float)$b['hours'], max(1, (int)round((float)$b['hours'] / 24)));
+            if (abs($newRental - $paidRental) >= 0.01) {
+                $msg .= ' Info : à cette date, la location coûterait ' . money2(ttc($newRental)) . ' TTC (payé : ' . money2(ttc($paidRental)) . ' TTC). Le prix payé n’est pas modifié.';
+            }
+            flash($msg);
+        } catch (DomainException $e) {
+            flash('Déplacement impossible : ' . $e->getMessage(), 'err');
+        }
     } elseif ($do === 'release' && in_array($b['status'], ['pending', 'expired'], true)) {
         db()->prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = ?, hold_until = NULL WHERE id = ?")->execute([bk_now()->format(BK_FMT), $id]);
         bk_log($id, 'Demande non payée annulée par l’administrateur');
@@ -60,6 +89,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
   <div>
     <div class="card">
       <h2><?= e(bk_slot_label($b)) ?></h2>
+      <?php if (!empty($b['moved_at'])): ?><p class="muted" style="margin-top:-6px">Date modifiée le <?= e(bk_dt($b['moved_at'])->format('d/m/Y')) ?> — date initiale : <?= e($b['moved_from']) ?></p><?php endif; ?>
       <p><?= e($b['event_type']) ?> · <strong><?= (int)$b['guests'] ?> personne(s)</strong></p>
       <table>
         <?php foreach (json_decode($b['lines_json'], true) ?: [] as $l): ?>
@@ -125,6 +155,19 @@ admin_header('Réservation ' . $b['ref'], 'resa');
     <?php endif; ?>
 
     <?php if ($b['status'] === 'confirmed'): ?>
+    <form method="post" class="card" id="deplacer"><?= csrf_field() ?>
+      <h2>Déplacer à une autre date</h2>
+      <p class="muted" style="margin-top:-6px">Même formule et même durée (<?= $b['mode'] === 'day' ? (int)round((float)$b['hours']) . ' h, arrivée à ' . e(bk_dt($b['start_at'])->format('H\hi')) : e(fr_hours((float)$b['hours'])) ?>). Le prix payé et la facture ne changent pas. Le site vérifie que la nouvelle date est libre (avec le temps mort) ; le délai minimum de réservation ne s’applique pas.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <label class="field" style="flex:1 1 160px"><span>Nouvelle date</span><input type="date" name="new_date" required min="<?= e(bk_now()->format('Y-m-d')) ?>" value="<?= e(bk_dt($b['start_at'])->format('Y-m-d')) ?>"></label>
+        <?php if ($b['mode'] === 'hour'): ?>
+          <label class="field" style="flex:1 1 120px"><span>Heure d’arrivée</span><input type="time" name="new_time" required step="<?= max(15, (int)s('bk_hour_step') ?: 60) * 60 ?>" value="<?= e(bk_dt($b['start_at'])->format('H:i')) ?>"></label>
+        <?php endif; ?>
+      </div>
+      <label style="display:block;margin:10px 0 14px"><input type="checkbox" name="notify" value="1" checked> Prévenir le client par e-mail (ancienne et nouvelle date, boutons pour mettre à jour son agenda)</label>
+      <button class="btn" name="do" value="move" onclick="return confirm('Déplacer la réservation à cette date ?')">Déplacer la réservation</button>
+    </form>
+
     <form method="post" class="card"><?= csrf_field() ?>
       <h2>E-mails</h2>
       <button class="btn light" name="do" value="resend">✉ Renvoyer la confirmation au client</button>

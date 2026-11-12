@@ -146,6 +146,17 @@ function gcal_push_error(?string $msg): void
     settings(true);
 }
 
+/** Texte de l'événement d'agenda d'une réservation, selon le niveau de détail choisi. */
+function cal_booking_description(array $b, bool $withSlot = false): string
+{
+    $head = ($withSlot ? bk_slot_label($b) . "\n" : '') . $b['event_type'] . ' — ' . (int)$b['guests'] . ' pers.';
+    if (s('bk_gcal_details') === 'minimal') {
+        return $head . "\n" . $b['first_name'] . ' ' . $b['last_name'] . ' — réf. ' . $b['ref'];
+    }
+    return $head . "\n" . $b['first_name'] . ' ' . $b['last_name'] . ' — ' . $b['phone'] . ' — ' . $b['email']
+        . "\nTotal : " . money2((float)$b['total_ttc']) . ' TTC — réf. ' . $b['ref'] . "\n" . bk_url('admin/reservation.php?id=' . (int)$b['id']);
+}
+
 /** Ajoute (ou retire, si annulée) une réservation dans Google Agenda. Ne bloque jamais le site. */
 function gcal_sync_booking(array $b): bool
 {
@@ -163,8 +174,7 @@ function gcal_sync_booking(array $b): bool
             }
             gcal_put_event($id, [
                 'summary' => '📅 ' . $b['last_name'] . ' — ' . $b['event_type'] . ' (' . (int)$b['guests'] . ' pers.)' . ($n > 1 ? ' ' . ($i + 1) . '/' . $n : ''),
-                'description' => bk_slot_label($b) . "\n" . $b['first_name'] . ' ' . $b['last_name'] . ' — ' . $b['phone'] . ' — ' . $b['email']
-                    . "\nTotal : " . money2((float)$b['total_ttc']) . ' TTC — réf. ' . $b['ref'] . "\n" . bk_url('admin/reservation.php?id=' . (int)$b['id']),
+                'description' => cal_booking_description($b, true),
                 'location' => s('address'),
                 'start' => gcal_datetime($st), 'end' => gcal_datetime($en),
                 'colorId' => '10',

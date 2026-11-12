@@ -23,6 +23,14 @@ const MAIL_TEMPLATES = [
         'vars' => ['prenom', 'nom', 'date', 'reservation', 'reference', 'montant_rembourse', 'lien'],
         'blocks' => ['remboursement', 'bouton'],
     ],
+    'deplacement' => [
+        'label' => 'Changement de date (client)',
+        'title' => 'Votre réservation a changé de date',
+        'subject' => 'Nouvelle date pour votre réservation — {site} — {date}',
+        'body' => "Bonjour {prenom},\n\nComme convenu, votre réservation **{reference}** a été **déplacée**.\n\n{changement}\n\nLe montant réglé reste inchangé. Pensez à mettre à jour votre agenda :\n\n{boutons}\n\nUne question ? Répondez simplement à cet e-mail.",
+        'vars' => ['prenom', 'nom', 'date', 'reservation', 'ancienne_date', 'reference', 'evenement', 'personnes', 'total', 'lien'],
+        'blocks' => ['changement', 'recapitulatif', 'boutons', 'caution'],
+    ],
     'alerte' => [
         'label' => 'Alerte « nouvelle réservation » (vous)',
         'title' => 'Nouvelle réservation payée',
@@ -73,7 +81,7 @@ const MAIL_VAR_HELP = [
     'lien' => 'lien principal (espace client ou activation)', 'identifiant' => 'identifiant du compte', 'site' => 'nom de la salle',
     'recapitulatif' => 'tableau du détail et du total', 'boutons' => 'boutons espace client + ajout à l’agenda', 'caution' => 'encadré caution',
     'bouton' => 'bouton principal', 'arrivee' => 'date et heure d’arrivée', 'depart' => 'date et heure de départ', 'jours' => 'nombre de jours avant l’événement',
-    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
+    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
 ];
 
 const MAIL_STYLE_DEFAULTS = [

@@ -288,13 +288,17 @@ function bk_conflict(int $s, int $e, array $busy): bool
 }
 
 /** Vérifie un créneau ; retourne un message d'erreur ou null. */
-function bk_slot_error(string $mode, DateTimeImmutable $start, DateTimeImmutable $end, ?int $ignoreBooking = null): ?string
+function bk_slot_error(string $mode, DateTimeImmutable $start, DateTimeImmutable $end, ?int $ignoreBooking = null, bool $admin = false): ?string
 {
     $now = bk_now();
-    if ($start < $now->modify('+' . (int)bk_num('bk_min_notice_hours', 48) . ' hours')) {
+    if ($admin) {
+        // Déplacement par l'administrateur : délai minimum et date maximum non appliqués
+        if ($start < $now) {
+            return 'La nouvelle date est déjà passée.';
+        }
+    } elseif ($start < $now->modify('+' . (int)bk_num('bk_min_notice_hours', 48) . ' hours')) {
         return 'Les réservations doivent être faites au moins ' . (int)bk_num('bk_min_notice_hours', 48) . ' h à l’avance.';
-    }
-    if ($start > $now->modify('+' . (int)bk_num('bk_max_months', 18) . ' months')) {
+    } elseif ($start > $now->modify('+' . (int)bk_num('bk_max_months', 18) . ' months')) {
         return 'Cette date est trop lointaine pour être réservée en ligne.';
     }
     if ($mode === 'hour') {
@@ -520,6 +524,56 @@ function bk_slot_error_after_payment(int $id): ?string
 function bk_due(array $b): float
 {
     return $b['amount_due'] !== null && $b['amount_due'] !== '' ? (float)$b['amount_due'] : (float)$b['total_ttc'];
+}
+
+/**
+ * Déplace une réservation confirmée à une autre date (même formule, même durée).
+ * Le prix payé et la facture ne changent pas. Vérifie les conflits (le créneau actuel
+ * de la réservation est ignoré) et met à jour Google Agenda.
+ * Retourne la réservation à jour ; lève DomainException si le créneau n'est pas possible.
+ */
+function bk_move(array $b, DateTimeImmutable $newStart): array
+{
+    if ($b['status'] !== 'confirmed') {
+        throw new DomainException('Seule une réservation confirmée peut être déplacée.');
+    }
+    $oldStart = bk_dt($b['start_at']);
+    $oldEnd = bk_dt($b['end_at']);
+    $newEnd = $newStart->modify('+' . ($oldEnd->getTimestamp() - $oldStart->getTimestamp()) . ' seconds');
+    if ($newStart == $oldStart) {
+        throw new DomainException('La nouvelle date est identique à l’actuelle.');
+    }
+    $pdo = db();
+    $pdo->exec('BEGIN IMMEDIATE');
+    try {
+        $err = bk_slot_error($b['mode'], $newStart, $newEnd, (int)$b['id'], true);
+        if ($err) {
+            throw new DomainException($err);
+        }
+        $pdo->prepare('UPDATE bookings SET start_at = ?, end_at = ?, reminder_sent_at = NULL, review_sent_at = NULL,
+                moved_at = ?, moved_from = CASE WHEN moved_from IS NULL OR moved_from = \'\' THEN ? ELSE moved_from END WHERE id = ?')
+            ->execute([$newStart->format(BK_FMT), $newEnd->format(BK_FMT), bk_now()->format(BK_FMT), bk_slot_label($b), $b['id']]);
+        $pdo->exec('COMMIT');
+    } catch (Throwable $e) {
+        try { $pdo->exec('ROLLBACK'); } catch (Throwable) {}
+        throw $e;
+    }
+    $nb = bk_get((int)$b['id']);
+    bk_log((int)$b['id'], 'Déplacée : ' . bk_slot_label($b) . ' → ' . bk_slot_label($nb));
+    // Google Agenda : mêmes identifiants d'événements (mis à jour) ; segments en trop supprimés
+    if (gcal_write_enabled()) {
+        $old = count(cal_segments($b['start_at'], $b['end_at']));
+        $new = count(cal_segments($nb['start_at'], $nb['end_at']));
+        try {
+            for ($i = $new; $i < $old; $i++) {
+                gcal_delete_event(gcal_event_id('booking', $b['ref'], $i));
+            }
+        } catch (Throwable $e) {
+            bk_log((int)$b['id'], 'Google Agenda : ancien événement non supprimé (' . $e->getMessage() . ')');
+        }
+        gcal_sync_booking($nb);
+    }
+    return $nb;
 }
 
 function bk_log(int $id, string $msg): void

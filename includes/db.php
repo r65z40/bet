@@ -288,6 +288,7 @@ function install_schema(PDO $pdo): void
         'promo_code' => "TEXT NOT NULL DEFAULT ''", 'promo_ht' => 'REAL NOT NULL DEFAULT 0',
         'gift_code' => "TEXT NOT NULL DEFAULT ''", 'gift_amount' => 'REAL NOT NULL DEFAULT 0', 'gift_restored' => 'INTEGER NOT NULL DEFAULT 0',
         'amount_due' => 'REAL', 'reminder_sent_at' => 'TEXT', 'review_sent_at' => 'TEXT',
+        'moved_at' => 'TEXT', 'moved_from' => "TEXT NOT NULL DEFAULT ''",
     ] as $col => $def) {
         if (!in_array($col, $bcols, true)) {
             $pdo->exec("ALTER TABLE bookings ADD COLUMN $col $def");

@@ -243,7 +243,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 12;
 
 /**
  * Sections de la page d'accueil dont l'ordre et l'affichage se règlent dans

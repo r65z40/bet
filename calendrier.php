@@ -11,8 +11,7 @@ $events = '';
 $st = db()->prepare("SELECT * FROM bookings WHERE status = 'confirmed' AND end_at > ? ORDER BY start_at");
 $st->execute([bk_now()->modify('-6 months')->format(BK_FMT)]);
 foreach ($st as $b) {
-    $desc = $b['event_type'] . ' — ' . $b['guests'] . " pers.\n" . $b['first_name'] . ' ' . $b['last_name'] . ' — ' . $b['phone'] . ' — ' . $b['email']
-        . "\nTotal : " . money2((float)$b['total_ttc']) . ' TTC — réf. ' . $b['ref'] . "\n" . bk_url('admin/reservation.php?id=' . $b['id']);
+    $desc = cal_booking_description($b);
     $segs = cal_segments($b['start_at'], $b['end_at']);
     foreach ($segs as $i => [$s, $e]) {
         $events .= ics_event('rn6-' . $b['ref'] . '-' . $i . '@lasallern6', $s, $e,

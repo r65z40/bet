@@ -95,6 +95,9 @@ td.n,th.n{text-align:right;white-space:nowrap}
   </table>
 <?php endif; ?>
   <span class="paid">✓ Payée le <?= e(bk_dt($b['paid_at'])->format('d/m/Y')) ?> par <?= e((float)$b['gift_amount'] > 0 && $b['provider'] !== 'giftcard' ? 'bon cadeau et ' . provider_label($b['provider']) : provider_label($b['provider'])) ?></span>
+<?php if (!empty($b['moved_at'])): ?>
+  <p class="muted" style="margin-top:14px">Date de la location modifiée d’un commun accord le <?= e(bk_dt($b['moved_at'])->format('d/m/Y')) ?> : <strong><?= e(bk_slot_label($b)) ?></strong> (au lieu de : <?= e($b['moved_from']) ?>). Montant inchangé.</p>
+<?php endif; ?>
 <?php else: ?>
   <table>
     <tr><th>Désignation</th><th class="n">Total HT</th></tr>

@@ -282,3 +282,22 @@ function bk_mail_cancelled(array $b, float $refund): bool
     bk_log((int)$b['id'], $ok ? 'E-mail d’annulation envoyé' : 'ÉCHEC de l’envoi de l’e-mail d’annulation');
     return $ok;
 }
+
+/** Bloc « ancienne date → nouvelle date » de l'e-mail de déplacement. */
+function mail_move_block(string $old, string $new): string
+{
+    return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 16px;border-collapse:collapse">'
+        . '<tr><td style="padding:10px 14px;background:#fdecea;border-radius:8px 8px 0 0;color:#8a1c12"><span style="font-size:12px;text-transform:uppercase;letter-spacing:.04em">Ancienne date</span><br><s>' . e($old) . '</s></td></tr>'
+        . '<tr><td style="padding:10px 14px;background:#e7f6ec;border-radius:0 0 8px 8px;color:#14532d"><span style="font-size:12px;text-transform:uppercase;letter-spacing:.04em">Nouvelle date</span><br><strong>' . e($new) . '</strong></td></tr></table>';
+}
+
+function bk_mail_moved(array $b, string $oldLabel): bool
+{
+    [$vars, $blocks] = mail_booking_data($b);
+    $vars['ancienne_date'] = $oldLabel;
+    $blocks['changement'] = mail_move_block($oldLabel, bk_slot_label($b));
+    [$subject, $html] = mail_from_template('deplacement', $vars, $blocks);
+    $ok = send_mail($b['email'], $subject, $html, s('contact_email'));
+    bk_log((int)$b['id'], $ok ? 'E-mail de changement de date envoyé au client' : 'ÉCHEC de l’e-mail de changement de date : ' . mail_last_error());
+    return $ok;
+}
