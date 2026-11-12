@@ -209,6 +209,13 @@ function visitor_id(): string
     return substr(hash('sha256', $salt . date('Y-m-d') . ($_SERVER['REMOTE_ADDR'] ?? '') . ($_SERVER['HTTP_USER_AGENT'] ?? '')), 0, 16);
 }
 
+/** Empreinte anonyme de l'adresse IP seule (sel quotidien), pour les limites anti-abus. */
+function ip_fingerprint(): string
+{
+    visitor_id(); // garantit l'existence du sel
+    return 'ip' . substr(hash('sha256', s('_stats_salt') . date('Y-m-d') . ($_SERVER['REMOTE_ADDR'] ?? '')), 0, 14);
+}
+
 function track_visit(string $page): void
 {
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';

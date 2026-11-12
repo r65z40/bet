@@ -47,7 +47,7 @@ $pendingCount = (int)$kpi("SELECT COUNT(*) FROM bookings WHERE status = 'pending
 admin_header('Réservations', 'resa');
 ?>
 <h1>Réservations</h1>
-<p class="intro"><a href="../reservation.php" target="_blank">Page de réservation ↗</a> · <a href="reglages.php">Réglages</a> · <a href="options.php">Options</a> · <a href="reglages.php?s=agenda">Agenda Google & iPhone</a></p>
+<p class="intro"><a href="../reservation.php" target="_blank">Voir la page de réservation ↗</a></p>
 
 <?php if (!payment_providers()): ?><div class="flash flash-err">Aucun moyen de paiement n’est configuré : <a href="reglages.php?s=paiement">activer Stripe ou PayPal</a>.</div><?php endif; ?>
 <?php if (s('_gcal_error') !== ''): ?><div class="flash flash-err">Agenda Google : <?= e(s('_gcal_error')) ?> (<a href="reglages.php?s=agenda">vérifier</a>)</div><?php endif; ?>
@@ -55,8 +55,8 @@ admin_header('Réservations', 'resa');
 
 <div class="kpis">
   <div class="kpi"><b><?= $upcoming ?></b><span>Réservations à venir</span></div>
-  <div class="kpi"><b><?= money($caMonth) ?></b><span>Encaissé ce mois (TTC, remboursements déduits)</span></div>
-  <div class="kpi"><b><?= money($caYear) ?></b><span>Encaissé en <?= bk_now()->format('Y') ?></span></div>
+  <div class="kpi"><b><?= money($caMonth) ?></b><span>Encaissé ce mois</span></div>
+  <div class="kpi"><b><?= money($caYear) ?></b><span>Encaissé en <?= bk_now()->format('Y') ?> <small>(TTC, remboursements déduits)</small></span></div>
   <div class="kpi"><b><?= $pendingCount ?></b><span>Paiements en cours</span></div>
 </div>
 
@@ -93,7 +93,7 @@ admin_header('Réservations', 'resa');
     <tr><th>Date</th><th>Client</th><th>Événement</th><th class="num">Total TTC</th><th>Statut</th><th></th></tr>
     <?php foreach ($rows as $b): [$sl, $sc] = BOOKING_STATUSES[$b['status']] ?? ['?', 'gray']; $s = bk_dt($b['start_at']); ?>
     <tr>
-      <td><strong><?= e(fr_date($s)) ?></strong><br><small class="muted"><?= $b['mode'] === 'day' ? '24 h dès ' . $s->format('H\hi') : $s->format('H\hi') . '–' . bk_dt($b['end_at'])->format('H\hi') ?></small></td>
+      <td><strong><?= e(fr_date($s)) ?></strong><br><small class="muted"><?= $b['mode'] === 'day' ? (int)$b['hours'] . ' h dès ' . $s->format('H\hi') : $s->format('H\hi') . '–' . bk_dt($b['end_at'])->format('H\hi') ?></small></td>
       <td><?= e($b['first_name'] . ' ' . $b['last_name']) ?><?= $b['company'] ? '<br><small class="muted">' . e($b['company']) . '</small>' : '' ?><br><small class="muted"><?= e($b['phone']) ?></small></td>
       <td><?= e($b['event_type']) ?><br><small class="muted"><?= (int)$b['guests'] ?> pers. · <?= e($b['ref']) ?></small></td>
       <td class="num"><?= money2((float)$b['total_ttc']) ?><?= (float)$b['refunded_amount'] > 0 ? '<br><small class="muted">remb. ' . money2((float)$b['refunded_amount']) . '</small>' : '' ?></td>

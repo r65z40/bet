@@ -39,6 +39,15 @@ if ($a === 'month') {
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     out(['error' => 'Méthode non autorisée.'], 405);
 }
+// Les appels doivent venir de la page de réservation du site (protection contre les envois
+// depuis un autre site : JSON obligatoire, donc pré-vérification CORS par le navigateur).
+if (!str_starts_with(strtolower((string)($_SERVER['CONTENT_TYPE'] ?? '')), 'application/json')) {
+    out(['error' => 'Requête invalide.'], 415);
+}
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+if ($origin !== '' && parse_url($origin, PHP_URL_HOST) !== parse_url('//' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST)) {
+    out(['error' => 'Origine refusée.'], 403);
+}
 $in = json_decode((string)file_get_contents('php://input'), true);
 if (!is_array($in)) {
     out(['error' => 'Requête invalide.'], 400);
@@ -47,6 +56,7 @@ if (!is_array($in)) {
 $req = [
     'mode' => (string)($in['mode'] ?? ''),
     'date' => (string)($in['date'] ?? ''),
+    'days' => (int)($in['days'] ?? 1),
     'start' => (string)($in['start'] ?? ''),
     'hours' => (float)($in['hours'] ?? 0),
     'guests' => (int)($in['guests'] ?? 0),
@@ -89,9 +99,15 @@ if ($a === 'book') {
 
     // Anti-abus : pas plus de 3 réservations non payées par visiteur et par heure
     $st = db()->prepare("SELECT COUNT(*) FROM bookings WHERE visitor = ? AND status IN ('pending','expired') AND created_at > ?");
-    $st->execute([visitor_id(), bk_now()->modify('-1 hour')->format(BK_FMT)]);
+    $st->execute([ip_fingerprint(), bk_now()->modify('-1 hour')->format(BK_FMT)]);
     if ((int)$st->fetchColumn() >= 3) {
         out(['errors' => ['Trop de tentatives de réservation. Réessayez dans une heure ou contactez-nous.']], 429);
+    }
+    // Plafond global : empêche de bloquer tout le calendrier avec de fausses réservations non payées
+    $st = db()->prepare("SELECT COUNT(*) FROM bookings WHERE status = 'pending' AND hold_until > ?");
+    $st->execute([bk_now()->format(BK_FMT)]);
+    if ((int)$st->fetchColumn() >= 15) {
+        out(['errors' => ['Beaucoup de réservations sont en cours de paiement. Réessayez dans quelques minutes.']], 429);
     }
 
     gcal_sync_if_needed(time() - (int)s('_gcal_last_try') > 120); // agenda Google relu juste avant de bloquer le créneau

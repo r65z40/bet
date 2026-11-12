@@ -55,22 +55,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('reglages.php?s=' . urlencode($current));
 }
 
-admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : 'resa');
+admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : 'reglages');
 ?>
-<h1>Réglages des réservations</h1>
-<p class="intro">Tout ce qui concerne la réservation en ligne. Les prix se saisissent <strong>HT</strong> ; le site affiche et encaisse le <strong>TTC</strong>.</p>
+<h1><?= $current === 'tarifs' ? 'Tarifs & options' : 'Réglages des réservations' ?></h1>
+<p class="intro"><?= $current === 'tarifs' ? 'Prix des journées saisis <strong>HT</strong> (TTC indiqué dessous) ; location à l’heure saisie <strong>TTC</strong>. Le site affiche et encaisse le TTC.' : 'Horaires, paiement, e-mails, agenda, factures et conditions de location.' ?></p>
 
+<?php if ($current === 'tarifs'): ?>
+<nav class="tabs"><a href="reglages.php?s=tarifs" class="on">Prix de location</a><a href="options.php">Options payantes</a></nav>
+<div>
+  <div>
+<?php else: ?>
 <div class="layout">
   <aside class="side">
-    <?php foreach ($sections as $key => $sec): ?>
+    <?php foreach ($sections as $key => $sec): if ($key === 'tarifs') continue; ?>
       <a href="?s=<?= e($key) ?>" class="<?= $key === $current ? 'on' : '' ?>"><?= e($sec['title']) ?></a>
     <?php endforeach; ?>
-    <a href="options.php">Options payantes</a>
-    <h3>Liens</h3>
-    <a href="reservations.php">← Réservations</a>
-    <a href="../reservation.php" target="_blank">Page de réservation ↗</a>
   </aside>
   <div>
+<?php endif; ?>
 <?php if ($current === 'paiement'): ?>
     <div class="hint">
       <strong>Adresse du webhook Stripe</strong> (à copier dans Stripe › Développeurs › Webhooks) :<br><code><?= e(bk_url('stripe-webhook.php')) ?></code><br>
@@ -125,21 +127,23 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
 
 <?php if ($current === 'tarifs'): ?>
     <div class="card">
-      <h2>Simulation des prix à l’heure (TTC)</h2>
-      <p class="muted">Avec les réglages enregistrés. Vérifiez qu’une durée plus longue n’est jamais moins chère qu’une durée plus courte.</p>
+      <h2>Simulation des prix (TTC, ce que voit le client)</h2>
+      <p class="muted">Avec les réglages enregistrés. Location à l’heure : la colonne « barème » est le prix calculé ; les jours appliquent le plafond (prix de la journée).</p>
       <div style="overflow-x:auto"><table>
-        <tr><th>Durée</th><?php foreach (['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as $d): ?><th class="num"><?= $d ?></th><?php endforeach; ?></tr>
+        <tr><th>Durée</th><th class="num">Barème</th><?php foreach (['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] as $d): ?><th class="num"><?= $d ?></th><?php endforeach; ?></tr>
         <?php $ref = bk_now()->modify('monday next week');
         $maxH = (strtotime('2000-01-01 ' . s('bk_hour_close')) - strtotime('2000-01-01 ' . s('bk_hour_open'))) / 3600;
-        $prev = [];
         for ($h = bk_num('bk_min_hours', 2); $h <= $maxH; $h++): ?>
-          <tr><td><?= e(fr_hours($h)) ?> <small class="muted">×<?= e(rating_label((string)bk_coef($h))) ?></small></td>
-          <?php for ($i = 1; $i <= 7; $i++): $p = ttc(bk_rental_price('hour', $ref->modify('+' . ($i - 1) . ' days'), $h)); $drop = isset($prev[$i]) && $p < $prev[$i]; $prev[$i] = $p; ?>
-            <td class="num" <?= $drop ? 'style="color:#b42318;font-weight:700" title="Moins cher que la durée précédente"' : '' ?>><?= money2($p) ?></td>
+          <tr><td><?= e(fr_hours($h)) ?> <small class="muted">(<?= money2(bk_hour_price_ttc($h) / $h) ?>/h)</small></td><td class="num"><?= money(bk_hour_price_ttc($h)) ?></td>
+          <?php for ($i = 1; $i <= 7; $i++): $p = ttc(bk_rental_price('hour', $ref->modify('+' . ($i - 1) . ' days'), $h)); $capped = $p < bk_hour_price_ttc($h) - 0.01; ?>
+            <td class="num" <?= $capped ? 'style="color:#617083" title="Plafonné au prix de la journée"' : '' ?>><?= money2($p) ?><?= $capped ? '*' : '' ?></td>
           <?php endfor; ?></tr>
         <?php endfor; ?>
-        <tr><td><strong>24 h</strong></td><?php for ($i = 1; $i <= 7; $i++): ?><td class="num"><strong><?= money2(ttc(bk_day_price($i))) ?></strong></td><?php endfor; ?></tr>
+        <?php for ($n = 1; $n <= bk_max_days(); $n++): ?>
+          <tr><td><strong><?= 24 * $n ?> h</strong> <small class="muted">dès ce jour</small></td><td></td><?php for ($i = 1; $i <= 7; $i++): ?><td class="num"><strong><?= money2(ttc(bk_rental_price('day', $ref->modify('+' . ($i - 1) . ' days'), 24 * $n, $n))) ?></strong></td><?php endfor; ?></tr>
+        <?php endfor; ?>
       </table></div>
+      <p class="muted" style="font-size:.85rem">* plafonné au prix de la journée de ce jour : au-delà, réserver la journée revient au même prix.</p>
     </div>
 <?php endif; ?>
   </div>

@@ -62,7 +62,7 @@ admin_header('Tableau de bord', 'index');
   <?php if (!$nextBookings): ?><p class="muted">Aucune réservation à venir.</p><?php else: ?>
   <table style="margin-top:8px">
     <?php foreach ($nextBookings as $nb): ?>
-      <tr><td><strong><?= e(fr_date(bk_dt($nb['start_at']))) ?></strong> <span class="muted"><?= $nb['mode'] === 'day' ? '24 h' : e(substr($nb['start_at'], 11, 5) . '–' . substr($nb['end_at'], 11, 5)) ?></span></td>
+      <tr><td><strong><?= e(fr_date(bk_dt($nb['start_at']))) ?></strong> <span class="muted"><?= $nb['mode'] === 'day' ? (int)$nb['hours'] . ' h' : e(substr($nb['start_at'], 11, 5) . '–' . substr($nb['end_at'], 11, 5)) ?></span></td>
         <td><?= e($nb['first_name'] . ' ' . $nb['last_name']) ?> — <?= e($nb['event_type']) ?>, <?= (int)$nb['guests'] ?> pers.</td>
         <td class="num"><?= money2((float)$nb['total_ttc']) ?></td><td><a href="reservation.php?id=<?= (int)$nb['id'] ?>">Ouvrir</a></td></tr>
     <?php endforeach; ?>

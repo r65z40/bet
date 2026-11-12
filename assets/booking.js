@@ -13,7 +13,7 @@
   const addMonths = (ym, n) => { const [y, m] = ym.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
   const isoDow = d => (d.getDay() + 6) % 7 + 1;
 
-  const st = { mode: null, month: C.today, date: null, start: null, hours: null, total: null, quoteOk: false };
+  const st = { mode: null, days: 1, month: C.today, date: null, start: null, hours: null, total: null, quoteOk: false };
   const cache = {};
   const maxMonth = addMonths(C.today, C.maxMonths);
 
@@ -24,11 +24,27 @@
     st.date = st.start = st.hours = null;
     $('#step2').classList.remove('locked');
     $('#legendPartial').hidden = st.mode !== 'hour';
+    $('#daysPick').hidden = st.mode !== 'day' || C.maxDays < 2;
     renderCal();
     updateSteps();
     quote();
     if (window.innerWidth < 980) $('#step2').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }));
+
+  /* ---------- Durée de la location à la journée (24 h, 48 h, 72 h) ---------- */
+  $$('#daysPick .chip').forEach(c => c.addEventListener('click', () => {
+    st.days = parseInt(c.dataset.days, 10);
+    $$('#daysPick .chip').forEach(x => x.setAttribute('aria-pressed', x === c ? 'true' : 'false'));
+    const d = st.date && cache[st.month] && cache[st.month][st.date];
+    if (!d || (d.days || 0) < st.days) st.date = null; // la date choisie ne permet pas cette durée
+    renderCal(); updateSteps(); quote();
+  }));
+  function dayPriceFrom(y, m, d) {
+    let sum = 0;
+    for (let i = 0; i < st.days; i++) sum += C.dayPrices[isoDow(new Date(y, m - 1, d + i))];
+    const disc = C.dayDiscounts[st.days] || 0;
+    return Math.round(sum * (1 - disc / 100) * 100) / 100;
+  }
 
   /* ---------- Étape 2 : calendrier ---------- */
   async function loadMonth(ym, force) {
@@ -41,7 +57,7 @@
 
   function dayState(info) {
     if (!info) return '';
-    if (st.mode === 'day') return info.day ? 'free' : '';
+    if (st.mode === 'day') return (info.days || 0) >= st.days ? 'free' : '';
     if (!Object.keys(info.hours || {}).length) return '';
     return info.full ? 'free' : 'partial';
   }
@@ -66,7 +82,7 @@
       const info = days[key];
       const cls = dayState(info);
       const dow = isoDow(new Date(y, m - 1, d));
-      const price = st.mode === 'day' && cls ? `<small>${eurShort(C.dayPrices[dow])}</small>` : '';
+      const price = st.mode === 'day' && cls ? `<small>${eurShort(dayPriceFrom(y, m, d))}</small>` : '';
       const label = `${daysFr[dow - 1]} ${d} ${monthsFr[m - 1]}${cls ? '' : ' (indisponible)'}`;
       html += `<button type="button" class="day ${cls} ${key === st.date ? 'sel' : ''}" data-date="${key}" ${cls ? '' : 'disabled'} aria-label="${label}" aria-pressed="${key === st.date}">${d}${price}</button>`;
     }
@@ -129,7 +145,7 @@
   function payload() {
     const fd = new FormData(form);
     return {
-      mode: st.mode, date: st.date, start: st.start || '', hours: st.hours || 0,
+      mode: st.mode, date: st.date, days: st.days, start: st.start || '', hours: st.hours || 0,
       guests: parseInt(fd.get('guests'), 10) || 0,
       options: fd.getAll('options').map(Number),
       asso: !!(asso && asso.checked),
@@ -160,8 +176,9 @@
     } catch (e) { return; }
     if (seq !== qSeq) return; // réponse périmée
     const d = new Date(st.date + 'T12:00:00');
+    const e = new Date(d.getTime()); e.setDate(e.getDate() + st.days);
     $('#sumSlot').textContent = st.mode === 'day'
-      ? `24 h — du ${daysFr[isoDow(d) - 1]} ${d.getDate()} ${monthsFr[d.getMonth()]} ${C.dayStart} au lendemain ${C.dayStart}`
+      ? `${24 * st.days} h — du ${daysFr[isoDow(d) - 1]} ${d.getDate()} ${monthsFr[d.getMonth()]} ${C.dayStart} au ${daysFr[isoDow(e) - 1]} ${e.getDate()} ${monthsFr[e.getMonth()]} ${C.dayStart}`
       : `${daysFr[isoDow(d) - 1]} ${d.getDate()} ${monthsFr[d.getMonth()]} — ${st.start.replace(':', 'h')}, ${hoursLabel(st.hours)}`;
     lines.innerHTML = (j.lines || []).map((l, i) => `<li><span>${i === 0 ? 'Location' : esc(l.label)}</span><span>${eur.format(l.ttc)}</span></li>`).join('')
       + (j.discount_ttc > 0 ? `<li><span>Remise association</span><span>− ${eur.format(j.discount_ttc)}</span></li>` : '');

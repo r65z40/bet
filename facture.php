@@ -34,6 +34,7 @@ td.n,th.n{text-align:right;white-space:nowrap}
 .paid{display:inline-block;margin-top:10px;padding:6px 12px;border-radius:999px;background:#e7f6ec;color:#1d7a46;font-weight:bold}
 .foot{margin-top:36px;font-size:11px;color:#617083;border-top:1px solid #e3e7ec;padding-top:12px}
 .print{max-width:800px;margin:0 auto 14px;text-align:right}.print button{padding:10px 16px;border-radius:8px;border:0;background:#071c35;color:#fff;font-weight:bold;cursor:pointer}
+@media(max-width:640px){body{padding:8px;font-size:13px}.doc{padding:22px 16px}.head{flex-direction:column;gap:14px}.head>div:last-child{text-align:left!important}h1{font-size:22px}.tot{width:100%}td,th{padding:8px 4px}}
 @media print{body{background:#fff;padding:0}.doc{box-shadow:none;padding:0}.print{display:none}}
 </style></head><body>
 <div class="print"><button onclick="window.print()">Imprimer / Enregistrer en PDF</button></div>

@@ -34,6 +34,8 @@ for ($i = 1; $i <= 7; $i++) {
 [$dh, $dm] = bk_time('bk_day_start', '10:00');
 $config = [
     'dayStart' => sprintf('%02dh%02d', $dh, $dm),
+    'maxDays' => bk_max_days(),
+    'dayDiscounts' => [2 => bk_multiday_discount(2), 3 => bk_multiday_discount(3)],
     'dayPrices' => $dayPricesTtc,
     'minHours' => $minH,
     'step' => max(15, (int)s('bk_hour_step') ?: 60),
@@ -58,20 +60,25 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
       <div class="step-head"><span class="step-num">1</span><h2>Votre formule</h2></div>
       <div class="formulas">
         <button type="button" class="formula" data-mode="day" aria-pressed="false">
-          <strong>Location 24 h</strong>
-          <span>De <?= e($config['dayStart']) ?> à <?= e($config['dayStart']) ?> le lendemain</span>
-          <em>à partir de <?= money(min($dayPricesTtc)) ?> TTC</em>
+          <strong>Location à la journée</strong>
+          <span><?= bk_max_days() >= 3 ? '24 h, 48 h ou 72 h' : (bk_max_days() === 2 ? '24 h ou 48 h' : '24 h') ?>, de <?= e($config['dayStart']) ?> à <?= e($config['dayStart']) ?></span>
+          <em>à partir de <?= money(min($dayPricesTtc)) ?> TTC les 24 h</em>
         </button>
         <button type="button" class="formula" data-mode="hour" aria-pressed="false">
           <strong>Location à l’heure</strong>
           <span>Entre <?= e(str_replace(':', 'h', s('bk_hour_open'))) ?> et <?= e(str_replace(':', 'h', s('bk_hour_close'))) ?>, <?= e(fr_hours($minH)) ?> minimum</span>
-          <em>à partir de <?= money($hourFrom) ?> TTC</em>
+          <em>à partir de <?= money($hourFrom) ?> TTC les <?= e(fr_hours($minH)) ?></em>
         </button>
       </div>
     </section>
 
     <section class="card step locked" id="step2">
       <div class="step-head"><span class="step-num">2</span><h2>Votre date</h2></div>
+      <div class="chips" id="daysPick" role="group" aria-label="Durée de la location" hidden>
+        <?php for ($n = 1; $n <= bk_max_days(); $n++): ?>
+          <button type="button" class="chip" data-days="<?= $n ?>" aria-pressed="<?= $n === 1 ? 'true' : 'false' ?>"><?= 24 * $n ?> h<?= $n > 1 ? ' (' . $n . ' jours)' : '' ?><?= bk_multiday_discount($n) > 0 ? ' · −' . e(rating_label((string)bk_multiday_discount($n))) . ' %' : '' ?></button>
+        <?php endfor; ?>
+      </div>
       <div class="cal-head">
         <button type="button" class="cal-nav" id="calPrev" aria-label="Mois précédent">‹</button>
         <strong id="calTitle" aria-live="polite"></strong>

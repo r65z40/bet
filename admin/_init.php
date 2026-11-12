@@ -8,21 +8,36 @@ header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
 header('Cache-Control: no-store');
 
+/**
+ * Menu de l'administration : 4 rubriques, et des sous-onglets uniquement
+ * dans la rubrique ouverte. $active = identifiant de la page courante.
+ */
+const ADMIN_MENU = [
+    'home'  => ['label' => 'Tableau de bord', 'icon' => '🏠', 'href' => 'index.php', 'pages' => ['index' => ['index.php', 'Tableau de bord']]],
+    'resa'  => ['label' => 'Réservations', 'icon' => '📅', 'href' => 'reservations.php', 'pages' => [
+        'resa'     => ['reservations.php', 'Réservations & planning'],
+        'tarifs'   => ['reglages.php?s=tarifs', 'Tarifs & options'],
+        'reglages' => ['reglages.php', 'Réglages'],
+    ]],
+    'site'  => ['label' => 'Contenu du site', 'icon' => '✏️', 'href' => 'textes.php', 'pages' => [
+        'textes'   => ['textes.php', 'Textes'],
+        'photos'   => ['photos.php', 'Photos'],
+        'avis'     => ['avis.php', 'Avis'],
+        'contenus' => ['listes.php', 'Listes & cartes'],
+        'sections' => ['sections.php', 'Ordre des sections'],
+    ]],
+    'stats' => ['label' => 'Statistiques', 'icon' => '📊', 'href' => 'stats.php', 'pages' => ['stats' => ['stats.php', 'Statistiques']]],
+];
+
 function admin_header(string $title, string $active = ''): void
 {
     $admin = current_admin();
-    $menu = [
-        'index'    => ['index.php', '🏠', 'Tableau de bord'],
-        'textes'   => ['textes.php', '✏️', 'Textes'],
-        'sections' => ['sections.php', '⇅', 'Sections'],
-        'contenus' => ['listes.php', '☰', 'Listes & cartes'],
-        'resa'     => ['reservations.php', '📅', 'Réservations'],
-        'tarifs'   => ['reglages.php?s=tarifs', '€', 'Tarifs & options'],
-        'photos'   => ['photos.php', '📷', 'Photos'],
-        'avis'     => ['avis.php', '★', 'Avis'],
-        'stats'    => ['stats.php', '📊', 'Statistiques'],
-        'compte'   => ['compte.php', '🔑', 'Mon compte'],
-    ];
+    $group = '';
+    foreach (ADMIN_MENU as $g => $item) {
+        if (isset($item['pages'][$active])) {
+            $group = $g;
+        }
+    }
     ?><!doctype html>
 <html lang="fr">
 <head>
@@ -31,22 +46,30 @@ function admin_header(string $title, string $active = ''): void
 <meta name="robots" content="noindex, nofollow">
 <title><?= e($title) ?> · Administration <?= e(s('site_name')) ?></title>
 <link rel="icon" href="../favicon.ico">
-<link rel="stylesheet" href="admin.css">
+<link rel="stylesheet" href="admin.css?v=<?= @filemtime(__DIR__ . '/admin.css') ?>">
 </head>
 <body>
 <?php if ($admin): ?>
 <header class="top">
-  <a class="logo" href="index.php"><span class="mark">RN6</span> Administration</a>
-  <nav>
-    <?php foreach ($menu as $key => [$href, $icon, $label]): ?>
-      <a href="<?= e($href) ?>" class="<?= $key === $active ? 'on' : '' ?>"><span aria-hidden="true"><?= $icon ?></span> <?= e($label) ?></a>
+  <a class="logo" href="index.php" aria-label="Tableau de bord"><span class="mark">RN6</span><span class="logo-txt">Admin</span></a>
+  <nav class="main-nav" aria-label="Rubriques">
+    <?php foreach (ADMIN_MENU as $g => $item): ?>
+      <a href="<?= e($item['href']) ?>" class="<?= $g === $group ? 'on' : '' ?>" <?= $g === $group ? 'aria-current="page"' : '' ?>><span aria-hidden="true"><?= $item['icon'] ?></span><span class="lbl"><?= e($item['label']) ?></span></a>
     <?php endforeach; ?>
   </nav>
   <div class="right">
-    <a href="../" target="_blank" rel="noopener">Voir le site ↗</a>
-    <form method="post" action="logout.php"><?= csrf_field() ?><button class="link">Déconnexion</button></form>
+    <a href="../" target="_blank" rel="noopener" title="Voir le site">↗<span class="lbl"> Site</span></a>
+    <a href="compte.php" class="<?= $active === 'compte' ? 'on' : '' ?>" title="Mon compte">🔑<span class="lbl"> Compte</span></a>
+    <form method="post" action="logout.php"><?= csrf_field() ?><button class="link" title="Déconnexion">⏻<span class="lbl"> Quitter</span></button></form>
   </div>
 </header>
+<?php if ($group && count(ADMIN_MENU[$group]['pages']) > 1): ?>
+<nav class="subnav" aria-label="<?= e(ADMIN_MENU[$group]['label']) ?>">
+  <?php foreach (ADMIN_MENU[$group]['pages'] as $key => [$href, $label]): ?>
+    <a href="<?= e($href) ?>" class="<?= $key === $active ? 'on' : '' ?>"><?= e($label) ?></a>
+  <?php endforeach; ?>
+</nav>
+<?php endif; ?>
 <?php endif; ?>
 <main class="<?= $admin ? 'page' : 'auth' ?>">
 <?= render_flash() ?>

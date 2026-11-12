@@ -59,13 +59,18 @@ function gcal_sync_if_needed(bool $force = false): void
 
 function http_get_text(string $url): string
 {
-    if (!preg_match('#^https?://#i', $url)) {
-        throw new RuntimeException('adresse invalide');
+    $allowHttp = getenv('RN6_ALLOW_HTTP_ICS') === '1'; // réservé aux tests locaux
+    if (!preg_match($allowHttp ? '#^https?://#i' : '#^https://#i', $url)) {
+        throw new RuntimeException('l’adresse doit commencer par https://');
+    }
+    $host = (string)parse_url($url, PHP_URL_HOST);
+    if (!$allowHttp && (filter_var($host, FILTER_VALIDATE_IP) || preg_match('/^(localhost|.*\.local|.*\.internal)$/i', $host))) {
+        throw new RuntimeException('adresse non autorisée');
     }
     if (function_exists('curl_init')) {
         $ch = curl_init($url);
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => true, CURLOPT_MAXREDIRS => 3,
-            CURLOPT_TIMEOUT => 10, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS]);
+            CURLOPT_TIMEOUT => 10, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_MAXFILESIZE => 5_000_000]);
         $body = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $err = curl_error($ch);

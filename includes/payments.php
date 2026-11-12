@@ -233,6 +233,20 @@ function paypal_refund(array $b, int $cents): string
  */
 function bk_cancel(array $b, float $amount, bool $notify): float
 {
+    // Verrou exclusif pendant toute l'opération ; la réservation est relue sous verrou.
+    $lock = fopen(DATA_DIR . '/.refund.lock', 'c');
+    flock($lock, LOCK_EX);
+    try {
+        $b = bk_get((int)$b['id']) ?? $b;
+        return bk_cancel_locked($b, $amount, $notify);
+    } finally {
+        flock($lock, LOCK_UN);
+        fclose($lock);
+    }
+}
+
+function bk_cancel_locked(array $b, float $amount, bool $notify): float
+{
     $amount = round(max(0, min($amount, (float)$b['total_ttc'] - (float)$b['refunded_amount'])), 2);
     $refundId = '';
     if ($amount > 0) {

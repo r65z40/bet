@@ -74,46 +74,63 @@ function bk_day_price(int $isoDay): float
     return bk_num('bk_price_' . $isoDay, 0);
 }
 
-/** Règles « moins de X heures = coefficient », triées par X croissant. */
-function bk_coef_rules(): array
+function bk_vat_factor(): float
 {
-    $rules = [];
-    foreach (lines(s('bk_coef_rules')) as $l) {
-        if (preg_match('/^\s*([\d.,]+)\s*[=:;]\s*([\d.,]+)\s*$/', $l, $m)) {
-            $rules[] = [(float)str_replace(',', '.', $m[1]), (float)str_replace(',', '.', $m[2])];
-        }
-    }
-    usort($rules, fn($a, $b) => $a[0] <=> $b[0]);
-    return $rules;
+    return 1 + bk_num('bk_vat_rate', 20) / 100;
 }
 
-function bk_coef(float $hours): float
+/**
+ * Prix TTC de la location à l'heure, avant plafond :
+ * prix de la durée minimum, puis chaque heure supplémentaire un peu moins chère
+ * (« dégressivité » en % par heure). Arrondi à l'euro.
+ */
+function bk_hour_price_ttc(float $hours): float
 {
-    foreach (bk_coef_rules() as [$max, $coef]) {
-        if ($hours < $max) {
-            return $coef;
-        }
+    $minH = bk_num('bk_min_hours', 2);
+    $price = bk_num('bk_hour_first_price', 150);
+    $extra = bk_num('bk_hour_extra_price', 65);
+    $keep = 1 - min(90, max(0, bk_num('bk_hour_degress', 5))) / 100;
+    $rest = max(0, $hours - $minH);
+    for ($k = 0; $rest > 1e-9; $k++) {
+        $part = min(1, $rest);          // une demi-heure compte pour moitié
+        $price += $extra * ($keep ** $k) * $part;
+        $rest -= $part;
     }
-    return 1.0;
+    return round($price);
 }
 
-/** Prix HT de la location seule. */
-function bk_rental_price(string $mode, DateTimeImmutable $start, float $hours): float
+/** Nombre maximum de jours consécutifs réservables (24 h, 48 h, 72 h…). */
+function bk_max_days(): int
 {
-    $day = bk_day_price((int)$start->format('N'));
+    return max(1, min(7, (int)bk_num('bk_max_days', 3)));
+}
+
+/** Remise (%) appliquée à une location de plusieurs jours. */
+function bk_multiday_discount(int $days): float
+{
+    return $days >= 2 ? min(90, max(0, bk_num('bk_discount_' . min($days, 3) . 'd', 0))) : 0.0;
+}
+
+/** Prix HT de la location seule. $days : nombre de journées (mode « day »). */
+function bk_rental_price(string $mode, DateTimeImmutable $start, float $hours, int $days = 1): float
+{
     if ($mode === 'day') {
-        return $day;
+        $sum = 0.0;
+        for ($i = 0; $i < $days; $i++) {
+            $sum += bk_day_price((int)$start->modify("+$i day")->format('N'));
+        }
+        return round($sum * (1 - bk_multiday_discount($days) / 100), 2);
     }
-    $price = round($day * $hours / 24 * bk_coef($hours), 2);
+    $price = round(bk_hour_price_ttc($hours) / bk_vat_factor(), 2);
     if (s('bk_hour_cap') !== '0') {
-        $price = min($price, $day);
+        $price = min($price, bk_day_price((int)$start->format('N')));
     }
     return $price;
 }
 
 /**
  * Devis complet à partir d'une demande. Retourne ['ok' => bool, 'errors' => [], ...].
- * $req : mode (day|hour), date (Y-m-d), start (H:i), hours, guests, options[] (ids), asso (bool)
+ * $req : mode (day|hour), date (Y-m-d), days (journées, mode day), start (H:i), hours, guests, options[] (ids), asso (bool)
  */
 function bk_quote(array $req, ?int $ignoreBooking = null): array
 {
@@ -126,16 +143,24 @@ function bk_quote(array $req, ?int $ignoreBooking = null): array
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !checkdate((int)substr($date, 5, 2), (int)substr($date, 8, 2), (int)substr($date, 0, 4))) {
         return ['ok' => false, 'errors' => ['Choisissez une date.']];
     }
+    $days = 1;
     if ($mode === 'day') {
+        $days = max(1, (int)($req['days'] ?? 1));
+        if ($days > bk_max_days()) {
+            return ['ok' => false, 'errors' => ['Durée non proposée.']];
+        }
         [$h, $mi] = bk_time('bk_day_start', '10:00');
         $start = bk_dt($date)->setTime($h, $mi);
-        $end = $start->modify('+1 day');
-        $hours = 24.0;
+        $end = $start->modify("+$days day");
+        $hours = 24.0 * $days;
     } else {
         if (!preg_match('/^(\d{2}):(\d{2})$/', (string)($req['start'] ?? ''), $m)) {
             return ['ok' => false, 'errors' => ['Choisissez une heure de début.']];
         }
         $hours = (float)($req['hours'] ?? 0);
+        if (!is_finite($hours) || $hours <= 0 || $hours > 24) {
+            return ['ok' => false, 'errors' => ['Durée non valide.']];
+        }
         $start = bk_dt($date)->setTime((int)$m[1], (int)$m[2]);
         $end = $start->modify('+' . (int)round($hours * 60) . ' minutes');
     }
@@ -148,11 +173,12 @@ function bk_quote(array $req, ?int $ignoreBooking = null): array
         $errors[] = 'Le nombre de personnes doit être compris entre 1 et ' . $maxGuests . '.';
     }
 
-    $rental = bk_rental_price($mode, $start, $hours);
+    $rental = bk_rental_price($mode, $start, $hours, $days);
     $lines = [];
     $lines[] = [
         'label' => $mode === 'day'
-            ? 'Location 24 h — ' . fr_date($start) . ' ' . $start->format('H\hi') . ' → ' . fr_date($end) . ' ' . $end->format('H\hi')
+            ? 'Location ' . (24 * $days) . ' h — ' . fr_date($start) . ' ' . $start->format('H\hi') . ' → ' . fr_date($end) . ' ' . $end->format('H\hi')
+                . (bk_multiday_discount($days) > 0 ? ' (remise ' . rating_label((string)bk_multiday_discount($days)) . ' % incluse)' : '')
             : 'Location ' . fr_hours($hours) . ' — ' . fr_date($start) . ' de ' . $start->format('H\hi') . ' à ' . $end->format('H\hi'),
         'qty' => 1, 'unit_ht' => $rental, 'total_ht' => $rental, 'kind' => 'rental',
     ];
@@ -178,7 +204,7 @@ function bk_quote(array $req, ?int $ignoreBooking = null): array
 
     return [
         'ok' => !$errors, 'errors' => $errors,
-        'mode' => $mode, 'start' => $start, 'end' => $end, 'hours' => $hours, 'guests' => $guests,
+        'mode' => $mode, 'days' => $days, 'start' => $start, 'end' => $end, 'hours' => $hours, 'guests' => $guests,
         'lines' => $lines, 'subtotal_ht' => $subtotal, 'discount_ht' => $discount, 'asso' => $asso,
         'total_ht' => $totalHt, 'vat' => round($totalTtc - $totalHt, 2), 'total_ttc' => $totalTtc,
     ];
@@ -265,7 +291,7 @@ function bk_slot_error(string $mode, DateTimeImmutable $start, DateTimeImmutable
 
 /**
  * Disponibilités d'un mois, pour le calendrier public :
- * [ 'Y-m-d' => ['day' => bool, 'hours' => ['08:00' => durée max en h, …]] ou null si non réservable ]
+ * [ 'Y-m-d' => ['day' => bool, 'days' => nb de journées possibles, 'hours' => ['08:00' => durée max en h, …], 'full' => bool] ou null ]
  */
 function bk_month_availability(int $year, int $month): array
 {
@@ -274,7 +300,8 @@ function bk_month_availability(int $year, int $month): array
     $now = bk_now();
     $minStart = $now->modify('+' . (int)bk_num('bk_min_notice_hours', 48) . ' hours');
     $maxStart = $now->modify('+' . (int)bk_num('bk_max_months', 18) . ' months');
-    $busy = bk_busy($first->modify('-2 days'), $last->modify('+3 days'));
+    $maxDays = bk_max_days();
+    $busy = bk_busy($first->modify('-2 days'), $last->modify('+' . ($maxDays + 2) . ' days'));
 
     [$dh, $dm] = bk_time('bk_day_start', '10:00');
     [$oh, $om] = bk_time('bk_hour_open', '08:00');
@@ -286,7 +313,13 @@ function bk_month_availability(int $year, int $month): array
     for ($d = $first; $d <= $last; $d = $d->modify('+1 day')) {
         $key = $d->format('Y-m-d');
         $ds = $d->setTime($dh, $dm);
-        $dayOk = $ds >= $minStart && $ds <= $maxStart && !bk_conflict($ds->getTimestamp(), $ds->modify('+1 day')->getTimestamp(), $busy);
+        $nbDays = 0; // nombre de journées consécutives possibles à partir de ce jour (24 h, 48 h…)
+        if ($ds >= $minStart && $ds <= $maxStart) {
+            while ($nbDays < $maxDays && !bk_conflict($ds->getTimestamp(), $ds->modify('+' . ($nbDays + 1) . ' day')->getTimestamp(), $busy)) {
+                $nbDays++;
+            }
+        }
+        $dayOk = $nbDays > 0;
         $hours = [];
         $close = $d->setTime($ch, $cm);
         for ($t = $d->setTime($oh, $om); $t->modify('+' . (int)round($minH * 60) . ' minutes') <= $close; $t = $t->modify("+$step minutes")) {
@@ -306,7 +339,7 @@ function bk_month_availability(int $year, int $month): array
         }
         $window = ($close->getTimestamp() - $d->setTime($oh, $om)->getTimestamp()) / 3600;
         $full = isset($hours[$d->setTime($oh, $om)->format('H:i')]) && abs($hours[$d->setTime($oh, $om)->format('H:i')] - $window) < 0.01;
-        $out[$key] = ($dayOk || $hours) ? ['day' => $dayOk, 'hours' => $hours, 'full' => $full] : null;
+        $out[$key] = ($dayOk || $hours) ? ['day' => $dayOk, 'days' => $nbDays, 'hours' => $hours, 'full' => $full] : null;
     }
     return $out;
 }
@@ -354,7 +387,7 @@ function bk_create(array $quote, array $customer, string $provider): array
                 $customer['first_name'], $customer['last_name'], $customer['email'], $customer['phone'], $customer['company'], $quote['asso'] ? 1 : 0, $customer['asso_name'],
                 $customer['address'], $customer['zip'], $customer['city'], $customer['message'],
                 json_encode($quote['lines'], JSON_UNESCAPED_UNICODE), $quote['subtotal_ht'], $quote['discount_ht'], $quote['total_ht'], $quote['vat'], $quote['total_ttc'],
-                $provider, $hold->format(BK_FMT), bk_now()->format(BK_FMT), bk_now()->format(BK_FMT), visitor_id(),
+                $provider, $hold->format(BK_FMT), bk_now()->format(BK_FMT), bk_now()->format(BK_FMT), ip_fingerprint(),
             ]);
         $id = (int)$pdo->lastInsertId();
         $pdo->exec('COMMIT');
@@ -492,9 +525,11 @@ function bk_slot_label(array $b): string
 
 function bk_url(string $path): string
 {
+    // Toujours l'adresse configurée dans l'admin : l'en-tête Host envoyé par le navigateur
+    // peut être falsifié et ne doit jamais servir à fabriquer les liens des e-mails ou des paiements.
     $base = rtrim(s('site_url'), '/');
-    if ($base === '' || !empty($_SERVER['HTTP_HOST']) && parse_url($base, PHP_URL_HOST) !== parse_url('//' . $_SERVER['HTTP_HOST'], PHP_URL_HOST)) {
-        // URL réelle du site (utile en test ou si l'adresse configurée diffère)
+    if (!preg_match('#^https?://[^/\s]+#i', $base)) {
+        // Site non configuré (installation locale) : adresse déduite de la requête
         $dir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
         $dir = preg_replace('#/admin$#', '', $dir);
         $base = (is_https() ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $dir;

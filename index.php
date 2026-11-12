@@ -551,7 +551,7 @@ $jsonLd  = [
           <div class="day-price"><strong><?= $jour ?></strong><span><?= money(ttc(bk_day_price($i + 1))) ?></span></div>
 <?php endforeach; ?>
         </div>
-        <p class="pricing-foot" style="margin-top:14px">Location 24 h de <?= e(str_replace(':', 'h', s('bk_day_start'))) ?> à <?= e(str_replace(':', 'h', s('bk_day_start'))) ?>, au tarif du jour d’arrivée. <strong>Location à l’heure</strong> possible de <?= e(str_replace(':', 'h', s('bk_hour_open'))) ?> à <?= e(str_replace(':', 'h', s('bk_hour_close'))) ?> (<?= e(fr_hours(bk_num('bk_min_hours', 2))) ?> minimum) : le prix s’affiche lors de la <a href="reservation.php" data-track="reserver">réservation en ligne</a>.</p>
+        <p class="pricing-foot" style="margin-top:14px">Prix de la <strong>journée (24 h)</strong>, de <?= e(str_replace(':', 'h', s('bk_day_start'))) ?> à <?= e(str_replace(':', 'h', s('bk_day_start'))) ?>, selon le jour d’arrivée<?= bk_max_days() > 1 ? ' — possible aussi sur ' . (bk_max_days() >= 3 ? '48 h ou 72 h' : '48 h') : '' ?>. <strong>Location à l’heure</strong> de <?= e(str_replace(':', 'h', s('bk_hour_open'))) ?> à <?= e(str_replace(':', 'h', s('bk_hour_close'))) ?> : <?= money(bk_hour_price_ttc(bk_num('bk_min_hours', 2))) ?> les <?= e(fr_hours(bk_num('bk_min_hours', 2))) ?>, tarif dégressif au-delà. <a href="reservation.php" data-track="reserver">Voir les disponibilités et réserver</a>.</p>
 
 <?php $infos = items('tarif_infos'); if ($infos): ?>
         <div class="pricing-info" aria-label="Informations tarifaires complémentaires">

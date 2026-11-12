@@ -9,3 +9,4 @@ data/config.php
 data/config.php.*
 data/setup-code.php
 data/.lock
+data/.refund.lock

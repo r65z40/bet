@@ -38,9 +38,9 @@ Dans les textes, `**mot**` affiche le mot en **gras**.
 
 ## Réservation en ligne (remplace SuperSaaS)
 
-Page `reservation.php` : formule **24 h** (heure fixe, tarif du jour d'arrivée) ou **à l'heure** (8 h–21 h, 2 h minimum), calendrier des disponibilités, type d'événement, nombre de personnes, options payantes, remise association, coordonnées, acceptation des conditions, puis **paiement intégral** par **Stripe** (carte) ou **PayPal**.
+Page `reservation.php` : formule **à la journée** (24 h, 48 h ou 72 h, de 10 h à 10 h, chaque journée au tarif de son jour, remise multi-jours possible) ou **à l'heure** (8 h–21 h, 2 h minimum), calendrier des disponibilités, type d'événement, nombre de personnes, options payantes, remise association, coordonnées, acceptation des conditions, puis **paiement intégral** par **Stripe** (carte) ou **PayPal**.
 
-- **Prix** : saisis HT dans *Admin › Tarifs & options*, affichés et encaissés TTC. Location à l'heure = prix du jour × heures ÷ 24 × coefficient (règles modifiables, simulation dans l'admin), plafonnée au prix 24 h.
+- **Prix** : journées saisies HT dans *Admin › Réservations › Tarifs & options*, affichées et encaissées TTC. Location à l'heure saisie TTC : 150 € les 2 h, puis 65 € la 3e heure et −5 % pour chaque heure suivante (arrondi à l'euro), plafonnée au prix de la journée ; tableau de simulation dans l'admin.
 - **Disponibilités** : réservations payées, paiements en cours (créneau bloqué 35 min), blocages manuels et **événements de l'agenda Google** ; **temps mort de 2 h** autour de chacun. Délai minimum 48 h, maximum 18 mois.
 - **Après paiement** : confirmation immédiate, facture numérotée (F2026-0001…), e-mail au client (récapitulatif, facture, « Ajouter à mon agenda ») et alerte au propriétaire.
 - **Admin › Réservations** : liste, planning mensuel, fiche (caution, notes, renvoi d'e-mail), **annulation avec remboursement** automatique Stripe/PayPal (montant proposé selon les conditions d'annulation) et avoir (A2026-0001…), blocage de créneaux.
@@ -94,6 +94,7 @@ Sauvegarder régulièrement **tout le dossier `data/`** (la base `site-xxxx.sqli
 - Base de données au nom aléatoire dans `data/`, dossier interdit d'accès (`.htaccess`), nom stocké dans un fichier PHP non téléchargeable.
 - En-têtes de sécurité (anti-clickjacking, nosniff, HSTS en HTTPS, CSP sur l'administration), erreurs PHP jamais affichées.
 - Statistiques plafonnées (anti-flood) et refus des envois venant d'autres sites.
+- Réservation : prix toujours recalculé par le serveur, montant payé vérifié auprès de Stripe/PayPal, webhook signé, réservation créée sous verrou (pas de double réservation), 3 tentatives non payées max. par IP et par heure, 15 paiements en cours max. au total, API en JSON uniquement et même origine, liens des e-mails construits avec l'adresse configurée (jamais l'en-tête Host), remboursements sous verrou, agenda Google en HTTPS uniquement, CSP sur tout le site.
 - Pour forcer le HTTPS sur tout le site, décommenter le bloc prévu dans `.htaccess`.
 - Mot de passe oublié : supprimer la ligne du compte n'est pas possible sans outil SQLite ; demander de l'aide plutôt que de supprimer la base.
 
