@@ -154,7 +154,7 @@ const BOOKING_SETTINGS = [
             'bk_gcal_details' => ['label' => 'Détails des réservations dans l’agenda', 'type' => 'select', 'default' => 'full', 'options' => [
                 'full' => 'Complets : nom, téléphone, e-mail, montant, lien vers la fiche',
                 'minimal' => 'Sans coordonnées ni montant : nom, type d’événement et nombre de personnes (pour partager l’agenda)',
-            ], 'help' => 'Choisissez « Sans coordonnées » si vous partagez l’agenda avec d’autres personnes. Pour réécrire les événements existants, utilisez ensuite « Tout resynchroniser ».'],
+            ], 'help' => 'Choisissez « Sans coordonnées » si vous partagez l’agenda avec d’autres personnes. Pour mettre à jour les événements déjà présents, cliquez ensuite sur « Écrire toutes les réservations à venir dans l’agenda ».'],
             'bk_cal_split' => ['label' => 'Affichage des locations de plus d’un jour', 'type' => 'select', 'default' => '1', 'options' => [
                 '1' => 'Un bloc par jour (10 h → minuit, puis minuit → 10 h) : remplit la colonne de chaque jour',
                 '0' => 'Un seul événement (affiché en bande « journée entière » en haut)',
