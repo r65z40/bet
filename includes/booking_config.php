@@ -22,7 +22,7 @@ La capacité maximale de la salle est de 120 personnes assises. Le client s’en
 Une caution de 2 × le montant du loyer HT est remise par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie, déduction faite des éventuelles dégradations, du ménage non effectué ou du matériel manquant.
 
 # 6. Annulation par le client
-Toute annulation doit être faite par e-mail. **Au moins 30 jours avant** la date : remboursement de 80 % du montant payé. **Entre 30 et 7 jours avant** : remboursement de 50 %. **Moins de 7 jours avant** : aucun remboursement.
+Toute annulation doit être faite par e-mail. **Au moins 30 jours avant** la date : remboursement intégral du montant payé. **Entre 30 et 7 jours avant** : remboursement de 50 %. **Moins de 7 jours avant** : aucun remboursement.
 
 # 7. Responsabilité et assurance
 Le client est responsable de la salle, du matériel et de ses invités pendant toute la durée de la location. Il doit disposer d’une assurance responsabilité civile couvrant l’événement.
@@ -76,7 +76,7 @@ const BOOKING_SETTINGS = [
     'annulation' => [
         'title' => 'Annulation & conditions',
         'fields' => [
-            'bk_cancel_rules' => ['label' => 'Remboursement en cas d’annulation', 'type' => 'textarea', 'default' => "30 = 80\n7 = 50",
+            'bk_cancel_rules' => ['label' => 'Remboursement en cas d’annulation', 'type' => 'textarea', 'default' => "30 = 100\n7 = 50",
                 'help' => 'Une règle par ligne « au moins X jours avant = % remboursé ». En dessous du plus petit délai : 0 %. Utilisé pour proposer le montant du remboursement dans l’admin.'],
             'bk_cgv' => ['label' => 'Conditions générales de location (page publique)', 'type' => 'textarea', 'default' => BOOKING_DEFAULT_CGV,
                 'help' => 'Texte à faire relire par votre comptable ou un juriste. **gras** autorisé. Les lignes commençant par « # » deviennent des titres.'],

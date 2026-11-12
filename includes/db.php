@@ -392,6 +392,12 @@ function migrate(PDO $pdo): void
     // Lien secret du flux agenda (abonnement depuis l'iPhone / Google Agenda) et de la tâche planifiée
     $set->execute(['bk_ics_token', bin2hex(random_bytes(16))]);
     $set->execute(['bk_cron_token', bin2hex(random_bytes(16))]);
+    // v11 : remboursement intégral au moins 30 jours avant (au lieu de 80 %), si la règle n'a pas été personnalisée
+    if ((int)setting_raw($pdo, '_schema_version') < 11 && setting_raw($pdo, '_seeded') !== null) {
+        $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'bk_cancel_rules' AND replace(value, char(13), '') = ?")->execute(["30 = 100\n7 = 50", "30 = 80\n7 = 50"]);
+        $pdo->prepare("UPDATE settings SET value = replace(value, ?, ?) WHERE key = 'bk_cgv'")
+            ->execute(['**Au moins 30 jours avant** la date : remboursement de 80 % du montant payé.', '**Au moins 30 jours avant** la date : remboursement intégral du montant payé.']);
+    }
     // v10 : les réservations déjà passées ne reçoivent pas de rappel ni de demande d'avis à la mise à jour
     if ((int)setting_raw($pdo, '_schema_version') < 10 && setting_raw($pdo, '_seeded') !== null) {
         $now = date('Y-m-d H:i:s');
