@@ -11,3 +11,8 @@ data/setup-code.php
 data/.lock
 data/.refund.lock
 data/.mailing.lock
+
+# Captures de tests locaux
+*.png
+!logo-rn6.png
+!photos/**
