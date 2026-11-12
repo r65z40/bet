@@ -24,6 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit('Trop de tentatives. Réessayez dans 15 minutes.');
     }
     $user = trim((string)($_POST['username'] ?? ''));
+    $email = trim((string)($_POST['email'] ?? ''));
     $pass = (string)($_POST['password'] ?? '');
     $pass2 = (string)($_POST['password2'] ?? '');
     if ($setupCode === '' || !hash_equals($setupCode, strtoupper(trim((string)($_POST['code'] ?? ''))))) {
@@ -31,13 +32,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'Code d’installation incorrect.';
     } elseif ($user === '' || mb_strlen($user) > 50) {
         $error = 'Choisissez un identifiant.';
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Indiquez une adresse e-mail valide (utile si vous oubliez votre mot de passe).';
     } elseif (mb_strlen($pass) < 10) {
         $error = 'Le mot de passe doit contenir au moins 10 caractères.';
     } elseif ($pass !== $pass2) {
         $error = 'Les deux mots de passe ne correspondent pas.';
     } else {
-        db()->prepare('INSERT INTO admins(username, password_hash) VALUES(?, ?)')
-            ->execute([$user, password_hash($pass, PASSWORD_DEFAULT)]);
+        db()->prepare('INSERT INTO admins(username, email, perms, active, password_hash) VALUES(?, ?, ?, 1, ?)')
+            ->execute([$user, $email, implode(',', array_keys(ADMIN_PERMS)), password_hash($pass, PASSWORD_DEFAULT)]);
         @unlink(SETUP_CODE_FILE);
         login_admin((int)db()->lastInsertId());
         flash('Compte créé. Bienvenue dans l’administration !');
@@ -56,6 +59,7 @@ admin_header('Installation');
     <?= csrf_field() ?>
     <?= field('code', 'Code d’installation (dans data/setup-code.php)', '') ?>
     <?= field('username', 'Identifiant', (string)($_POST['username'] ?? '')) ?>
+    <?= field('email', 'E-mail', (string)($_POST['email'] ?? s('contact_email')), 'email') ?>
     <?= field('password', 'Mot de passe (10 caractères minimum)', '', 'password') ?>
     <?= field('password2', 'Confirmer le mot de passe', '', 'password') ?>
     <button class="btn gold">Créer le compte</button>

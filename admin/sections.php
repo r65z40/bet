@@ -1,7 +1,7 @@
 <?php
 /** Ordre et affichage des sections de la page d'accueil. */
 require __DIR__ . '/_init.php';
-require_admin();
+require_perm('contenu');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();

@@ -1,7 +1,7 @@
 <?php
 /** Statistiques de fréquentation (sans cookie, sans service externe). */
 require __DIR__ . '/_init.php';
-require_admin();
+require_perm('stats');
 stats_purge();
 
 $periods = ['7' => '7 jours', '30' => '30 jours', '90' => '3 mois', '365' => '12 mois'];

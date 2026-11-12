@@ -26,7 +26,10 @@ C'est tout : la base `data/site.sqlite` est créée automatiquement et pré-remp
 | **Photos** | Envoi multiple, légendes, ordre, masquer, supprimer, choix de l'image du bandeau d'accueil, remplacement du plan. Chaque photo est automatiquement réduite et déclinée en WebP (vignette 800 px pour la galerie, 1920 px pour l'agrandissement) |
 | **Avis** | Avis Google / 1001Salles recopiés (nom, note, date, événement, texte), ordre, masquage ; notes globales et liens dans Textes › Avis clients |
 | **Statistiques** | Visiteurs, pages vues, provenance (Google, Facebook…), appareils, jours/heures, clics sur « Réserver », e-mail, Maps, photos… et taux de conversion, avec comparaison à la période précédente |
-| **Mon compte** | Identifiant et mot de passe |
+| **Mon compte** | Identifiant, e-mail et mot de passe |
+| **Équipe** (👥) | Comptes administrateurs : invitation par e-mail, rôles (Administrateur, Gérant, Accueil, Rédacteur) ou droits au choix (réservations, remboursements, tarifs, e-mails, contenu, statistiques, réglages, utilisateurs), désactivation, journal d'activité |
+| **E-mails clients** | Écrire à un client ou à un groupe (réservations à venir, passées, tous les clients) avec variables ({prenom}, {reservation}…), aperçu, test, envoi par lots avec suivi, désinscription automatique (RGPD) |
+| **Modèles d'e-mails** | Objet et texte de chaque e-mail automatique (confirmation, annulation, alerte, invitation, mot de passe oublié) et apparence commune (couleurs, logo, pied de page), avec aperçu |
 | **Tableau de bord** | Bouton pour passer la réservation en ligne **en maintenance** (message personnalisé à la place de l'agenda SuperSaaS, modifiable dans Textes › Réserver en ligne) |
 
 ### Côté visiteurs
@@ -48,7 +51,7 @@ Page `reservation.php` : formule **à la journée** (24 h, 48 h ou 72 h, de 10 h
 
 ### Mise en service (une fois)
 1. *Admin › Réservations › Réglages › Société* : compléter forme juridique, RCS, vérifier SIREN et TVA.
-2. *E-mails* : créer un **mot de passe d'application Gmail** (Compte Google › Sécurité › Validation en deux étapes › Mots de passe des applications), le coller, cliquer « Envoyer un e-mail de test ».
+2. *E-mails* : choisir le fournisseur (Gmail, OVH ou autre serveur SMTP), saisir l'identifiant et le mot de passe (Gmail : **mot de passe d'application** — Compte Google › Sécurité › Validation en deux étapes › Mots de passe des applications ; OVH : mot de passe de la boîte), cliquer « Envoyer un e-mail de test ».
 3. *Paiement* : clé secrète Stripe (`sk_test_…` pour tester), webhook Stripe vers `https://lasallern6.fr/stripe-webhook.php` (événement `checkout.session.completed`), Client ID + Secret PayPal (mode sandbox pour tester). Bouton « Tester la connexion ».
 4. *Agenda Google* : coller l'adresse secrète iCal ; ajouter le lien d'abonnement dans l'iPhone.
 5. *Annulation & conditions* : faire relire les conditions de location.
@@ -88,6 +91,8 @@ Sauvegarder régulièrement **tout le dossier `data/`** (la base `site-xxxx.sqli
 ## Sécurité
 
 - Mots de passe hachés (bcrypt), 10 caractères minimum ; 5 essais ratés par IP = blocage 15 min ; déconnexion après 2 h d'inactivité.
+- Plusieurs comptes avec droits vérifiés sur chaque page et chaque action ; un compte désactivé, supprimé ou dont le mot de passe change est déconnecté partout immédiatement ; il reste toujours au moins un compte « Utilisateurs ».
+- Mot de passe oublié : lien à usage unique valable 1 h (seule son empreinte est stockée), 3 demandes max. par heure et par compte, réponse identique que le compte existe ou non.
 - Installation protégée par un code lisible uniquement par FTP.
 - Jeton anti-CSRF sur tous les formulaires de l'administration ; requêtes SQL préparées ; tout le contenu affiché est échappé.
 - Photos envoyées : type vérifié, renommées au hasard, **réencodées** (suppression des données GPS/EXIF et de tout contenu caché), aucun script exécutable dans `photos/`.

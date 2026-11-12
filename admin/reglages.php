@@ -1,7 +1,8 @@
 <?php
 /** Réglages du système de réservation : horaires, tarifs, annulation, paiement, e-mails, société, agenda. */
 require __DIR__ . '/_init.php';
-require_admin();
+$current = (string)($_GET['s'] ?? 'regles');
+require_perm($current === 'tarifs' ? 'tarifs' : 'reglages');
 
 $sections = BOOKING_SETTINGS;
 $current = (string)($_GET['s'] ?? 'regles');
@@ -14,6 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $do = (string)($_POST['do'] ?? 'save');
     if ($do === 'save') {
         $errors = save_settings_fields($sections[$current]['fields']);
+        admin_log('Réglages modifiés : ' . $sections[$current]['title']);
         foreach ($errors as $err) {
             flash($err, 'err');
         }
@@ -32,8 +34,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('Nouveau lien d’abonnement créé : l’ancien ne fonctionne plus.');
     } elseif ($do === 'testmail') {
         $to = s('bk_notify_email') ?: s('contact_email');
-        $ok = send_mail($to, 'Test d’envoi — ' . s('site_name'), mail_layout('Test réussi', '<p>Les e-mails de réservation partiront correctement.</p>'));
-        flash($ok ? 'E-mail de test envoyé à ' . $to . '. Vérifiez votre boîte (et les spams).' : 'Échec : ' . s('_mail_last_error'), $ok ? 'ok' : 'err');
+        $ok = send_mail($to, 'Test d’envoi — ' . s('site_name'), mail_layout('Test réussi', '<p>Les e-mails du site partiront correctement.</p>'));
+        flash($ok ? 'E-mail de test envoyé à ' . $to . ' depuis ' . mail_from_address() . '. Vérifiez votre boîte (et les spams).' : 'Échec : ' . mail_last_error(), $ok ? 'ok' : 'err');
     } elseif ($do === 'testpay') {
         try {
             if (s('bk_stripe_secret') !== '') {
@@ -80,6 +82,7 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
       <?php if (!payment_providers()): ?><br><strong style="color:#b42318">Aucun moyen de paiement actif : la réservation en ligne affiche un message invitant à vous contacter.</strong><?php endif; ?>
     </div>
 <?php elseif ($current === 'emails'): ?>
+    <div class="hint">Le texte et l’apparence des e-mails envoyés (confirmation, annulation, alertes…) se modifient dans <a href="modeles.php">Modèles d’e-mails</a>.</div>
     <?php if (s('_mail_last_error') !== ''): ?><div class="flash flash-err">Dernière erreur d’envoi : <?= e(s('_mail_last_error')) ?></div><?php endif; ?>
 <?php elseif ($current === 'agenda'): ?>
     <div class="card">
@@ -125,6 +128,26 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
       </div>
     </form>
 
+<?php if ($current === 'emails'): ?>
+    <script>
+    // Préremplissage selon le fournisseur choisi
+    (function () {
+      const presets = { gmail: ['smtp.gmail.com', '587', 'tls'], ovh: ['ssl0.ovh.net', '465', 'ssl'] };
+      const sel = document.getElementById('f_bk_smtp_preset');
+      if (!sel) return;
+      sel.addEventListener('change', () => {
+        const p = presets[sel.value];
+        if (!p) return;
+        document.getElementById('f_bk_smtp_host').value = p[0];
+        document.getElementById('f_bk_smtp_port').value = p[1];
+        document.getElementById('f_bk_smtp_secure').value = p[2];
+      });
+      const method = document.getElementById('f_bk_mail_method');
+      const toggle = () => document.querySelectorAll('[id^="f_bk_smtp_"]').forEach(el => { el.closest('label').style.display = method.value === 'php' ? 'none' : ''; });
+      method.addEventListener('change', toggle); toggle();
+    })();
+    </script>
+<?php endif; ?>
 <?php if ($current === 'tarifs'): ?>
     <div class="card">
       <h2>Simulation des prix (TTC, ce que voit le client)</h2>

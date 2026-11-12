@@ -1,7 +1,7 @@
 <?php
 /** Gestion des avis clients (Google, 1001Salles…) affichés sur la page d'accueil. */
 require __DIR__ . '/_init.php';
-require_admin();
+require_perm('contenu');
 
 /** Nettoie un avis envoyé par le formulaire. */
 function review_input(array $r): array

@@ -5,7 +5,7 @@ if (!empty($_GET['id'])) {
 }
 require __DIR__ . '/includes/bootstrap.php';
 
-$b = !empty($_GET['id']) && current_admin() ? bk_get((int)$_GET['id']) : bk_find((string)($_GET['ref'] ?? ''), (string)($_GET['t'] ?? ''));
+$b = !empty($_GET['id']) && admin_can('reservations') ? bk_get((int)$_GET['id']) : bk_find((string)($_GET['ref'] ?? ''), (string)($_GET['t'] ?? ''));
 $avoir = isset($_GET['avoir']);
 if (!$b || $b['invoice_number'] === '' || ($avoir && $b['credit_number'] === '')) {
     http_response_code(404);

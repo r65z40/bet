@@ -1,7 +1,7 @@
 <?php
 /** Édition des listes (cartes, équipements, tarifs…) : ajout, modification, ordre, masquage. */
 require __DIR__ . '/_init.php';
-require_admin();
+require_perm('contenu');
 
 $groups = ITEM_GROUPS;
 $g = (string)($_GET['g'] ?? 'hero_facts');

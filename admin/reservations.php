@@ -1,7 +1,7 @@
 <?php
 /** Réservations : liste filtrable, planning mensuel, blocages de créneaux. */
 require __DIR__ . '/_init.php';
-require_admin();
+require_perm('reservations');
 bk_expire_pending();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

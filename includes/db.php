@@ -185,6 +185,50 @@ function install_schema(PDO $pdo): void
             summary TEXT NOT NULL DEFAULT ''
         );
         CREATE INDEX IF NOT EXISTS idx_ext_dates ON ext_events(start_at, end_at);
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id INTEGER NOT NULL,
+            token_hash TEXT NOT NULL UNIQUE,
+            purpose TEXT NOT NULL DEFAULT 'reset',
+            expires_at INTEGER NOT NULL,
+            used_at TEXT,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS admin_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id INTEGER,
+            username TEXT NOT NULL DEFAULT '',
+            at TEXT NOT NULL,
+            ip TEXT NOT NULL DEFAULT '',
+            action TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS mail_campaigns (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            subject TEXT NOT NULL,
+            body TEXT NOT NULL,
+            audience TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            total INTEGER NOT NULL DEFAULT 0,
+            sent INTEGER NOT NULL DEFAULT 0,
+            failed INTEGER NOT NULL DEFAULT 0,
+            status TEXT NOT NULL DEFAULT 'sending'
+        );
+        CREATE TABLE IF NOT EXISTS mail_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            campaign_id INTEGER NOT NULL,
+            email TEXT NOT NULL,
+            first_name TEXT NOT NULL DEFAULT '',
+            last_name TEXT NOT NULL DEFAULT '',
+            booking_id INTEGER,
+            status TEXT NOT NULL DEFAULT 'pending',
+            error TEXT NOT NULL DEFAULT '',
+            sent_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_queue ON mail_queue(campaign_id, status);
+        CREATE TABLE IF NOT EXISTS mail_optout (
+            email TEXT PRIMARY KEY,
+            at TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             author TEXT NOT NULL,
@@ -197,6 +241,20 @@ function install_schema(PDO $pdo): void
             visible INTEGER NOT NULL DEFAULT 1
         );
     ");
+
+    // Colonnes ajoutées aux comptes administrateurs (droits, e-mail, désactivation)
+    $cols = array_column($pdo->query('PRAGMA table_info(admins)')->fetchAll(), 'name');
+    foreach ([
+        'email' => "TEXT NOT NULL DEFAULT ''",
+        'perms' => "TEXT NOT NULL DEFAULT 'all'",      // comptes existants : tous les droits
+        'active' => 'INTEGER NOT NULL DEFAULT 1',
+        'pw_changed_at' => 'INTEGER NOT NULL DEFAULT 0',
+        'last_login' => 'TEXT',
+    ] as $col => $def) {
+        if (!in_array($col, $cols, true)) {
+            $pdo->exec("ALTER TABLE admins ADD COLUMN $col $def");
+        }
+    }
 
     if (setting_raw($pdo, '_seeded') === null) {
         seed_content($pdo);
@@ -257,6 +315,18 @@ function migrate(PDO $pdo): void
         foreach ($section['fields'] as $key => $f) {
             $set->execute([$key, $f['default'] ?? '']);
         }
+    }
+    // v7 : compte unique existant sans e-mail → adresse de contact du site (pour « mot de passe oublié »)
+    if ((int)setting_raw($pdo, '_schema_version') < 7 && (int)$pdo->query('SELECT COUNT(*) FROM admins')->fetchColumn() === 1) {
+        $contact = (string)(setting_raw($pdo, 'contact_email') ?? '');
+        if (filter_var($contact, FILTER_VALIDATE_EMAIL)) {
+            $pdo->prepare("UPDATE admins SET email = ? WHERE email = ''")->execute([$contact]);
+        }
+    }
+    // v6 : un site qui envoyait par mail() (pas de mot de passe SMTP) garde ce fonctionnement
+    if (setting_raw($pdo, 'bk_mail_method') === null && setting_raw($pdo, '_seeded') !== null && setting_raw($pdo, 'bk_smtp_user') !== null) {
+        $pdo->prepare("INSERT INTO settings(key, value) VALUES('bk_mail_method', ?)")
+            ->execute([(string)setting_raw($pdo, 'bk_smtp_pass') === '' ? 'php' : 'smtp']);
     }
     foreach (BOOKING_SETTINGS as $section) {
         foreach ($section['fields'] as $key => $f) {

@@ -1,7 +1,7 @@
 <?php
 /** Édition de tous les textes du site, regroupés par section. */
 require __DIR__ . '/_init.php';
-require_admin();
+require_perm('contenu');
 
 $sections = SETTINGS_SCHEMA;
 $current = (string)($_GET['s'] ?? 'general');

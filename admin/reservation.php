@@ -1,7 +1,7 @@
 <?php
 /** Fiche d'une réservation : détails, notes, caution, e-mails, annulation et remboursement. */
 require __DIR__ . '/_init.php';
-require_admin();
+require_perm('reservations');
 
 $b = bk_get((int)($_GET['id'] ?? 0));
 if (!$b) {
@@ -19,11 +19,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ->execute([mb_substr(trim((string)($_POST['admin_notes'] ?? '')), 0, 5000), in_array($dep, ['', 'recue', 'restituee', 'retenue'], true) ? $dep : '', $id]);
         flash('Notes enregistrées.');
     } elseif ($do === 'resend' && $b['status'] === 'confirmed') {
-        flash(bk_mail_confirmation($b) ? 'E-mail de confirmation renvoyé à ' . $b['email'] . '.' : 'Échec de l’envoi : ' . s('_mail_last_error'), s('_mail_last_error') === '' ? 'ok' : 'err');
+        $ok = bk_mail_confirmation($b);
+        flash($ok ? 'E-mail de confirmation renvoyé à ' . $b['email'] . '.' : 'Échec de l’envoi : ' . mail_last_error(), $ok ? 'ok' : 'err');
     } elseif ($do === 'cancel' || $do === 'refund') {
+        if (!admin_can('remboursements')) {
+            flash('Votre compte n’a pas le droit d’annuler ou de rembourser.', 'err');
+            redirect('reservation.php?id=' . $id);
+        }
         $amount = round((float)str_replace([',', ' '], ['.', ''], (string)($_POST['amount'] ?? '0')), 2);
         try {
             $done = bk_cancel($b, $amount, !empty($_POST['notify']));
+            bk_log($id, 'Action effectuée par ' . current_admin()['username']);
+            admin_log(($do === 'cancel' ? 'Annulation' : 'Remboursement') . ' de la réservation ' . $b['ref'] . ($done > 0 ? ' — ' . money2($done) . ' remboursés' : ''));
             flash($done > 0 ? 'Remboursement de ' . money2($done) . ' effectué' . ($do === 'cancel' ? ' et réservation annulée.' : '.') : 'Réservation annulée sans remboursement.');
         } catch (Throwable $e) {
             flash('Opération refusée : ' . $e->getMessage(), 'err');
@@ -66,6 +73,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
         <?php if ($b['invoice_number'] !== ''): ?><a class="btn light sm" href="../facture.php?id=<?= $id ?>" target="_blank">🧾 Facture <?= e($b['invoice_number']) ?></a><?php endif; ?>
         <?php if ($b['credit_number'] !== ''): ?><a class="btn light sm" href="../facture.php?id=<?= $id ?>&amp;avoir=1" target="_blank">🧾 Avoir <?= e($b['credit_number']) ?></a><?php endif; ?>
         <a class="btn light sm" href="<?= e(bk_client_url($b)) ?>" target="_blank">Page client ↗</a>
+        <?php if (admin_can('emails')): ?><a class="btn light sm" href="emails.php?b=<?= $id ?>">✉ Écrire au client</a><?php endif; ?>
       </p>
     </div>
 
@@ -87,7 +95,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
   </div>
 
   <div>
-    <?php if ($b['status'] === 'confirmed' || ($b['status'] === 'cancelled' && $paid && $remaining > 0)): ?>
+    <?php if (admin_can('remboursements') && ($b['status'] === 'confirmed' || ($b['status'] === 'cancelled' && $paid && $remaining > 0))): ?>
     <form method="post" class="card">
       <?= csrf_field() ?>
       <h2><?= $b['status'] === 'confirmed' ? 'Annuler / rembourser' : 'Rembourser à nouveau' ?></h2>

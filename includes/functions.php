@@ -134,44 +134,6 @@ function redirect(string $url): never
 
 /* ---------- Authentification admin ---------- */
 
-function admin_count(): int
-{
-    return (int)db()->query('SELECT COUNT(*) FROM admins')->fetchColumn();
-}
-
-const ADMIN_IDLE_TIMEOUT = 7200; // déconnexion automatique après 2 h d'inactivité
-
-function current_admin(): ?array
-{
-    if (empty($_SESSION['admin_id'])) {
-        return null;
-    }
-    if (time() - (int)($_SESSION['admin_seen'] ?? 0) > ADMIN_IDLE_TIMEOUT) {
-        unset($_SESSION['admin_id'], $_SESSION['admin_seen']);
-        return null;
-    }
-    $_SESSION['admin_seen'] = time();
-    $st = db()->prepare('SELECT id, username FROM admins WHERE id = ?');
-    $st->execute([$_SESSION['admin_id']]);
-    return $st->fetch() ?: null;
-}
-
-function require_admin(): array
-{
-    $admin = current_admin();
-    if (!$admin) {
-        redirect(admin_count() === 0 ? 'setup.php' : 'login.php');
-    }
-    return $admin;
-}
-
-function login_admin(int $id): void
-{
-    session_regenerate_id(true);
-    $_SESSION['admin_id'] = $id;
-    $_SESSION['admin_seen'] = time();
-}
-
 /** Limite : 5 essais ratés par IP sur 15 minutes. */
 function login_blocked(): bool
 {

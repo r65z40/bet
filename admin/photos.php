@@ -1,7 +1,7 @@
 <?php
 /** Gestion de la galerie : envoi, légende, ordre, masquage, suppression, photo d'accueil, plan. */
 require __DIR__ . '/_init.php';
-require_admin();
+require_perm('contenu');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();

@@ -1,7 +1,7 @@
 <?php
 /**
- * Envoi d'e-mails : client SMTP minimal (STARTTLS / SSL, AUTH LOGIN) compatible Gmail,
- * avec repli sur mail() d'OVH si aucun mot de passe SMTP n'est configuré.
+ * Envoi d'e-mails : client SMTP classique (STARTTLS / SSL, AUTH LOGIN ou PLAIN) compatible
+ * Gmail, OVH et tout serveur SMTP standard, ou fonction mail() de l'hébergeur.
  */
 
 function mail_clean(string $s): string
@@ -14,14 +14,38 @@ function mail_header_encode(string $s): string
     return preg_match('/[^\x20-\x7E]/', $s) ? '=?UTF-8?B?' . base64_encode($s) . '?=' : $s;
 }
 
-/** Envoie un e-mail HTML + texte. Retourne true si accepté par le serveur. */
-function send_mail(string $to, string $subject, string $html, ?string $replyTo = null): bool
+/** Dernière erreur d'envoi (pour l'envoi en cours). */
+function mail_last_error(?string $set = null): string
+{
+    static $err = '';
+    if ($set !== null) {
+        $err = $set;
+    }
+    return $err;
+}
+
+function mail_from_address(): string
+{
+    $from = mail_clean(s('bk_mail_from_addr'));
+    if (!filter_var($from, FILTER_VALIDATE_EMAIL)) {
+        $from = mail_clean(s('bk_smtp_user'));
+    }
+    return filter_var($from, FILTER_VALIDATE_EMAIL) ? $from : mail_clean(s('contact_email'));
+}
+
+/**
+ * Envoie un e-mail HTML + texte. Retourne true si accepté par le serveur.
+ * $extraHeaders : en-têtes supplémentaires (ex. List-Unsubscribe), déjà nettoyés.
+ */
+function send_mail(string $to, string $subject, string $html, ?string $replyTo = null, array $extraHeaders = []): bool
 {
     $to = mail_clean($to);
+    mail_last_error('');
     if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+        mail_last_error('adresse invalide');
         return false;
     }
-    $fromAddr = mail_clean(s('bk_smtp_user')) ?: mail_clean(s('contact_email'));
+    $fromAddr = mail_from_address();
     $fromName = mail_clean(s('bk_mail_from')) ?: s('site_name');
     $text = html_to_text($html);
     $boundary = 'b' . bin2hex(random_bytes(8));
@@ -37,6 +61,9 @@ function send_mail(string $to, string $subject, string $html, ?string $replyTo =
     if ($replyTo && filter_var(mail_clean($replyTo), FILTER_VALIDATE_EMAIL)) {
         $headers[] = 'Reply-To: ' . mail_clean($replyTo);
     }
+    foreach ($extraHeaders as $h) {
+        $headers[] = mail_clean($h);
+    }
     $body = "--$boundary\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
         . chunk_split(base64_encode($text))
         . "--$boundary\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n"
@@ -45,7 +72,7 @@ function send_mail(string $to, string $subject, string $html, ?string $replyTo =
     $subjectEnc = mail_header_encode(mail_clean($subject));
 
     try {
-        if (s('bk_smtp_pass') === '' || s('bk_smtp_host') === '') {
+        if (s('bk_mail_method') === 'php' || s('bk_smtp_host') === '') {
             $ok = mail($to, $subjectEnc, $body, implode("\r\n", $headers), '-f' . $fromAddr);
             if (!$ok) {
                 throw new RuntimeException('la fonction mail() du serveur a refusé l’envoi');
@@ -53,9 +80,12 @@ function send_mail(string $to, string $subject, string $html, ?string $replyTo =
         } else {
             smtp_send($fromAddr, $to, array_merge($headers, ['To: ' . $to, 'Subject: ' . $subjectEnc]), $body);
         }
-        save_setting('_mail_last_error', '');
+        if (s('_mail_last_error') !== '') {
+            save_setting('_mail_last_error', '');
+        }
         return true;
     } catch (Throwable $e) {
+        mail_last_error($e->getMessage());
         save_setting('_mail_last_error', date('d/m/Y H:i') . ' — envoi à ' . $to . ' : ' . $e->getMessage());
         return false;
     }
@@ -82,31 +112,43 @@ function smtp_send(string $from, string $to, array $headers, string $body): void
         }
         return [(int)substr($data, 0, 3), trim($data)];
     };
-    $cmd = function (string $c, array $expect) use ($fp, $read): void {
+    $cmd = function (string $c, array $expect) use ($fp, $read): string {
         fwrite($fp, $c . "\r\n");
         [$code, $resp] = $read();
         if (!in_array($code, $expect, true)) {
-            $shown = str_starts_with($c, 'AUTH') || strlen($c) > 60 ? strtok($c, ' ') : $c;
+            $shown = str_starts_with($c, 'AUTH') || strlen($c) > 60 || preg_match('/^[A-Za-z0-9+\/=]{8,}$/', $c) ? strtok($c, ' ') : $c;
+            if ($code === 535 || $code === 534) {
+                throw new RuntimeException('identifiant ou mot de passe SMTP refusé par le serveur (' . $resp . ')');
+            }
             throw new RuntimeException("le serveur a répondu « $resp » à $shown");
         }
+        return $resp;
     };
     try {
         [$code, $resp] = $read();
         if ($code !== 220) {
             throw new RuntimeException("accueil inattendu : $resp");
         }
-        $ehlo = 'EHLO ' . (gethostname() ?: 'localhost');
-        $cmd($ehlo, [250]);
+        $ehlo = 'EHLO ' . (preg_replace('/[^A-Za-z0-9.-]/', '', (string)gethostname()) ?: 'localhost');
+        $caps = $cmd($ehlo, [250]);
         if ($secure === 'tls') {
             $cmd('STARTTLS', [220]);
             if (!stream_socket_enable_crypto($fp, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
                 throw new RuntimeException('échec du chiffrement TLS');
             }
-            $cmd($ehlo, [250]);
+            $caps = $cmd($ehlo, [250]);
         }
-        $cmd('AUTH LOGIN', [334]);
-        $cmd(base64_encode(s('bk_smtp_user')), [334]);
-        $cmd(base64_encode(s('bk_smtp_pass')), [235]);
+        $user = s('bk_smtp_user');
+        if ($user !== '') {
+            // Méthode d'identification annoncée par le serveur : LOGIN, sinon PLAIN
+            if (preg_match('/AUTH[ =][^\n]*\bLOGIN\b/i', $caps) || !preg_match('/AUTH[ =][^\n]*\bPLAIN\b/i', $caps)) {
+                $cmd('AUTH LOGIN', [334]);
+                $cmd(base64_encode($user), [334]);
+                $cmd(base64_encode(s('bk_smtp_pass')), [235]);
+            } else {
+                $cmd('AUTH PLAIN ' . base64_encode("\0" . $user . "\0" . s('bk_smtp_pass')), [235]);
+            }
+        }
         $cmd('MAIL FROM:<' . $from . '>', [250]);
         $cmd('RCPT TO:<' . $to . '>', [250, 251]);
         $cmd('DATA', [354]);
@@ -132,22 +174,28 @@ function html_to_text(string $html): string
 function mail_layout(string $title, string $content): string
 {
     $name = e(s('site_name'));
-    return '<!doctype html><html lang="fr"><body style="margin:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#152131">'
-        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:24px 0"><tr><td align="center">'
+    $head = mail_style('mail_color_header');
+    $headText = mail_contrast($head);
+    $logo = mail_style('mail_show_logo') === '1' && is_file(ROOT . '/logo-rn6.png')
+        ? '<img src="' . e(bk_url('logo-rn6.png')) . '" width="44" height="44" alt="" style="vertical-align:middle;border-radius:50%;background:#fff;margin-right:12px">' : '';
+    $footer = nl2br(e(strtr(mail_style('mail_footer'), mail_common_vars())), false);
+    return '<!doctype html><html lang="fr"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#152131">'
+        . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:24px 8px"><tr><td align="center">'
         . '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:14px;overflow:hidden">'
-        . '<tr><td style="background:#071c35;padding:22px 28px;color:#fff;font-size:20px;font-weight:bold">' . $name . '<div style="font-size:12px;color:#f2d47b;letter-spacing:2px;text-transform:uppercase;margin-top:4px">' . e(s('site_location')) . '</div></td></tr>'
-        . '<tr><td style="padding:28px">'
-        . '<h1 style="font-family:Georgia,serif;color:#071c35;font-size:24px;margin:0 0 16px">' . e($title) . '</h1>'
+        . '<tr><td style="background:' . $head . ';padding:20px 26px;color:' . $headText . ';font-size:20px;font-weight:bold">' . $logo . '<span style="vertical-align:middle">' . $name
+        . '<span style="display:block;font-size:12px;opacity:.8;letter-spacing:2px;text-transform:uppercase;margin-top:3px;font-weight:normal">' . e(s('site_location')) . '</span></span></td></tr>'
+        . '<tr><td style="padding:26px;font-size:15px">'
+        . '<h1 style="font-family:Georgia,serif;color:#071c35;font-size:23px;margin:0 0 16px">' . e($title) . '</h1>'
         . $content
-        . '</td></tr><tr><td style="background:#fbf8f1;padding:18px 28px;font-size:12px;color:#617083">'
-        . $name . ' — ' . e(s('address')) . '<br>' . e(s('contact_email'))
-        . '</td></tr></table></td></tr></table></body></html>';
+        . '</td></tr><tr><td style="background:#fbf8f1;padding:16px 26px;font-size:12px;color:#617083">' . $footer . '</td></tr>'
+        . '</table></td></tr></table></body></html>';
 }
 
 function mail_button(string $url, string $label, bool $primary = true): string
 {
+    $accent = mail_style('mail_color_accent');
     return '<a href="' . e($url) . '" style="display:inline-block;margin:6px 6px 6px 0;padding:12px 18px;border-radius:8px;text-decoration:none;font-weight:bold;'
-        . ($primary ? 'background:#d8a83f;color:#152131' : 'background:#eef2f6;color:#071c35') . '">' . e($label) . '</a>';
+        . ($primary ? 'background:' . $accent . ';color:' . mail_contrast($accent) : 'background:#eef2f6;color:#071c35') . '">' . e($label) . '</a>';
 }
 
 function mail_recap(array $b): string
@@ -169,16 +217,9 @@ function mail_recap(array $b): string
 
 function bk_mail_confirmation(array $b): bool
 {
-    $content = '<p>Bonjour ' . e($b['first_name']) . ',</p><p>Merci pour votre réservation : votre paiement a bien été reçu et <strong>la salle vous est réservée</strong>.</p>'
-        . mail_recap($b)
-        . '<p style="margin:18px 0">' . mail_button(bk_client_url($b), 'Ma réservation et ma facture')
-        . mail_button(gcal_template_url($b), 'Ajouter à Google Agenda', false)
-        . mail_button(bk_client_url($b) . '&ics=1', 'Ajouter à mon agenda (Apple, Outlook)', false) . '</p>'
-        . '<p style="background:#fff8e8;border:1px solid #f0dca8;border-radius:8px;padding:12px 14px;font-size:14px"><strong>Caution :</strong> ' . e(s('bk_deposit_text')) . '</p>'
-        . '<p style="font-size:14px"><strong>Adresse :</strong> ' . e(s('address')) . (s('maps_url') ? ' — <a href="' . e(s('maps_url')) . '">itinéraire</a>' : '') . '</p>'
-        . '<p style="font-size:14px">Une question ? Répondez simplement à cet e-mail.</p>'
-        . '<p style="font-size:12px;color:#617083">Conditions de location : <a href="' . e(bk_url('conditions.php')) . '">' . e(bk_url('conditions.php')) . '</a></p>';
-    $ok = send_mail($b['email'], 'Réservation confirmée — ' . s('site_name') . ' — ' . fr_date(bk_dt($b['start_at']), false), mail_layout('Votre réservation est confirmée', $content), s('contact_email'));
+    [$vars, $blocks] = mail_booking_data($b);
+    [$subject, $html] = mail_from_template('confirmation', $vars, $blocks);
+    $ok = send_mail($b['email'], $subject, $html, s('contact_email'));
     bk_log((int)$b['id'], $ok ? 'E-mail de confirmation envoyé à ' . $b['email'] : 'ÉCHEC de l’envoi de l’e-mail de confirmation (voir Réglages › E-mails)');
     return $ok;
 }
@@ -189,23 +230,23 @@ function bk_mail_admin_new(array $b, ?string $warning = null): bool
     if ($to === '') {
         return false;
     }
-    $content = ($warning ? '<p style="background:#fdecea;color:#b42318;padding:10px 14px;border-radius:8px"><strong>Attention :</strong> ' . e($warning) . '</p>' : '')
-        . '<p><strong>' . e($b['first_name'] . ' ' . $b['last_name']) . '</strong>' . ($b['company'] ? ' (' . e($b['company']) . ')' : '')
-        . '<br>' . e($b['email']) . ' · ' . e($b['phone']) . '</p>'
-        . mail_recap($b)
-        . ($b['message'] !== '' ? '<p><strong>Message :</strong><br>' . nl2br(e($b['message'])) . '</p>' : '')
-        . '<p>' . mail_button(bk_url('admin/reservation.php?id=' . (int)$b['id']), 'Voir dans l’administration') . '</p>';
-    return send_mail($to, 'Nouvelle réservation : ' . fr_date(bk_dt($b['start_at']), false) . ' — ' . $b['last_name'] . ' — ' . money2((float)$b['total_ttc']), mail_layout('Nouvelle réservation payée', $content), $b['email']);
+    [$vars, $blocks] = mail_booking_data($b);
+    $blocks['attention'] = $warning ? '<p style="background:#fdecea;color:#b42318;padding:10px 14px;border-radius:8px"><strong>Attention :</strong> ' . e($warning) . '</p>' : '';
+    $blocks['bouton'] = '<p>' . mail_button(bk_url('admin/reservation.php?id=' . (int)$b['id']), 'Voir dans l’administration') . '</p>';
+    [$subject, $html] = mail_from_template('alerte', $vars, $blocks);
+    return send_mail($to, $subject, $html, $b['email']);
 }
 
 function bk_mail_cancelled(array $b, float $refund): bool
 {
-    $content = '<p>Bonjour ' . e($b['first_name']) . ',</p><p>Votre réservation <strong>' . e($b['ref']) . '</strong> (' . e(bk_slot_label($b)) . ') a été <strong>annulée</strong>.</p>'
-        . ($refund > 0
-            ? '<p>Un remboursement de <strong>' . money2($refund) . '</strong> a été effectué sur votre moyen de paiement. Il apparaît sous 5 à 10 jours selon votre banque.</p>'
-            : '<p>Conformément aux conditions de location, aucun remboursement n’est effectué.</p>')
-        . '<p>' . mail_button(bk_client_url($b), 'Voir ma réservation') . '</p>';
-    $ok = send_mail($b['email'], 'Annulation de votre réservation — ' . s('site_name'), mail_layout('Réservation annulée', $content), s('contact_email'));
+    [$vars, $blocks] = mail_booking_data($b);
+    $vars['montant_rembourse'] = money2($refund);
+    $blocks['remboursement'] = '<p style="margin:0 0 14px">' . ($refund > 0
+        ? 'Un remboursement de <strong>' . money2($refund) . '</strong> a été effectué sur votre moyen de paiement. Il apparaît sous 5 à 10 jours selon votre banque.'
+        : 'Conformément aux conditions de location, aucun remboursement n’est effectué.') . '</p>';
+    $blocks['bouton'] = '<p>' . mail_button(bk_client_url($b), 'Voir ma réservation') . '</p>';
+    [$subject, $html] = mail_from_template('annulation', $vars, $blocks);
+    $ok = send_mail($b['email'], $subject, $html, s('contact_email'));
     bk_log((int)$b['id'], $ok ? 'E-mail d’annulation envoyé' : 'ÉCHEC de l’envoi de l’e-mail d’annulation');
     return $ok;
 }

@@ -13,27 +13,43 @@ header('Cache-Control: no-store');
  * dans la rubrique ouverte. $active = identifiant de la page courante.
  */
 const ADMIN_MENU = [
-    'home'  => ['label' => 'Tableau de bord', 'icon' => '🏠', 'href' => 'index.php', 'pages' => ['index' => ['index.php', 'Tableau de bord']]],
-    'resa'  => ['label' => 'Réservations', 'icon' => '📅', 'href' => 'reservations.php', 'pages' => [
-        'resa'     => ['reservations.php', 'Réservations & planning'],
-        'tarifs'   => ['reglages.php?s=tarifs', 'Tarifs & options'],
-        'reglages' => ['reglages.php', 'Réglages'],
+    'home'  => ['label' => 'Tableau de bord', 'icon' => '🏠', 'pages' => ['index' => ['index.php', 'Tableau de bord', null]]],
+    'resa'  => ['label' => 'Réservations', 'icon' => '📅', 'pages' => [
+        'resa'     => ['reservations.php', 'Réservations & planning', 'reservations'],
+        'tarifs'   => ['reglages.php?s=tarifs', 'Tarifs & options', 'tarifs'],
+        'emails'   => ['emails.php', 'E-mails clients', 'emails'],
+        'reglages' => ['reglages.php', 'Réglages', 'reglages'],
     ]],
-    'site'  => ['label' => 'Contenu du site', 'icon' => '✏️', 'href' => 'textes.php', 'pages' => [
-        'textes'   => ['textes.php', 'Textes'],
-        'photos'   => ['photos.php', 'Photos'],
-        'avis'     => ['avis.php', 'Avis'],
-        'contenus' => ['listes.php', 'Listes & cartes'],
-        'sections' => ['sections.php', 'Ordre des sections'],
+    'site'  => ['label' => 'Contenu du site', 'icon' => '✏️', 'pages' => [
+        'textes'   => ['textes.php', 'Textes', 'contenu'],
+        'photos'   => ['photos.php', 'Photos', 'contenu'],
+        'avis'     => ['avis.php', 'Avis', 'contenu'],
+        'contenus' => ['listes.php', 'Listes & cartes', 'contenu'],
+        'sections' => ['sections.php', 'Ordre des sections', 'contenu'],
     ]],
-    'stats' => ['label' => 'Statistiques', 'icon' => '📊', 'href' => 'stats.php', 'pages' => ['stats' => ['stats.php', 'Statistiques']]],
+    'stats' => ['label' => 'Statistiques', 'icon' => '📊', 'pages' => ['stats' => ['stats.php', 'Statistiques', 'stats']]],
 ];
+
+/** Menu réduit aux pages autorisées pour le compte connecté. */
+function admin_menu(): array
+{
+    $menu = [];
+    foreach (ADMIN_MENU as $g => $item) {
+        $item['pages'] = array_filter($item['pages'], fn($pg) => $pg[2] === null || admin_can($pg[2]));
+        if ($item['pages']) {
+            $item['href'] = reset($item['pages'])[0];
+            $menu[$g] = $item;
+        }
+    }
+    return $menu;
+}
 
 function admin_header(string $title, string $active = ''): void
 {
     $admin = current_admin();
+    $menu = $admin ? admin_menu() : [];
     $group = '';
-    foreach (ADMIN_MENU as $g => $item) {
+    foreach ($menu as $g => $item) {
         if (isset($item['pages'][$active])) {
             $group = $g;
         }
@@ -53,19 +69,20 @@ function admin_header(string $title, string $active = ''): void
 <header class="top">
   <a class="logo" href="index.php" aria-label="Tableau de bord"><span class="mark">RN6</span><span class="logo-txt">Admin</span></a>
   <nav class="main-nav" aria-label="Rubriques">
-    <?php foreach (ADMIN_MENU as $g => $item): ?>
+    <?php foreach ($menu as $g => $item): ?>
       <a href="<?= e($item['href']) ?>" class="<?= $g === $group ? 'on' : '' ?>" <?= $g === $group ? 'aria-current="page"' : '' ?>><span aria-hidden="true"><?= $item['icon'] ?></span><span class="lbl"><?= e($item['label']) ?></span></a>
     <?php endforeach; ?>
   </nav>
   <div class="right">
     <a href="../" target="_blank" rel="noopener" title="Voir le site">↗<span class="lbl"> Site</span></a>
-    <a href="compte.php" class="<?= $active === 'compte' ? 'on' : '' ?>" title="Mon compte">🔑<span class="lbl"> Compte</span></a>
+    <?php if (admin_can('utilisateurs')): ?><a href="utilisateurs.php" class="<?= $active === 'utilisateurs' ? 'on' : '' ?>" title="Utilisateurs et droits">👥<span class="lbl"> Équipe</span></a><?php endif; ?>
+    <a href="compte.php" class="<?= $active === 'compte' ? 'on' : '' ?>" title="Mon compte (<?= e($admin['username']) ?>)">🔑<span class="lbl"> <?= e($admin['username']) ?></span></a>
     <form method="post" action="logout.php"><?= csrf_field() ?><button class="link" title="Déconnexion">⏻<span class="lbl"> Quitter</span></button></form>
   </div>
 </header>
-<?php if ($group && count(ADMIN_MENU[$group]['pages']) > 1): ?>
-<nav class="subnav" aria-label="<?= e(ADMIN_MENU[$group]['label']) ?>">
-  <?php foreach (ADMIN_MENU[$group]['pages'] as $key => [$href, $label]): ?>
+<?php if ($group && count($menu[$group]['pages']) > 1): ?>
+<nav class="subnav" aria-label="<?= e($menu[$group]['label']) ?>">
+  <?php foreach ($menu[$group]['pages'] as $key => [$href, $label]): ?>
     <a href="<?= e($href) ?>" class="<?= $key === $active ? 'on' : '' ?>"><?= e($label) ?></a>
   <?php endforeach; ?>
 </nav>

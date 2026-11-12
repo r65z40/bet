@@ -1,7 +1,7 @@
 <?php
 /** Options payantes proposées lors de la réservation (aussi affichées dans la section Tarifs de l'accueil). */
 require __DIR__ . '/_init.php';
-require_admin();
+require_perm('tarifs');
 
 function option_input(array $r): array
 {
@@ -52,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('Options enregistrées.');
     }
     $pdo->commit();
+    admin_log('Options payantes modifiées');
     redirect('options.php');
 }
 
