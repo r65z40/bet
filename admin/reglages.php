@@ -185,7 +185,20 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
       </div>
     </form>
 
-<?php if ($current === 'emails'): ?>
+<?php if ($current === 'emails'): $logs = db()->query('SELECT * FROM mail_log ORDER BY id DESC LIMIT 30')->fetchAll(); ?>
+    <div class="card">
+      <h2>Derniers e-mails envoyés</h2>
+      <p class="muted" style="margin-top:-6px">« Accepté » = le serveur d’envoi a pris l’e-mail en charge. S’il n’arrive pas, il est bloqué ou classé en indésirables chez le destinataire.</p>
+      <?php if (!$logs): ?><p class="muted">Aucun pour l’instant.</p><?php else: ?>
+      <div style="overflow-x:auto"><table>
+        <tr><th>Date</th><th>Destinataire</th><th>Objet</th><th>Résultat</th></tr>
+        <?php foreach ($logs as $l): ?>
+          <tr><td style="white-space:nowrap"><?= e(date('d/m H:i', strtotime($l['at']))) ?></td><td><?= e($l['to_addr']) ?></td><td><?= e($l['subject']) ?></td>
+            <td style="color:<?= $l['ok'] ? '#1d7a46' : '#b42318' ?>;font-weight:600"><?= $l['ok'] ? '✓ Accepté' : '✕ Échec' ?><br><small class="muted" style="font-weight:400;word-break:break-word"><?= e($l['info']) ?></small></td></tr>
+        <?php endforeach; ?>
+      </table></div>
+      <?php endif; ?>
+    </div>
     <script>
     // Préremplissage selon le fournisseur choisi
     (function () {

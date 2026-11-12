@@ -69,6 +69,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $cid = mailing_create($form['audience'], $form['subject'], $form['body'], $recipients);
         admin_log('Envoi d’e-mail « ' . $form['subject'] . ' » à ' . count($recipients) . ' destinataire(s)');
         unset($_SESSION['mail_draft']);
+        // Envoi immédiat du premier lot (un e-mail à un client part donc tout de suite) ;
+        // les envois plus gros continuent sur la page de suivi, ou en arrière-plan.
+        $c = mailing_process($cid);
+        if ($c['remaining'] === 0) {
+            flash($c['failed'] ? 'Échec de l’envoi : voir le détail ci-dessous.' : 'E-mail envoyé (' . $c['sent'] . ' destinataire(s)). Le détail ci-dessous montre la réponse du serveur d’envoi.', $c['failed'] ? 'err' : 'ok');
+            redirect('emails.php?id=' . $cid);
+        }
         redirect('emails.php?id=' . $cid . '&run=1');
     }
     redirect('emails.php?apercu=1');
@@ -137,7 +144,7 @@ admin_header('E-mails clients', 'emails');
     <?php $q = db()->prepare('SELECT * FROM mail_queue WHERE campaign_id = ? ORDER BY id LIMIT 2000'); $q->execute([$id]);
     foreach ($q as $r): $col = ['sent' => '#1d7a46', 'failed' => '#b42318', 'skipped' => '#617083'][$r['status']] ?? '#7a5a12'; ?>
       <tr><td><?= e($r['email']) ?></td><td><?= e(trim($r['first_name'] . ' ' . $r['last_name'])) ?></td>
-        <td style="color:<?= $col ?>;font-weight:600"><?= e(['sent' => 'Envoyé', 'failed' => 'Échec', 'skipped' => 'Ignoré', 'pending' => 'En attente'][$r['status']] ?? $r['status']) ?><?= $r['error'] !== '' ? '<br><small class="muted" style="font-weight:400">' . e($r['error']) . '</small>' : '' ?></td></tr>
+        <td style="color:<?= $col ?>;font-weight:600"><?= e(['sent' => 'Envoyé', 'failed' => 'Échec', 'skipped' => 'Ignoré', 'pending' => 'En attente'][$r['status']] ?? $r['status']) ?><?= $r['error'] !== '' ? '<br><small class="muted" style="font-weight:400;word-break:break-word">' . e($r['error']) . '</small>' : '' ?></td></tr>
     <?php endforeach; ?>
   </table></div>
   <details style="margin-top:14px"><summary>Message envoyé</summary><div style="background:#f4f6f8;border-radius:10px;padding:14px;margin-top:10px"><?= mailing_html($c['body'], []) ?></div></details>

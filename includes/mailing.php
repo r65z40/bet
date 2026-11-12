@@ -177,7 +177,7 @@ function mailing_process(int $id, int $max = MAILING_BATCH): array
             }
             $b = $q['booking_id'] ? bk_get((int)$q['booking_id']) : null;
             $ok = mailing_send_one($c, ['email' => $q['email'], 'first_name' => $q['first_name'], 'last_name' => $q['last_name'], 'booking' => $b]);
-            $upd->execute([$ok ? 'sent' : 'failed', $ok ? '' : mb_substr(mail_last_error(), 0, 300), bk_now()->format(BK_FMT), $q['id']]);
+            $upd->execute([$ok ? 'sent' : 'failed', mb_substr($ok ? mail_last_info() : mail_last_error(), 0, 300), bk_now()->format(BK_FMT), $q['id']]);
             if (microtime(true) - $start > 20) {
                 break; // reste sous la limite de durée d'une page PHP
             }

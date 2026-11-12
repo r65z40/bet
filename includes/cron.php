@@ -85,6 +85,7 @@ function run_scheduled_tasks(bool $force = false): array
             $report['purges']++;
         }
         stats_purge();
+        db()->prepare('DELETE FROM mail_log WHERE at < ?')->execute([date('Y-m-d H:i:s', strtotime('-6 months'))]);
     } catch (Throwable $e) {
         $report['erreurs'][] = $e->getMessage();
     } finally {

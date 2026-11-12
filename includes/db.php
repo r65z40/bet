@@ -234,6 +234,14 @@ function install_schema(PDO $pdo): void
             ip TEXT NOT NULL DEFAULT '',
             action TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS mail_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            at TEXT NOT NULL,
+            to_addr TEXT NOT NULL,
+            subject TEXT NOT NULL DEFAULT '',
+            ok INTEGER NOT NULL DEFAULT 0,
+            info TEXT NOT NULL DEFAULT ''
+        );
         CREATE TABLE IF NOT EXISTS mail_campaigns (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             subject TEXT NOT NULL,

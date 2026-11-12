@@ -14,6 +14,26 @@ function mail_header_encode(string $s): string
     return preg_match('/[^\x20-\x7E]/', $s) ? '=?UTF-8?B?' . base64_encode($s) . '?=' : $s;
 }
 
+/** Réponse du serveur au dernier envoi réussi (ex. « 250 2.0.0 OK … gsmtp »). */
+function mail_last_info(?string $set = null): string
+{
+    static $info = '';
+    if ($set !== null) {
+        $info = $set;
+    }
+    return $info;
+}
+
+/** Journal des e-mails (diagnostic : accepté par le serveur, ou erreur). */
+function mail_journal(string $to, string $subject, bool $ok, string $info): void
+{
+    try {
+        db()->prepare('INSERT INTO mail_log(at, to_addr, subject, ok, info) VALUES(?,?,?,?,?)')
+            ->execute([date('Y-m-d H:i:s'), mb_substr($to, 0, 200), mb_substr($subject, 0, 200), $ok ? 1 : 0, mb_substr($info, 0, 500)]);
+    } catch (Throwable) {
+    }
+}
+
 /** Dernière erreur d'envoi (pour l'envoi en cours). */
 function mail_last_error(?string $set = null): string
 {
@@ -41,8 +61,10 @@ function send_mail(string $to, string $subject, string $html, ?string $replyTo =
 {
     $to = mail_clean($to);
     mail_last_error('');
+    mail_last_info('');
     if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
         mail_last_error('adresse invalide');
+        mail_journal($to, $subject, false, 'adresse invalide');
         return false;
     }
     $fromAddr = mail_from_address();
@@ -77,21 +99,24 @@ function send_mail(string $to, string $subject, string $html, ?string $replyTo =
             if (!$ok) {
                 throw new RuntimeException('la fonction mail() du serveur a refusé l’envoi');
             }
+            mail_last_info('confié à la fonction mail() de l’hébergeur');
         } else {
-            smtp_send($fromAddr, $to, array_merge($headers, ['To: ' . $to, 'Subject: ' . $subjectEnc]), $body);
+            mail_last_info(smtp_send($fromAddr, $to, array_merge($headers, ['To: ' . $to, 'Subject: ' . $subjectEnc]), $body));
         }
+        mail_journal($to, $subject, true, mail_last_info());
         if (s('_mail_last_error') !== '') {
             save_setting('_mail_last_error', '');
         }
         return true;
     } catch (Throwable $e) {
         mail_last_error($e->getMessage());
+        mail_journal($to, $subject, false, $e->getMessage());
         save_setting('_mail_last_error', date('d/m/Y H:i') . ' — envoi à ' . $to . ' : ' . $e->getMessage());
         return false;
     }
 }
 
-function smtp_send(string $from, string $to, array $headers, string $body): void
+function smtp_send(string $from, string $to, array $headers, string $body): string
 {
     $host = s('bk_smtp_host');
     $port = (int)(s('bk_smtp_port') ?: 587);
@@ -154,8 +179,9 @@ function smtp_send(string $from, string $to, array $headers, string $body): void
         $cmd('DATA', [354]);
         $msg = implode("\r\n", $headers) . "\r\n\r\n" . $body;
         $msg = preg_replace('/^\./m', '..', str_replace("\r\n", "\n", $msg)); // dot-stuffing
-        $cmd(str_replace("\n", "\r\n", $msg) . "\r\n.", [250]);
+        $accepted = $cmd(str_replace("\n", "\r\n", $msg) . "\r\n.", [250]);
         fwrite($fp, "QUIT\r\n");
+        return 'accepté par ' . $host . ' : ' . $accepted;
     } finally {
         fclose($fp);
     }
