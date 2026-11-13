@@ -80,8 +80,10 @@ $jsonLd  = [
 <?php else: ?>
   <link rel="preload" as="image" href="<?= e(hero_image()) ?>">
 <?php endif; ?>
+  <link rel="preload" href="assets/fonts/plus-jakarta-sans.woff2" as="font" type="font/woff2" crossorigin>
   <script type="application/ld+json"><?= json_encode($jsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
   <style>
+    @font-face{font-family:"Plus Jakarta Sans";src:url("assets/fonts/plus-jakarta-sans.woff2") format("woff2");font-weight:200 800;font-style:normal;font-display:swap}
     :root{
       --navy:#071c35;
       --navy-2:#0b2b4f;
@@ -102,7 +104,7 @@ $jsonLd  = [
     html{scroll-behavior:smooth}
     body{
       margin:0;
-      font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family:"Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       color:var(--ink);
       background:var(--cream);
       line-height:1.6;
@@ -120,16 +122,19 @@ $jsonLd  = [
       box-shadow:0 8px 28px rgba(0,0,0,.12);
     }
     .nav{display:flex;align-items:center;justify-content:space-between;gap:20px;min-height:76px}
-    .brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:800;color:white}
+    .brand{display:flex;align-items:center;gap:12px;text-decoration:none;font-weight:700;color:white;font-size:1.06rem;letter-spacing:.005em}
     .brand-mark{width:48px;height:48px;border:2px solid #273CF5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:Georgia,serif;font-size:.9rem;background:#fff;box-shadow:0 5px 18px rgba(0,0,0,.16);font-weight:900;letter-spacing:-.04em}.brand-mark .rn{color:#273CF5}.brand-mark .six{color:#B50E0E}
-    .brand span small{display:block;font-size:.68rem;letter-spacing:.16em;color:var(--gold-2);text-transform:uppercase;font-weight:800}
+    .brand span small{display:block;font-size:.66rem;letter-spacing:.2em;color:var(--gold-2);text-transform:uppercase;font-weight:700;margin-top:2px}
 
     .facebook-top{display:inline-flex;align-items:center;gap:7px;background:#1877F2;color:#fff!important;padding:9px 12px;border-radius:10px;text-decoration:none!important;font-weight:900!important;box-shadow:0 6px 18px rgba(24,119,242,.3)}
     .facebook-top .fb-icon{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#1877F2;font-family:Arial,sans-serif;font-size:18px;font-weight:900;line-height:1}
     .facebook-top:hover{background:#1265d4!important;color:#fff!important;transform:translateY(-1px)}
     .navlinks{display:flex;align-items:center;gap:20px}
-    .navlinks a{text-decoration:none;font-weight:800;font-size:.94rem;color:#fff;position:relative;transition:.2s ease}
-    .navlinks a:hover{color:#fff2bd;text-shadow:0 0 14px rgba(242,212,123,.35)}
+    .navlinks a{text-decoration:none;font-weight:600;font-size:.95rem;color:rgba(255,255,255,.92);position:relative;transition:.2s ease;letter-spacing:.005em}
+    .navlinks a:hover{color:#fff2bd}
+    .navlinks a:not(.cta-small):not(.facebook-top)::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:2px;border-radius:2px;background:var(--gold-2);transform:scaleX(0);transition:transform .2s ease}
+    .navlinks a:not(.cta-small):not(.facebook-top):hover::after{transform:scaleX(1)}
+    .navlinks .cta-small{font-weight:700}
     .navlinks .cta-small{background:linear-gradient(135deg,#f3d77d,#d6a23a);color:#132238;padding:11px 16px;border-radius:10px;border:1px solid #f6df99;box-shadow:0 7px 20px rgba(199,154,56,.25)}
 
     .hero{
