@@ -126,7 +126,9 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
           <li>Moteur PHP : <strong><?= e(PHP_SAPI) ?></strong> <?= e(PHP_VERSION) ?> — <?= can_finish_early() ? '<span style="color:#1d7a46">✓ PHP-FPM : e-mails et agenda traités après l’affichage des pages</span>' : '<span style="color:#b42318">✗ sans PHP-FPM : choisissez le moteur « php » dans l’espace OVH (Hébergement › Informations générales › Version PHP › Modifier la configuration)</span>' ?></li>
           <li>Stockage : <strong><?= db_on_network_storage() ? 'réseau (NFS)' : 'local' ?></strong> — base en mode <strong><?= e($jm) ?></strong> <?= db_on_network_storage() && strtolower($jm) === 'wal' ? '<span style="color:#b42318">(changement en attente : la base est encore utilisée par un ancien processus)</span>' : '' ?></li>
           <li>Fichiers de la base : <?= e(implode(', ', $files)) ?></li>
-          <li>OPcache : <?= function_exists('opcache_get_status') && @opcache_get_status(false) ? 'activé ✓' : 'désactivé' ?></li>
+          <li>OPcache : <?php $opc = extension_loaded('Zend OPcache') && filter_var(ini_get('opcache.enable'), FILTER_VALIDATE_BOOLEAN);
+            $opcStatus = $opc && function_exists('opcache_get_status') ? @opcache_get_status(false) : false; ?>
+            <?= $opc ? 'activé ✓' . (is_array($opcStatus) ? ' — ' . (int)($opcStatus['opcache_statistics']['num_cached_scripts'] ?? 0) . ' fichiers en cache' : '') : 'désactivé (mode « production » dans l’espace OVH : Hébergement › Informations générales › Modifier la configuration)' ?></li>
         </ul>
         <?php inflight_sweep(); $tail = perf_log_tail(60); $now_inflight = count(glob(DATA_DIR . '/inflight/*') ?: []); ?>
         <p class="muted" style="margin:0 0 6px">Requêtes en cours en ce moment : <strong><?= $now_inflight ?></strong> (dont celle-ci).</p>
