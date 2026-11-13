@@ -26,13 +26,13 @@ RedirectMatch 301 ^(.*/)?reservation\.html$ $1reservation
   RewriteBase /
   # Signale au site que les adresses propres fonctionnent (liens générés sans .php)
   RewriteRule ^ - [E=RN6_CLEAN_URLS:1]
-  # /page.php → /page (visites directes uniquement, jamais les envois de formulaires)
-  RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
-  RewriteCond %{ENV:REDIRECT_STATUS} ^$
-  RewriteRule ^(plan|reservation|conditions|mentions-legales|confidentialite|ma-reservation|facture|desinscription)\.php$ $1 [R=301,L]
-  RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
-  RewriteCond %{ENV:REDIRECT_STATUS} ^$
-  RewriteRule ^index\.php$ ./ [R=301,L]
+  # /page.php → /page. On teste l'adresse tapée par le visiteur (THE_REQUEST), jamais l'adresse
+  # réécrite en interne : sinon /page → page.php → /page… tourne en boucle (cas des hébergements OVH).
+  # Visites directes uniquement (GET), jamais les envois de formulaires.
+  RewriteCond %{THE_REQUEST} ^(GET|HEAD)\s/+(plan|reservation|conditions|mentions-legales|confidentialite|ma-reservation|facture|desinscription)\.php[?\s]
+  RewriteRule ^ /%2 [R=301,L]
+  RewriteCond %{THE_REQUEST} ^(GET|HEAD)\s/+index\.php[?\s]
+  RewriteRule ^ / [R=301,L]
   # /page → page.php (en interne, invisible pour le visiteur)
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
