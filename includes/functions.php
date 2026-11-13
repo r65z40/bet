@@ -561,7 +561,38 @@ function documents_list_html(array $docs): string
     return $h . '</ul>';
 }
 
+/* ---------- Journal de diagnostic des lenteurs (data/perf.log) ---------- */
+
+/** Ajoute une ligne au journal des lenteurs (taille limitée). */
+function perf_log(string $line): void
+{
+    $f = DATA_DIR . '/perf.log';
+    if (@filesize($f) > 300_000) {
+        @rename($f, $f . '.old');
+    }
+    @file_put_contents($f, date('d/m H:i:s') . ' | ' . $line . "\n", FILE_APPEND | LOCK_EX);
+}
+
+/** Dernières lignes du journal des lenteurs. */
+function perf_log_tail(int $n = 80): array
+{
+    $lines = @file(DATA_DIR . '/perf.log', FILE_IGNORE_NEW_LINES) ?: [];
+    return array_slice($lines, -$n);
+}
+
+function request_label(): string
+{
+    return ($_SERVER['REQUEST_METHOD'] ?? 'CLI') . ' ' . mb_substr(preg_replace('/([?&](t|k|token|session_id)=)[^&]+/', '$1…', (string)($_SERVER['REQUEST_URI'] ?? implode(' ', $GLOBALS['argv'] ?? []))), 0, 120);
+}
+
 /* ---------- Tâches lancées après l'envoi de la page ---------- */
+
+/** Les tâches peuvent-elles vraiment tourner après l'envoi de la page (PHP-FPM) ? */
+function can_finish_early(): bool
+{
+    return function_exists('fastcgi_finish_request');
+}
+
 
 /**
  * Exécute une tâche lente (e-mails d'alerte, notifications, Google Agenda, tâches planifiées)
@@ -569,13 +600,14 @@ function documents_list_html(array $docs): string
  * La session est refermée avant, pour ne pas bloquer les autres onglets du même navigateur.
  * En ligne de commande (tâche planifiée OVH), la tâche s'exécute tout de suite.
  */
-function after_response(callable $task): void
+function after_response(callable $task, string $label = 'tâche'): void
 {
     static $queue = null;
     if (PHP_SAPI === 'cli' || !empty($GLOBALS['_after_response_running'])) {
         try {
             $task();
-        } catch (Throwable) {
+        } catch (Throwable $e) {
+            perf_log('tâche « ' . $label . ' » — ERREUR : ' . mb_substr($e->getMessage(), 0, 200));
         }
         return;
     }
@@ -589,15 +621,27 @@ function after_response(callable $task): void
                 fastcgi_finish_request(); // la page est envoyée et le navigateur la considère terminée
             }
             ignore_user_abort(true);
-            @set_time_limit(300);
+            @set_time_limit(120);
             $GLOBALS['_after_response_running'] = true;
-            foreach ($queue as $t) {
+            $start = microtime(true);
+            foreach ($queue as $i => [$t, $label]) {
+                if (microtime(true) - $start > 60) {
+                    perf_log('ARRÊT : tâches restantes abandonnées (plus de 60 s) — ' . request_label());
+                    break; // jamais de tâche sans fin : le reste sera rattrapé par la prochaine tâche planifiée
+                }
+                $t0 = microtime(true);
+                $err = '';
                 try {
                     $t();
-                } catch (Throwable) {
+                } catch (Throwable $e) {
+                    $err = ' — ERREUR : ' . mb_substr($e->getMessage(), 0, 200);
+                }
+                $d = microtime(true) - $t0;
+                if ($d > 1.5 || $err !== '') {
+                    perf_log(sprintf('tâche « %s » : %.1f s%s (%s)%s', $label, $d, $err, request_label(), can_finish_early() ? '' : ' [sans PHP-FPM : le visiteur a attendu]'));
                 }
             }
         });
     }
-    $queue->append($task);
+    $queue->append([$task, $label]);
 }

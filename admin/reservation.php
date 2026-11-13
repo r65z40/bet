@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             admin_notify('moved', 'Réservation déplacée : ' . $b['first_name'] . ' ' . $b['last_name'], [$oldLabel . ' → ' . bk_slot_label($nb), 'Par ' . current_admin()['username']], 'reservation.php?id=' . $id);
             $msg = 'Réservation déplacée : ' . bk_slot_label($nb) . '.';
             if (!empty($_POST['notify'])) {
-                after_response(fn() => bk_mail_moved($nb, $oldLabel));
+                after_response(fn() => bk_mail_moved($nb, $oldLabel), 'e-mail déplacement');
                 $msg .= ' Le client est prévenu par e-mail (envoi en cours : le résultat s’affiche dans l’historique).';
             }
             // Tarif différent à la nouvelle date (week-end, date spéciale…) : information seulement

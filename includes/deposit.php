@@ -149,7 +149,7 @@ function deposit_release(array $b, bool $notify, string $by = ''): void
     bk_log((int)$b['id'], 'Empreinte de caution libérée' . ($by !== '' ? ' (' . $by . ')' : ''));
     if ($notify) {
         $nb = bk_get((int)$b['id']);
-        after_response(fn() => deposit_mail($nb, 'caution_liberee'));
+        after_response(fn() => deposit_mail($nb, 'caution_liberee'), 'e-mail caution libérée');
     }
     admin_notify('deposit_released', 'Caution libérée : ' . $b['first_name'] . ' ' . $b['last_name'], [money2((float)$b['deposit_held']) . ($by !== '' ? ' — ' . $by : ''), notif_booking_line($b)], 'reservation.php?id=' . (int)$b['id']);
 }
@@ -176,7 +176,7 @@ function deposit_capture(array $b, float $amount, string $reason, bool $notify):
     bk_log((int)$b['id'], 'Caution : ' . money2($got) . ' retenus sur ' . money2((float)$b['deposit_held']) . ' — ' . $reason);
     if ($notify) {
         $nb = bk_get((int)$b['id']);
-        after_response(fn() => deposit_mail($nb, 'caution_retenue'));
+        after_response(fn() => deposit_mail($nb, 'caution_retenue'), 'e-mail retenue caution');
     }
     admin_notify('deposit_retained', 'Retenue sur caution : ' . $b['first_name'] . ' ' . $b['last_name'], [money2($got) . ' retenus sur ' . money2((float)$b['deposit_held']) . ' — ' . $reason, notif_booking_line($b)], 'reservation.php?id=' . (int)$b['id']);
     return $got;

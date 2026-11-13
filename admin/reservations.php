@@ -20,14 +20,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $st = db()->prepare('SELECT * FROM booking_blocks WHERE id = ?');
             $st->execute([(int)db()->lastInsertId()]);
             $blk = $st->fetch();
-            after_response(fn() => gcal_sync_block($blk));
+            after_response(fn() => gcal_sync_block($blk), 'Google Agenda (blocage)');
             flash('Créneau bloqué : il n’est plus réservable sur le site.');
         }
     } elseif ($do === 'unblock') {
         $st = db()->prepare('SELECT * FROM booking_blocks WHERE id = ?');
         $st->execute([(int)($_POST['id'] ?? 0)]);
         if ($bl = $st->fetch()) {
-            after_response(fn() => gcal_sync_block($bl, true));
+            after_response(fn() => gcal_sync_block($bl, true), 'Google Agenda (blocage retiré)');
         }
         db()->prepare('DELETE FROM booking_blocks WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
         flash('Blocage supprimé.');

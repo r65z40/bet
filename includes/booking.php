@@ -488,7 +488,7 @@ function bk_confirm_paid(int $id, string $provider, string $paymentRef, int $amo
             $b['first_name'] . ' ' . $b['last_name'] . ' · ' . $b['event_type'] . ', ' . (int)$b['guests'] . ' pers. · ' . fr_date($s) . ' ' . $s->format('H\hi')
             . ($b['mode'] === 'day' ? ' (' . (int)$b['hours'] . ' h)' : ' (' . fr_hours((float)$b['hours']) . ')') . ($err ? ' ⚠ conflit d’agenda' : ''),
             'reservation.php?id=' . (int)$b['id'], 'resa-' . $b['id'], $err && !notif_on('new_booking', 'push') ? 'conflict' : 'new_booking');
-    });
+    }, 'e-mails et agenda (nouvelle réservation)');
     return true;
 }
 
@@ -582,7 +582,7 @@ function bk_move(array $b, DateTimeImmutable $newStart): array
                 bk_log((int)$b['id'], 'Google Agenda : ancien événement non supprimé (' . $e->getMessage() . ')');
             }
             gcal_sync_booking($nb);
-        });
+        }, 'Google Agenda (déplacement)');
     }
     return $nb;
 }

@@ -28,11 +28,14 @@ function gcal_sync_if_needed(bool $force = false): void
     if (!$force && time() - $last < GCAL_SYNC_EVERY) {
         return;
     }
+    if (!$force && PHP_SAPI !== 'cli' && empty($GLOBALS['_after_response_running']) && !can_finish_early()) {
+        return; // sans PHP-FPM : jamais d'attente pour le visiteur ; relecture par la tâche planifiée et avant chaque réservation
+    }
     if (!$force && PHP_SAPI !== 'cli' && empty($GLOBALS['_after_response_running'])) {
         // Données un peu anciennes : on affiche celles qu'on a, et on relit l'agenda après l'envoi de la page.
         // (Avant chaque réservation, la relecture est forcée : un créneau bloqué depuis l'iPhone n'est jamais vendu.)
         save_setting('_gcal_last_try', (string)time());
-        after_response(fn() => gcal_sync_if_needed(true));
+        after_response(fn() => gcal_sync_if_needed(true), 'relecture agenda Google');
         return;
     }
     save_setting('_gcal_last_try', (string)time()); // évite que plusieurs visiteurs déclenchent la lecture en même temps

@@ -31,6 +31,13 @@ function run_scheduled_tasks(bool $force = false): array
         settings(true);
         $now = bk_now();
 
+        // 0. Agenda Google relu (blocages ajoutés depuis l'iPhone)
+        try {
+            gcal_sync_if_needed(true);
+        } catch (Throwable $e) {
+            $report['erreurs'][] = 'agenda : ' . $e->getMessage();
+        }
+
         // 1. Paiements abandonnés : créneaux libérés
         $before = (int)db()->query("SELECT COUNT(*) FROM bookings WHERE status = 'expired'")->fetchColumn();
         bk_expire_pending();
@@ -108,7 +115,12 @@ function cron_on_shutdown(): void
     if (!cron_due() || PHP_SAPI === 'cli') {
         return;
     }
-    after_response(fn() => run_scheduled_tasks()); // après l'envoi de la page : personne n'attend
+    // Sans PHP-FPM, le visiteur attendrait la fin des tâches : on laisse alors faire la tâche planifiée OVH,
+    // sauf si elle ne tourne visiblement pas (plus de 3 h sans passage).
+    if (!can_finish_early() && time() - (int)s('_cron_last') < 3 * 3600) {
+        return;
+    }
+    after_response(fn() => run_scheduled_tasks(), 'tâches planifiées'); // après l'envoi de la page : personne n'attend
 }
 
 /* ---------- E-mails automatiques ---------- */

@@ -66,7 +66,7 @@ function admin_notify(string $event, string $title, array $lines, string $url = 
     if (!notif_on($event, 'admin') && !notif_on($event, 'push')) {
         return;
     }
-    after_response(fn() => admin_notify_now($event, $title, $lines, $url, $tag));
+    after_response(fn() => admin_notify_now($event, $title, $lines, $url, $tag), 'alerte ' . $event);
 }
 
 function admin_notify_now(string $event, string $title, array $lines, string $url, string $tag): void

@@ -6,6 +6,7 @@
 declare(strict_types=1);
 
 define('ROOT', dirname(__DIR__));
+define('REQUEST_T0', microtime(true));
 
 function is_https(): bool
 {
@@ -78,6 +79,18 @@ require_once __DIR__ . '/compta.php';
 require_once __DIR__ . '/webpush.php';
 require_once __DIR__ . '/payments.php';
 require_once __DIR__ . '/layout.php';
+
+// Diagnostic : toute page qui met plus de 2 s à se construire est notée dans data/perf.log (lisible par FTP)
+if (PHP_SAPI !== 'cli') {
+    register_shutdown_function(function () {
+        $d = microtime(true) - REQUEST_T0;
+        $err = error_get_last();
+        $fatal = $err && in_array($err['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true);
+        if ($d > 2 || $fatal) {
+            perf_log(sprintf('page lente : %.1f s — %s — %s%s', $d, request_label(), PHP_SAPI, $fatal ? ' — ERREUR : ' . mb_substr($err['message'], 0, 200) : ''));
+        }
+    });
+}
 
 // Tâches automatiques de secours (si la tâche planifiée OVH n'est pas configurée)
 if (PHP_SAPI !== 'cli' && !defined('NO_CRON')) {

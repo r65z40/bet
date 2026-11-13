@@ -120,6 +120,18 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
         <strong><?= s('_cron_last') ? e(date('d/m/Y à H:i', (int)s('_cron_last'))) : 'jamais' ?></strong>
         <?php if ($rep && empty($rep['skipped'])): ?>— <?= (int)($rep['rappels'] ?? 0) ?> rappel(s), <?= (int)($rep['avis'] ?? 0) ?> demande(s) d’avis<?= !empty($rep['cautions_demandees']) || !empty($rep['cautions_liberees']) ? ', ' . (int)($rep['cautions_demandees'] ?? 0) . ' demande(s) de caution, ' . (int)($rep['cautions_liberees'] ?? 0) . ' caution(s) libérée(s)' : '' ?><?= !empty($rep['erreurs']) ? ' — <span style="color:#b42318">' . e(implode(' ; ', $rep['erreurs'])) . '</span>' : '' ?><?php endif; ?></p>
       <form method="post"><?= csrf_field() ?><button class="btn light sm" name="do" value="cronnow">▶ Lancer maintenant</button></form>
+      <details style="margin-top:14px" id="diagnostic"><summary><strong>Diagnostic des lenteurs</strong></summary>
+        <?php $jm = (string)db()->query('PRAGMA journal_mode')->fetchColumn(); $files = array_map('basename', glob(DATA_DIR . '/*.sqlite*') ?: []); ?>
+        <ul style="line-height:1.7;margin:10px 0">
+          <li>Moteur PHP : <strong><?= e(PHP_SAPI) ?></strong> <?= e(PHP_VERSION) ?> — <?= can_finish_early() ? '<span style="color:#1d7a46">✓ PHP-FPM : e-mails et agenda traités après l’affichage des pages</span>' : '<span style="color:#b42318">✗ sans PHP-FPM : choisissez le moteur « php » dans l’espace OVH (Hébergement › Informations générales › Version PHP › Modifier la configuration)</span>' ?></li>
+          <li>Stockage : <strong><?= db_on_network_storage() ? 'réseau (NFS)' : 'local' ?></strong> — base en mode <strong><?= e($jm) ?></strong> <?= db_on_network_storage() && strtolower($jm) === 'wal' ? '<span style="color:#b42318">(changement en attente : la base est encore utilisée par un ancien processus)</span>' : '' ?></li>
+          <li>Fichiers de la base : <?= e(implode(', ', $files)) ?></li>
+          <li>OPcache : <?= function_exists('opcache_get_status') && @opcache_get_status(false) ? 'activé ✓' : 'désactivé' ?></li>
+        </ul>
+        <?php $tail = perf_log_tail(60); ?>
+        <p class="muted" style="margin:0 0 6px">Journal des lenteurs (pages de plus de 2 s, tâches de plus de 1,5 s) — aussi téléchargeable par FTP : <code>data/perf.log</code></p>
+        <pre style="max-height:320px;overflow:auto;background:#0b1626;color:#dfe7f1;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap"><?= $tail ? e(implode("\n", array_reverse($tail))) : 'Rien de lent enregistré.' ?></pre>
+      </details>
       <details style="margin-top:14px"><summary><strong>Activer la tâche planifiée chez OVH (recommandé, 2 minutes)</strong></summary>
         <ol style="line-height:1.7">
           <li>Espace client OVH › <strong>Web Cloud › Hébergements</strong> › votre hébergement › onglet <strong>Plus › Tâches planifiées - Cron</strong> › <strong>Ajouter une planification</strong>.</li>

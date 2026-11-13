@@ -15,15 +15,21 @@ function db(): PDO
     $pdo = new PDO('sqlite:' . db_file(), null, null, [PDO::ATTR_TIMEOUT => 8]);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    $pdo->exec('PRAGMA busy_timeout = 8000'); // une écriture concurrente attend au plus 8 s (au lieu de 60)
     // WAL est le plus rapide, mais ne fonctionne pas sur un stockage réseau (cas des hébergements mutualisés
-    // comme OVH, dont les fichiers sont sur un serveur NFS) : on reste alors en mode classique.
+    // comme OVH, dont les fichiers sont sur un serveur NFS) : on reste alors en mode classique (DELETE).
+    // Le changement de mode n'est tenté que s'il est nécessaire, sans attendre : il exige que personne d'autre
+    // n'utilise la base, et ne doit jamais faire patienter un visiteur.
     try {
-        $pdo->exec('PRAGMA journal_mode = ' . (db_on_network_storage() ? 'DELETE' : 'WAL'));
-        $pdo->exec('PRAGMA synchronous = NORMAL');
+        $want = db_on_network_storage() ? 'delete' : 'wal';
+        if (strtolower((string)$pdo->query('PRAGMA journal_mode')->fetchColumn()) !== $want) {
+            $pdo->exec('PRAGMA busy_timeout = 0');
+            $pdo->query('PRAGMA journal_mode = ' . $want)->fetchColumn();
+        }
     } catch (Throwable) {
-        // base occupée à cet instant : le changement de mode se fera à la requête suivante
+        // base occupée à cet instant : nouvel essai à une prochaine visite
     }
+    $pdo->exec('PRAGMA busy_timeout = 5000'); // une écriture concurrente attend au plus 5 s (au lieu de 60)
+    $pdo->exec('PRAGMA synchronous = NORMAL');
     // Structure de la base vérifiée seulement à l'installation ou après une mise à jour du site
     try {
         $ok = (int)setting_raw($pdo, '_schema_version') === SCHEMA_VERSION;
