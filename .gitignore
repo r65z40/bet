@@ -23,3 +23,4 @@ data/.cron.lock
 !admin/icons/*.png
 data/.storage
 data/perf.log*
+data/.gcal.lock

@@ -38,6 +38,18 @@ function gcal_sync_if_needed(bool $force = false): void
         after_response(fn() => gcal_sync_if_needed(true), 'relecture agenda Google');
         return;
     }
+    // Une seule lecture à la fois sur tout le site : si une autre est en cours, on attend qu'elle finisse
+    // (ses données sont alors à jour) au lieu de lancer une seconde connexion à Google.
+    $lock = @fopen(DATA_DIR . '/.gcal.lock', 'c');
+    if ($lock && !flock($lock, LOCK_EX | LOCK_NB)) {
+        $t0 = microtime(true);
+        while (!flock($lock, LOCK_EX | LOCK_NB) && microtime(true) - $t0 < 10) {
+            usleep(200_000);
+        }
+        flock($lock, LOCK_UN);
+        fclose($lock);
+        return;
+    }
     save_setting('_gcal_last_try', (string)time()); // évite que plusieurs visiteurs déclenchent la lecture en même temps
     try {
         $ics = http_get_text(preg_replace('#^webcal://#i', 'https://', $url));
@@ -65,6 +77,11 @@ function gcal_sync_if_needed(bool $force = false): void
         }
         // On garde les événements de la dernière lecture réussie : pas de « trou » dans les blocages
         save_setting('_gcal_error', date('d/m/Y H:i') . ' — ' . $e->getMessage());
+    } finally {
+        if ($lock) {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
     }
     settings(true);
 }

@@ -4,8 +4,9 @@ require __DIR__ . '/_init.php';
 require_perm('reservations');
 bk_expire_pending();
 // Agenda Google relu à l'ouverture (au plus une fois par minute) : un événement ajouté depuis l'iPhone apparaît tout de suite
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && s('bk_gcal_url') !== '' && time() - (int)s('_gcal_last_try') > 60) {
-    gcal_sync_if_needed(true);
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && s('bk_gcal_url') !== '' && time() - (int)s('_gcal_last_try') > 60 && can_finish_early()) {
+    save_setting('_gcal_last_try', (string)time());
+    after_response(fn() => gcal_sync_if_needed(true), 'relecture agenda Google (admin)');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -621,12 +621,12 @@ function after_response(callable $task, string $label = 'tâche'): void
                 fastcgi_finish_request(); // la page est envoyée et le navigateur la considère terminée
             }
             ignore_user_abort(true);
-            @set_time_limit(120);
+            @set_time_limit(60);
             $GLOBALS['_after_response_running'] = true;
             $start = microtime(true);
             foreach ($queue as $i => [$t, $label]) {
-                if (microtime(true) - $start > 60) {
-                    perf_log('ARRÊT : tâches restantes abandonnées (plus de 60 s) — ' . request_label());
+                if (microtime(true) - $start > 30) {
+                    perf_log('ARRÊT : tâches restantes abandonnées (plus de 30 s) — ' . request_label());
                     break; // jamais de tâche sans fin : le reste sera rattrapé par la prochaine tâche planifiée
                 }
                 $t0 = microtime(true);
