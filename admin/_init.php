@@ -3,7 +3,7 @@ define('ADMIN_AREA', true);
 require dirname(__DIR__) . '/includes/bootstrap.php';
 define('SETUP_CODE_FILE', DATA_DIR . '/setup-code.php');
 header('X-Frame-Options: DENY');
-header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none'; form-action 'self'; base-uri 'none'; object-src 'none'");
+header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:; connect-src 'self'; frame-src 'none'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; frame-ancestors 'none'; form-action 'self'; base-uri 'none'; object-src 'none'");
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
 header('Cache-Control: no-store');

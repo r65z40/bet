@@ -8,6 +8,8 @@ $mailto  = mailto();
 $photos  = photos();
 $reviews = reviews();
 $heroWebp = variant_src(hero_filename(), 'large');
+$heroSmall = variant_src(hero_filename(), 'thumb'); // téléphones : ~800 px au lieu de 1920 px
+$ogImage = $siteUrl . '/' . hero_image();
 $showReviews = $reviews || s('google_rating') !== '' || s('salles1001_rating') !== '';
 $reviewsLimit = max(1, (int)s('reviews_visible') ?: 6);
 $mapSrc = s('map_query') !== '' ? 'https://www.google.com/maps?q=' . rawurlencode(s('map_query')) . '&output=embed&hl=fr' : '';
@@ -26,7 +28,12 @@ $jsonLd  = [
     '@id' => $siteUrl . '/#venue',
     'url' => $siteUrl . '/',
     'name' => $name,
-    'image' => $siteUrl . '/logo-rn6.png',
+    'image' => array_values(array_unique(array_merge([$ogImage], array_map(fn($p) => $siteUrl . '/' . photo_src($p['filename']), array_slice($photos, 0, 5))))),
+    'logo' => $siteUrl . '/icon-rn6.png',
+    'priceRange' => '€€',
+    'hasMap' => s('maps_url'),
+    'sameAs' => array_values(array_filter([s('facebook_url'), s('salles1001_url'), s('google_reviews_url')])),
+    'potentialAction' => ['@type' => 'ReserveAction', 'target' => $siteUrl . '/reservation.php'],
     'description' => s('og_description'),
     'email' => 'mailto:' . s('contact_email'),
     'address' => [
@@ -55,17 +62,20 @@ $jsonLd  = [
   <meta property="og:locale" content="fr_FR">
   <meta property="og:site_name" content="<?= e($name) ?>">
   <meta property="og:url" content="<?= e($siteUrl) ?>/">
-  <meta property="og:image" content="<?= e($siteUrl) ?>/logo-rn6.png">
-  <meta property="og:image:alt" content="Logo de <?= e($name) ?>">
+  <meta property="og:image" content="<?= e($ogImage) ?>">
+  <meta property="og:image:alt" content="<?= e($name) ?>, salle de réception à Appoigny">
   <meta property="og:title" content="<?= e(s('og_title')) ?>">
   <meta property="og:description" content="<?= e(s('og_description')) ?>">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:image" content="<?= e($siteUrl) ?>/logo-rn6.png">
+  <meta name="twitter:image" content="<?= e($ogImage) ?>">
   <meta name="twitter:title" content="<?= e(s('og_title')) ?>">
   <meta name="twitter:description" content="<?= e(s('og_description')) ?>">
   <link rel="icon" href="favicon.ico" sizes="any">
-  <link rel="icon" href="logo-rn6.png" type="image/png">
-<?php if ($heroWebp): ?>
+  <link rel="icon" href="icon-rn6.png" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png">
+<?php if ($heroWebp && $heroSmall): ?>
+  <link rel="preload" as="image" href="<?= e($heroSmall) ?>" type="image/webp" media="(max-width: 800px)">
+  <link rel="preload" as="image" href="<?= e($heroWebp) ?>" type="image/webp" media="(min-width: 801px)">
+<?php elseif ($heroWebp): ?>
   <link rel="preload" as="image" href="<?= e($heroWebp) ?>" type="image/webp">
 <?php else: ?>
   <link rel="preload" as="image" href="<?= e(hero_image()) ?>">
@@ -241,7 +251,7 @@ $jsonLd  = [
     .email-card a{font-weight:900;text-decoration:none;word-break:break-word;font-size:1.05rem}
     .email-card button{margin-top:13px;border:0;background:#f4ead2;color:var(--navy);font-weight:800;padding:9px 13px;border-radius:999px;cursor:pointer}
 
-    footer{border-top:1px solid var(--line);padding:24px 0 38px;color:#768394;font-size:.9rem;background:#fff}
+    footer{border-top:1px solid var(--line);padding:24px 0 38px;color:#5d6979;font-size:.9rem;background:#fff}
     .foot{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}
 
     @media (max-width:900px){
@@ -335,6 +345,11 @@ $jsonLd  = [
     @supports (background-image: image-set(url("x.webp") type("image/webp"))){
       .hero{--hero-image:image-set(url('<?= e($heroWebp) ?>') type("image/webp"), url('<?= e(hero_image()) ?>') type("image/jpeg"))}
     }
+<?php if ($heroSmall): ?>
+    @media (max-width: 800px){@supports (background-image: image-set(url("x.webp") type("image/webp"))){
+      .hero{--hero-image:image-set(url('<?= e($heroSmall) ?>') type("image/webp"), url('<?= e(hero_image()) ?>') type("image/jpeg"))}
+    }}
+<?php endif; ?>
 <?php endif; ?>
     .gallery-item picture{display:block;width:100%;height:100%}
 
@@ -737,7 +752,7 @@ $jsonLd  = [
   <footer>
     <div class="wrap foot">
       <span>© <?= date('Y') ?> <?= e(s('footer_text')) ?><br><small><a href="mentions-legales.php" style="color:inherit">Mentions légales</a> · <a href="confidentialite.php" style="color:inherit">Confidentialité</a> · <a href="conditions.php" style="color:inherit">Conditions de location</a></small></span>
-      <span><?= e(s('footer_tagline')) ?><br><small><?php if (s('salles1001_url') !== ''): ?><a href="<?= e(s('salles1001_url')) ?>" target="_blank" rel="noopener" data-track="1001" style="color:inherit;text-decoration:none">1001Salles</a> · <?php endif; ?><?php if (s('facebook_url') !== ''): ?><a href="<?= e(s('facebook_url')) ?>" target="_blank" rel="noopener" data-track="facebook" aria-label="Suivez <?= e($name) ?> sur Facebook" style="display:inline-flex;align-items:center;gap:7px;margin-left:6px;padding:7px 11px;border-radius:9px;background:#1877F2;color:#fff;text-decoration:none;font-weight:800;box-shadow:0 3px 10px rgba(0,0,0,.15)"><span aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#1877F2;font-family:Arial,sans-serif;font-size:18px;font-weight:900;line-height:1">f</span> Facebook</a><?php endif; ?></small></span>
+      <span><?= e(s('footer_tagline')) ?><br><small><?php if (s('salles1001_url') !== ''): ?><a href="<?= e(s('salles1001_url')) ?>" target="_blank" rel="noopener" data-track="1001" style="color:inherit;text-decoration:none">1001Salles</a> · <?php endif; ?><?php if (s('facebook_url') !== ''): ?><a href="<?= e(s('facebook_url')) ?>" target="_blank" rel="noopener" data-track="facebook" style="display:inline-flex;align-items:center;gap:7px;margin-left:6px;padding:7px 11px;border-radius:9px;background:#1464d8;color:#fff;text-decoration:none;font-weight:800;box-shadow:0 3px 10px rgba(0,0,0,.15)"><span aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#1877F2;font-family:Arial,sans-serif;font-size:18px;font-weight:900;line-height:1">f</span> Facebook</a><?php endif; ?></small></span>
     </div>
   </footer>
 

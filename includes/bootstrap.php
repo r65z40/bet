@@ -33,6 +33,7 @@ if (!headers_sent()) {
         header("Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
             . "frame-src https://www.google.com https://maps.google.com; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'");
     }
+    header_remove('X-Powered-By');
     if (is_https()) {
         header('Strict-Transport-Security: max-age=15552000');
     }

@@ -29,13 +29,32 @@ RedirectMatch 404 ^(.*/)?(data|includes|\.git)(/.*)?$
   Header always set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
-# Cache navigateur des images
+# Compression des pages, styles et scripts (pages ~4 fois plus légères à télécharger)
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json application/manifest+json text/calendar image/svg+xml image/x-icon
+</IfModule>
+
+# Cache navigateur : les fichiers sont appelés avec ?v=date, une modification est donc vue tout de suite
 <IfModule mod_expires.c>
   ExpiresActive On
-  ExpiresByType image/jpeg "access plus 1 month"
+  ExpiresByType image/jpeg "access plus 1 year"
   ExpiresByType image/png "access plus 1 month"
-  ExpiresByType image/webp "access plus 1 month"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType image/x-icon "access plus 1 month"
+  ExpiresByType image/vnd.microsoft.icon "access plus 1 month"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType text/javascript "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
 </IfModule>
+# Le service worker de l'admin doit toujours être relu (mises à jour de l'appli iPhone)
+<FilesMatch "^(sw\.js|manifest\.webmanifest)$">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache"
+  </IfModule>
+  <IfModule mod_expires.c>
+    ExpiresActive Off
+  </IfModule>
+</FilesMatch>
 
 # Taille des envois de photos (si l'hébergeur l'autorise ; sinon voir .user.ini)
 <IfModule mod_php.c>

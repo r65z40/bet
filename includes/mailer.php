@@ -202,8 +202,8 @@ function mail_layout(string $title, string $content): string
     $name = e(s('site_name'));
     $head = mail_style('mail_color_header');
     $headText = mail_contrast($head);
-    $logo = mail_style('mail_show_logo') === '1' && is_file(ROOT . '/logo-rn6.png')
-        ? '<img src="' . e(bk_url('logo-rn6.png')) . '" width="44" height="44" alt="" style="vertical-align:middle;border-radius:50%;background:#fff;margin-right:12px">' : '';
+    $logo = mail_style('mail_show_logo') === '1' && is_file(ROOT . '/logo-mail.png')
+        ? '<img src="' . e(bk_url('logo-mail.png')) . '" width="44" height="44" alt="" style="vertical-align:middle;border-radius:50%;background:#fff;margin-right:12px">' : '';
     $footer = nl2br(e(strtr(mail_style('mail_footer'), mail_common_vars())), false);
     return '<!doctype html><html lang="fr"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#152131">'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:24px 8px"><tr><td align="center">'

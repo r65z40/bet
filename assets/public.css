@@ -16,7 +16,7 @@ a{color:var(--navy2)}
 h1{font-family:Georgia,"Times New Roman",serif;color:var(--navy);font-size:clamp(2.2rem,5.4vw,4rem);line-height:1.02;margin:10px 0 14px}
 h2{font-family:Georgia,"Times New Roman",serif;color:var(--navy);font-size:1.45rem;margin:0 0 4px}
 .page-hero p{max-width:720px;margin:0 auto;color:var(--muted);font-size:1.04rem}
-.foot-bar{border-top:1px solid var(--line);padding:24px 0 38px;color:#768394;font-size:.9rem;background:#fff;margin-top:40px}
+.foot-bar{border-top:1px solid var(--line);padding:24px 0 38px;color:#5d6979;font-size:.9rem;background:#fff;margin-top:40px}
 .foot{display:flex;justify-content:space-between;gap:18px;flex-wrap:wrap}.foot a{color:inherit}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:11px;border:1px solid transparent;font:inherit;font-weight:800;cursor:pointer;text-decoration:none;transition:transform .15s ease, filter .15s ease}
 .btn:hover{filter:brightness(1.05);transform:translateY(-1px)}

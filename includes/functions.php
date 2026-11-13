@@ -80,6 +80,25 @@ function plan_image(): string
     return $f !== '' && is_file(UPLOAD_DIR . '/' . $f) ? photo_src($f) : 'plan-salle-rn6.jpg';
 }
 
+/** Version légère du plan pour les petits écrans (WebP ~500-800 px), ou null. */
+function plan_image_small(): ?string
+{
+    $f = s('plan_image');
+    if ($f !== '' && is_file(UPLOAD_DIR . '/' . $f)) {
+        make_variants($f);
+        return variant_src($f, 'thumb');
+    }
+    return is_file(ROOT . '/plan-salle-rn6-500.webp') ? 'plan-salle-rn6-500.webp' : null;
+}
+
+/** Dimensions [largeur, hauteur] d'une image locale (évite le décalage de mise en page), ou null. */
+function image_size(string $src): ?array
+{
+    $path = ROOT . '/' . rawurldecode(strtok($src, '?'));
+    $i = is_file($path) ? @getimagesize($path) : false;
+    return $i ? [(int)$i[0], (int)$i[1]] : null;
+}
+
 function mailto(): string
 {
     return 'mailto:' . s('contact_email') . '?subject=' . rawurlencode(s('mail_subject')) . '&body=' . rawurlencode(str_replace("\r", '', s('mail_body')));
