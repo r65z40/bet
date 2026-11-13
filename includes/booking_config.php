@@ -168,6 +168,10 @@ const BOOKING_SETTINGS = [
                 'help' => 'Même page « Intégrer l’agenda » › « ID de l’agenda » (ex. abc123@group.calendar.google.com, ou votre adresse Gmail pour l’agenda principal).'],
             'bk_gcal_sa' => ['label' => 'Écriture — clé du compte de service Google (contenu du fichier JSON)', 'type' => 'secret', 'default' => '',
                 'help' => 'Voir le guide ci-dessus. Collez tout le contenu du fichier .json téléchargé.'],
+            'bk_gcal_block_day' => ['label' => 'Un événement de l’agenda bloque…', 'type' => 'select', 'default' => '1', 'options' => [
+                '1' => 'Toute la journée pour les locations 24 h / 48 h / 72 h (même un événement court) — horaires exacts pour la location à l’heure',
+                '0' => 'Seulement ses horaires (avec le temps mort), pour toutes les locations',
+            ]],
             'bk_gcal_details' => ['label' => 'Détails des réservations dans l’agenda', 'type' => 'select', 'default' => 'full', 'options' => [
                 'full' => 'Complets : nom, téléphone, e-mail, montant, lien vers la fiche',
                 'minimal' => 'Sans coordonnées ni montant : nom, type d’événement et nombre de personnes (pour partager l’agenda)',

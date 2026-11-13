@@ -3,6 +3,10 @@
 require __DIR__ . '/_init.php';
 require_perm('reservations');
 bk_expire_pending();
+// Agenda Google relu à l'ouverture (au plus une fois par minute) : un événement ajouté depuis l'iPhone apparaît tout de suite
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && s('bk_gcal_url') !== '' && time() - (int)s('_gcal_last_try') > 60) {
+    gcal_sync_if_needed(true);
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
@@ -31,6 +35,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         db()->prepare('DELETE FROM booking_blocks WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
         flash('Blocage supprimé.');
+    } elseif ($do === 'purge_tests' && admin_can('reglages')) {
+        require_reauth('reservations.php?vue=liste&f=annulees');
+        $n = 0;
+        $st = db()->prepare("SELECT * FROM bookings WHERE status IN ('cancelled', 'expired') OR (status = 'pending' AND (hold_until IS NULL OR hold_until < ?)) ORDER BY id DESC");
+        $st->execute([bk_now()->format(BK_FMT)]);
+        foreach ($st->fetchAll() as $b) {
+            try {
+                bk_purge($b);
+                $n++;
+            } catch (Throwable) {
+            }
+        }
+        admin_log($n . ' réservation(s) annulée(s) ou abandonnée(s) supprimée(s) définitivement (nettoyage des tests)');
+        flash($n . ' réservation(s) supprimée(s) définitivement.');
+        redirect('reservations.php?vue=liste');
     }
     redirect('reservations.php?' . http_build_query(array_intersect_key($_GET, ['vue' => 1, 'm' => 1, 'f' => 1])));
 }
@@ -112,6 +131,15 @@ admin_header('Réservations', 'resa');
     <?php endforeach; ?>
   </table></div>
   <?php endif; ?>
+  <?php $nTest = (int)db()->query("SELECT COUNT(*) FROM bookings WHERE status IN ('cancelled', 'expired')")->fetchColumn();
+  if (admin_can('reglages') && $nTest && in_array($f, ['annulees', 'attente'], true)): ?>
+  <form method="post" style="margin-top:16px;padding-top:14px;border-top:1px solid var(--line)">
+    <?= csrf_field() ?>
+    <p class="muted" style="margin:0 0 8px"><strong>Nettoyer les tests :</strong> supprime définitivement les <?= $nTest ?> réservation(s) annulée(s) ou abandonnée(s), avec leurs factures et avoirs (liste, planning, statistiques, comptabilité). À n’utiliser qu’avant l’ouverture ou pour des tests : les factures des vrais clients doivent être conservées.</p>
+    <?= reauth_field() ?>
+    <button class="btn danger sm" name="do" value="purge_tests" onclick="return confirm('Supprimer définitivement <?= $nTest ?> réservation(s) annulée(s) ou abandonnée(s) ? Irréversible.')">🗑 Supprimer les <?= $nTest ?> réservation(s) annulée(s) / abandonnée(s)</button>
+  </form>
+  <?php endif; ?>
 </div>
 
 <?php else:
@@ -120,12 +148,20 @@ admin_header('Réservations', 'resa');
     $last = $first->modify('last day of this month')->setTime(23, 59, 59);
     $gridStart = $first->modify('-' . ((int)$first->format('N') - 1) . ' days');
     $items = [];
-    // $html reçoit l'heure à afficher : début le premier jour, « jusqu'à HH:MM » les jours suivants
+    // $html reçoit les horaires à afficher pour chaque jour : « 05:15–06:15 », « dès 10:00 », « jusqu'à 10:00 » ou « Journée »
     $add = function (string $s, string $e, callable $html) use (&$items) {
-        for ($d = bk_dt(substr($s, 0, 10)); $d->format('Y-m-d') <= substr($e, 0, 10); $d = $d->modify('+1 day')) {
-            if ($d->format('Y-m-d') === substr($e, 0, 10) && substr($e, 11, 5) === '00:00' && substr($s, 0, 10) !== substr($e, 0, 10)) break;
-            $first = $d->format('Y-m-d') === substr($s, 0, 10);
-            $items[$d->format('Y-m-d')][] = $html($first ? substr($s, 11, 5) : 'jusqu’à ' . substr($e, 11, 5));
+        $sd = substr($s, 0, 10);
+        $st = substr($s, 11, 5);
+        $et = substr($e, 11, 5);
+        // une fin à minuit appartient au jour précédent
+        $ed = $et === '00:00' && substr($e, 0, 10) > $sd ? bk_dt(substr($e, 0, 10))->modify('-1 day')->format('Y-m-d') : substr($e, 0, 10);
+        $etShown = $et === '00:00' ? '24:00' : $et;
+        for ($d = bk_dt($sd); $d->format('Y-m-d') <= $ed; $d = $d->modify('+1 day')) {
+            $k = $d->format('Y-m-d');
+            $from = $k === $sd ? $st : '00:00';
+            $to = $k === $ed ? $etShown : '24:00';
+            $label = $from === '00:00' && $to === '24:00' ? 'Journée' : ($from === '00:00' ? 'jusqu’à ' . $to : ($to === '24:00' ? 'dès ' . $from : $from . '–' . $to));
+            $items[$k][] = $html($label);
         }
     };
     $st = db()->prepare("SELECT * FROM bookings WHERE start_at <= ? AND end_at >= ? AND (status = 'confirmed' OR (status = 'pending' AND hold_until > ?)) ORDER BY start_at");
@@ -142,7 +178,7 @@ admin_header('Réservations', 'resa');
     $st = db()->prepare('SELECT * FROM ext_events WHERE start_at <= ? AND end_at >= ?');
     $st->execute([$last->modify('+7 days')->format(BK_FMT), $gridStart->format(BK_FMT)]);
     foreach ($st as $ev) {
-        $add($ev['start_at'], $ev['end_at'], fn($h) => '<span class="ev ev-gcal">G ' . e(($h === '00:00' ? 'Journée' : $h) . ' ' . $ev['summary']) . '</span>');
+        $add($ev['start_at'], $ev['end_at'], fn($h) => '<span class="ev ev-gcal" title="Agenda Google : à modifier dans Google Agenda">📅 ' . e($h) . '<small>' . e($ev['summary'] ?: 'Occupé') . '</small></span>');
     }
     $months = ['', 'janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 ?>
@@ -190,13 +226,24 @@ admin_header('Réservations', 'resa');
   <div class="card">
     <h2>Blocages à venir</h2>
     <?php $blocks = db()->prepare('SELECT * FROM booking_blocks WHERE end_at > ? ORDER BY start_at'); $blocks->execute([$now]); $blocks = $blocks->fetchAll(); ?>
-    <?php if (!$blocks): ?><p class="muted">Aucun.</p><?php endif; ?>
+    <?php if (!$blocks): ?><p class="muted">Aucun blocage ajouté depuis ce site.</p><?php endif; ?>
     <?php foreach ($blocks as $bl): ?>
       <form method="post" class="item-row" style="grid-template-columns:1fr auto;align-items:center">
         <?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)$bl['id'] ?>">
         <div><strong><?= e(bk_dt($bl['start_at'])->format('d/m/Y H\hi')) ?> → <?= e(bk_dt($bl['end_at'])->format('d/m/Y H\hi')) ?></strong><br><small class="muted"><?= e($bl['label']) ?></small></div>
         <button class="btn danger sm" name="do" value="unblock" onclick="return confirm('Supprimer ce blocage ?')">✕</button>
       </form>
+    <?php endforeach; ?>
+    <?php $gev = db()->prepare('SELECT * FROM ext_events WHERE end_at > ? ORDER BY start_at LIMIT 100'); $gev->execute([$now]); $gev = $gev->fetchAll(); ?>
+    <h3 style="margin:20px 0 4px;font-size:1rem">📅 Depuis votre agenda Google <span class="muted" style="font-weight:normal;font-size:.85rem">(<?= count($gev) ?>)</span></h3>
+    <p class="muted" style="margin:0 0 8px;font-size:.85rem"><?= s('bk_gcal_block_day') === '0' ? 'Ces horaires sont bloqués (avec le temps mort).' : 'Chaque journée concernée est bloquée pour les locations 24 h / 48 h / 72 h ; à l’heure, seuls ces horaires (avec le temps mort).' ?>
+      Pour en retirer un, supprimez-le dans Google Agenda.<?= s('_gcal_last_ok') !== '' || s('_gcal_last_try') !== '' ? ' Dernière lecture : ' . e(date('d/m à H:i', (int)(s('_gcal_last_ok') ?: s('_gcal_last_try')))) . '.' : '' ?></p>
+    <?php if (!$gev): ?><p class="muted"><?= s('bk_gcal_url') === '' ? 'Lecture de l’agenda Google non configurée (Réglages › Agenda Google).' : 'Aucun événement à venir.' ?></p><?php endif; ?>
+    <?php foreach ($gev as $ev): $sd = bk_dt($ev['start_at']); $edd = bk_dt($ev['end_at']); $allDay = $sd->format('H:i') === '00:00' && $edd->format('H:i') === '00:00'; ?>
+      <div class="item-row" style="grid-template-columns:1fr;background:#f3f6fd">
+        <div><strong><?= $allDay ? e(fr_date($sd)) . ($edd->modify('-1 day') > $sd ? ' → ' . e(fr_date($edd->modify('-1 day'))) : '') . ' — journée entière'
+          : e($sd->format('d/m/Y H\hi')) . ' → ' . e($sd->format('Y-m-d') === $edd->format('Y-m-d') ? $edd->format('H\hi') : $edd->format('d/m/Y H\hi')) ?></strong><br><small class="muted"><?= e($ev['summary'] ?: 'Occupé') ?></small></div>
+      </div>
     <?php endforeach; ?>
   </div>
 </div>

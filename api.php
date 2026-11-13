@@ -116,7 +116,7 @@ if ($a === 'book') {
         out(['errors' => ['Beaucoup de réservations sont en cours de paiement. Réessayez dans quelques minutes.']], 429);
     }
 
-    gcal_sync_if_needed(time() - (int)s('_gcal_last_try') > 120); // agenda Google relu juste avant de bloquer le créneau
+    gcal_sync_if_needed(true); // agenda Google toujours relu juste avant de bloquer le créneau (un événement ajouté à l'instant compte)
     $q = bk_quote($req);
     $giftOnly = ($q['amount_due'] ?? 1) <= 0 && ($q['gift_code'] ?? '') !== '';
     if ($giftOnly) {

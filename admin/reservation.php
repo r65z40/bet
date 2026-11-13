@@ -96,6 +96,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (DomainException $e) {
             flash('Déplacement impossible : ' . $e->getMessage(), 'err');
         }
+    } elseif ($do === 'purge') {
+        if (!admin_can('reglages')) {
+            flash('Seul un administrateur peut supprimer définitivement une réservation.', 'err');
+            redirect('reservation.php?id=' . $id);
+        }
+        require_reauth('reservation.php?id=' . $id);
+        try {
+            bk_purge($b);
+            admin_log('Réservation supprimée définitivement : ' . $b['ref'] . ' (' . $b['first_name'] . ' ' . $b['last_name'] . ($b['invoice_number'] ? ', facture ' . $b['invoice_number'] : '') . ')');
+            flash('Réservation ' . $b['ref'] . ' supprimée définitivement.');
+            redirect('reservations.php');
+        } catch (Throwable $e) {
+            flash('Suppression impossible : ' . $e->getMessage(), 'err');
+        }
     } elseif ($do === 'release' && in_array($b['status'], ['pending', 'expired'], true)) {
         db()->prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = ?, hold_until = NULL WHERE id = ?")->execute([bk_now()->format(BK_FMT), $id]);
         bk_log($id, 'Demande non payée annulée par l’administrateur');
@@ -242,6 +256,17 @@ admin_header('Réservation ' . $b['ref'], 'resa');
     <form method="post" class="card"><?= csrf_field() ?>
       <h2>E-mails</h2>
       <button class="btn light" name="do" value="resend">✉ Renvoyer la confirmation au client</button>
+    </form>
+    <?php endif; ?>
+
+    <?php if (admin_can('reglages') && $b['status'] !== 'confirmed'): ?>
+    <form method="post" class="card" style="border-color:#f3c2bd">
+      <?= csrf_field() ?>
+      <h2>Supprimer définitivement</h2>
+      <p class="muted" style="margin-top:-6px">Pour les <strong>réservations de test</strong> : elle disparaîtra de la liste, du planning, des statistiques et de la comptabilité<?= $b['invoice_number'] ? ', avec sa facture ' . e($b['invoice_number']) . ($b['credit_number'] ? ' et son avoir ' . e($b['credit_number']) : '') : '' ?>.
+        Ne supprimez pas une vraie réservation payée : ses factures doivent être conservées 10 ans.</p>
+      <?= reauth_field() ?>
+      <button class="btn danger" name="do" value="purge" onclick="return confirm('Supprimer définitivement la réservation <?= e($b['ref']) ?> ? Cette action est irréversible.')">🗑 Supprimer définitivement</button>
     </form>
     <?php endif; ?>
 

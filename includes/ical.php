@@ -5,7 +5,7 @@
  * et liens « Ajouter à mon agenda ».
  */
 
-const GCAL_SYNC_EVERY = 600; // secondes entre deux lectures de l'agenda Google
+const GCAL_SYNC_EVERY = 180; // secondes entre deux lectures de l'agenda Google
 
 /* ---------- Import ---------- */
 

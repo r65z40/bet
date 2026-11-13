@@ -276,6 +276,44 @@ function bk_busy(DateTimeImmutable $from, DateTimeImmutable $to, ?int $ignoreBoo
     return $busy;
 }
 
+/**
+ * Pour les locations à la journée (24 h, 48 h, 72 h) : un événement de l'agenda Google, même court,
+ * bloque la ou les journée(s) qu'il touche (de minuit à minuit). Les horaires exacts de l'événement
+ * restent aussi vérifiés (avec le temps mort), par exemple pour la matinée de départ.
+ */
+function bk_busy_for_days(array $busy): array
+{
+    if (s('bk_gcal_block_day') === '0') {
+        return $busy;
+    }
+    $tz = bk_now()->getTimezone();
+    foreach ($busy as $iv) {
+        if (($iv[2] ?? '') === 'agenda') {
+            $s = (new DateTimeImmutable('@' . $iv[0]))->setTimezone($tz)->setTime(0, 0);
+            $e = (new DateTimeImmutable('@' . max($iv[0], $iv[1] - 1)))->setTimezone($tz)->setTime(0, 0)->modify('+1 day');
+            $busy[] = [$s->getTimestamp(), $e->getTimestamp(), 'agenda-jour'];
+        }
+    }
+    return $busy;
+}
+
+/**
+ * Conflit pour une location à la journée commençant à $s : ses journées (du jour d'arrivée à minuit,
+ * autant de jours que de tranches de 24 h) ne doivent contenir aucun événement de l'agenda.
+ */
+function bk_conflict_day(int $s, int $e, array $dayBusy): bool
+{
+    $tz = bk_now()->getTimezone();
+    $d0 = (new DateTimeImmutable('@' . $s))->setTimezone($tz)->setTime(0, 0);
+    $d1 = $d0->modify('+' . max(1, (int)round(($e - $s) / 86400)) . ' days');
+    foreach ($dayBusy as $iv) {
+        if (($iv[2] ?? '') === 'agenda-jour' && $d0->getTimestamp() < $iv[1] && $d1->getTimestamp() > $iv[0]) {
+            return true;
+        }
+    }
+    return bk_conflict($s, $e, array_filter($dayBusy, fn($iv) => ($iv[2] ?? '') !== 'agenda-jour'));
+}
+
 function bk_conflict(int $s, int $e, array $busy): bool
 {
     $buf = (int)round(bk_num('bk_buffer_hours', 2) * 3600);
@@ -320,7 +358,7 @@ function bk_slot_error(string $mode, DateTimeImmutable $start, DateTimeImmutable
         }
     }
     $busy = bk_busy($start->modify('-2 days'), $end->modify('+2 days'), $ignoreBooking);
-    if (bk_conflict($start->getTimestamp(), $end->getTimestamp(), $busy)) {
+    if ($mode === 'day' ? bk_conflict_day($start->getTimestamp(), $end->getTimestamp(), bk_busy_for_days($busy)) : bk_conflict($start->getTimestamp(), $end->getTimestamp(), $busy)) {
         return 'Ce créneau n’est plus disponible (la salle est réservée, ou trop proche d’une autre location).';
     }
     return null;
@@ -339,6 +377,7 @@ function bk_month_availability(int $year, int $month): array
     $maxStart = $now->modify('+' . (int)bk_num('bk_max_months', 18) . ' months');
     $maxDays = bk_max_days();
     $busy = bk_busy($first->modify('-2 days'), $last->modify('+' . ($maxDays + 2) . ' days'));
+    $dayBusy = bk_busy_for_days($busy);
 
     [$dh, $dm] = bk_time('bk_day_start', '10:00');
     [$oh, $om] = bk_time('bk_hour_open', '08:00');
@@ -352,7 +391,7 @@ function bk_month_availability(int $year, int $month): array
         $ds = $d->setTime($dh, $dm);
         $nbDays = 0; // nombre de journées consécutives possibles à partir de ce jour (24 h, 48 h…)
         if ($ds >= $minStart && $ds <= $maxStart) {
-            while ($nbDays < $maxDays && !bk_conflict($ds->getTimestamp(), $ds->modify('+' . ($nbDays + 1) . ' day')->getTimestamp(), $busy)) {
+            while ($nbDays < $maxDays && !bk_conflict_day($ds->getTimestamp(), $ds->modify('+' . ($nbDays + 1) . ' day')->getTimestamp(), $dayBusy)) {
                 $nbDays++;
             }
         }
@@ -524,7 +563,7 @@ function bk_slot_error_after_payment(int $id): ?string
     $s = bk_dt($b['start_at']);
     $e = bk_dt($b['end_at']);
     $busy = bk_busy($s->modify('-2 days'), $e->modify('+2 days'), $id);
-    return bk_conflict($s->getTimestamp(), $e->getTimestamp(), $busy)
+    return ($b['mode'] === 'day' ? bk_conflict_day($s->getTimestamp(), $e->getTimestamp(), bk_busy_for_days($busy)) : bk_conflict($s->getTimestamp(), $e->getTimestamp(), $busy))
         ? 'ce créneau chevauche un autre événement de l’agenda ou une autre réservation : vérifiez le planning.'
         : null;
 }
@@ -585,6 +624,48 @@ function bk_move(array $b, DateTimeImmutable $newStart): array
         }, 'Google Agenda (déplacement)');
     }
     return $nb;
+}
+
+/**
+ * Suppression définitive d'une réservation de test (non confirmée) : elle disparaît des listes,
+ * statistiques et de la comptabilité. Si c'était la dernière facture / le dernier avoir de l'année,
+ * la numérotation reprend au numéro précédent (pas de trou dans la suite des factures).
+ */
+function bk_purge(array $b): void
+{
+    if ($b['status'] === 'confirmed') {
+        throw new DomainException('Annulez d’abord la réservation.');
+    }
+    if ($b['status'] === 'pending' && $b['hold_until'] && bk_dt($b['hold_until']) > bk_now()) {
+        throw new DomainException('Paiement en cours : annulez d’abord la demande.');
+    }
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $pdo->prepare('DELETE FROM booking_log WHERE booking_id = ?')->execute([$b['id']]);
+        $pdo->prepare('UPDATE mail_queue SET booking_id = NULL WHERE booking_id = ?')->execute([$b['id']]);
+        $pdo->prepare('DELETE FROM bookings WHERE id = ?')->execute([$b['id']]);
+        foreach ([['invoice_number', 'F', '_invoice_seq_'], ['credit_number', 'A', '_credit_seq_']] as [$col, $prefix, $key]) {
+            if (!preg_match('/^' . $prefix . '(\d{4})-(\d+)$/', (string)$b[$col], $m)) {
+                continue;
+            }
+            $seqKey = $key . $m[1];
+            if ((int)(setting_raw($pdo, $seqKey) ?? 0) === (int)$m[2]) {
+                $max = 0;
+                $st = $pdo->prepare("SELECT $col FROM bookings WHERE $col LIKE ?");
+                $st->execute([$prefix . $m[1] . '-%']);
+                foreach ($st->fetchAll(PDO::FETCH_COLUMN) as $n) {
+                    $max = max($max, (int)substr($n, 6));
+                }
+                $pdo->prepare('INSERT OR REPLACE INTO settings(key, value) VALUES(?, ?)')->execute([$seqKey, (string)$max]);
+            }
+        }
+        $pdo->commit();
+    } catch (Throwable $e) {
+        $pdo->rollBack();
+        throw $e;
+    }
+    settings(true);
 }
 
 function bk_log(int $id, string $msg): void
