@@ -490,16 +490,26 @@ function rating_label(string $r): string
 
 /* ---------- Ordre des sections de l'accueil ---------- */
 
-/** Sections dans l'ordre choisi : [clé => visible (bool)]. Les nouvelles sections s'ajoutent à la fin. */
-function home_sections(): array
+/** Nouvelle page d'accueil : activée dans l'admin, ou aperçu (?apercu=1) avant de l'activer. */
+function home_v2(): bool
 {
-    $order = array_values(array_intersect(array_filter(explode(',', s('sections_order'))), array_keys(HOME_SECTIONS)));
-    foreach (array_keys(HOME_SECTIONS) as $k) {
+    return s('home_design') === 'nouveau' || isset($_GET['apercu']);
+}
+
+/** Sections dans l'ordre choisi : [clé => visible (bool)]. Les nouvelles sections s'ajoutent à la fin. */
+function home_sections(?bool $v2 = null): array
+{
+    $v2 ??= home_v2();
+    $sfx = $v2 ? '_v2' : '';
+    // Sections propres à chaque version : le mobilier est regroupé avec les équipements dans la nouvelle
+    $keys = $v2 ? HOME_V2_ORDER : array_keys(array_filter(HOME_SECTIONS, fn($d) => empty($d['v2'])));
+    $order = array_values(array_intersect(array_filter(explode(',', s('sections_order' . $sfx))), $keys));
+    foreach ($keys as $k) {
         if (!in_array($k, $order, true)) {
             $order[] = $k;
         }
     }
-    $hidden = array_filter(explode(',', s('sections_hidden')));
+    $hidden = array_filter(explode(',', s('sections_hidden' . $sfx)));
     $out = [];
     foreach ($order as $k) {
         $out[$k] = !in_array($k, $hidden, true);

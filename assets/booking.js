@@ -269,4 +269,21 @@
     btn.innerHTML = label;
     $$('.pay .btn').forEach(b => b.disabled = !st.quoteOk);
   });
+
+  /* ---------- Lien direct depuis l'accueil (« prochaines dates libres ») : reservation?date=AAAA-MM-JJ ---------- */
+  (async function () {
+    const d = new URLSearchParams(location.search).get('date') || '';
+    const f = $('.formula[data-mode="day"]');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d) || !f || d.slice(0, 7) < C.today || d.slice(0, 7) > maxMonth) return;
+    st.month = d.slice(0, 7);
+    f.click();
+    for (let i = 0; i < 40; i++) {
+      const b = $('#cal .day[data-date="' + d + '"]');
+      if (b) {
+        if (!b.disabled) { selectDate(d); b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        return;
+      }
+      await new Promise(r => setTimeout(r, 150));
+    }
+  })();
 })();

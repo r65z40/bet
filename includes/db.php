@@ -357,6 +357,10 @@ function install_schema(PDO $pdo): void
             $pdo->exec("ALTER TABLE bookings ADD COLUMN $col $def");
         }
     }
+    // Catégorie des photos (onglets de la galerie de la nouvelle page d'accueil)
+    if (!in_array('category', array_column($pdo->query('PRAGMA table_info(photos)')->fetchAll(), 'name'), true)) {
+        $pdo->exec("ALTER TABLE photos ADD COLUMN category TEXT NOT NULL DEFAULT ''");
+    }
     // Colonnes ajoutées aux comptes administrateurs (droits, e-mail, désactivation)
     $cols = array_column($pdo->query('PRAGMA table_info(admins)')->fetchAll(), 'name');
     foreach ([
@@ -472,6 +476,19 @@ function migrate(PDO $pdo): void
             $pdo->prepare("UPDATE settings SET value = replace(value, ?, ?) WHERE key = 'bk_cgv'")->execute([$o, $n]);
         }
         $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'bk_deposit_text' AND value = ?")->execute(['Une caution de 2 × le montant du loyer HT est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité, elle est libérée après l’état des lieux de sortie) ou par chèque remis lors de l’état des lieux d’entrée.', 'Une caution de 2 × le montant du loyer HT est demandée par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie.']);
+    }
+    // v17 : listes de la nouvelle page d'accueil (chiffres clés, cartes événements, FAQ)
+    if ((int)setting_raw($pdo, '_schema_version') < 17 && setting_raw($pdo, '_seeded') !== null) {
+        $ins = $pdo->prepare('INSERT INTO items(grp, icon, title, text, value, position) VALUES(?,?,?,?,?,?)');
+        $has = $pdo->prepare('SELECT COUNT(*) FROM items WHERE grp = ?');
+        foreach (['chiffres', 'evenements_cartes', 'faq'] as $grp) {
+            $has->execute([$grp]);
+            if ((int)$has->fetchColumn() === 0) {
+                foreach (DEFAULT_ITEMS[$grp] as $i => $r) {
+                    $ins->execute([$grp, $r['icon'] ?? '', $r['title'] ?? '', $r['text'] ?? '', $r['value'] ?? '', $i + 1]);
+                }
+            }
+        }
     }
     // v15 : notifications réglables — les paiements abandonnés déjà connus ne sont pas signalés
     if ((int)setting_raw($pdo, '_schema_version') < 15 && setting_raw($pdo, '_seeded') !== null) {

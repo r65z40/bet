@@ -25,6 +25,7 @@ const NOTIF_EVENTS = [
     'deposit_released' => ['Caution libérée', 'Rien n’a été débité.', ['client' => 1, 'admin' => 0, 'push' => 0]],
     'deposit_retained' => ['Retenue sur caution', 'Montant et motif de la retenue.', ['client' => 1, 'admin' => 0, 'push' => 0]],
     'review'           => ['Demande d’avis après l’événement', 'Lien vers vos avis Google (nombre de jours : Réglages › E-mails automatiques).', ['client' => 1]],
+    'contact'          => ['Message du formulaire de contact', 'Un visiteur vous écrit depuis la page d’accueil. L’e-mail part toujours ; vous pouvez y répondre directement.', ['push' => 1]],
 ];
 
 /** Anciens réglages réutilisés tels quels (compatibilité). */

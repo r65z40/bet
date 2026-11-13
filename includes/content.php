@@ -125,6 +125,37 @@ const SETTINGS_SCHEMA = [
             'plan_hint'       => ['label' => 'Légende sous le plan', 'default' => 'Plan du rez-de-chaussée après travaux — document fourni à titre informatif.'],
         ],
     ],
+    'accueil2' => [
+        'title' => 'Nouvelle page d’accueil',
+        'fields' => [
+            'home_design'     => ['label' => 'Version de la page d’accueil', 'type' => 'select', 'default' => 'classique', 'options' => [
+                'classique' => 'Version actuelle',
+                'nouveau'   => 'Nouvelle version (bandeaux photo, événements, FAQ…) — aperçu : adresse du site suivie de /?apercu=1',
+            ]],
+            'band1_photo'     => ['label' => 'Bandeau photo 1 — n° de la photo (#, page Photos)', 'default' => '4', 'type' => 'number'],
+            'band1_text'      => ['label' => 'Bandeau photo 1 — phrase', 'default' => 'Un grand espace lumineux, prêt à accueillir jusqu’à 120 invités.'],
+            'band2_photo'     => ['label' => 'Bandeau photo 2 — n° de la photo', 'default' => '7', 'type' => 'number'],
+            'band2_text'      => ['label' => 'Bandeau photo 2 — phrase', 'default' => 'Un bar dédié pour vos vins d’honneur, cocktails et pauses café.'],
+            'events_title'    => ['label' => 'Événements — titre', 'default' => 'Pour quel événement ?'],
+            'events_subtitle' => ['label' => 'Événements — sous-titre', 'type' => 'textarea', 'default' => 'Une salle modulable qui s’adapte à vos invités, que vous receviez 20 ou 120 personnes.'],
+            'equip2_photo'    => ['label' => 'Équipements — n° de la photo affichée à côté', 'default' => '9', 'type' => 'number'],
+            'dates_title'     => ['label' => 'Tarifs — titre des prochaines dates libres', 'default' => 'Prochains samedis libres'],
+            'dates_weekdays'  => ['label' => 'Prochaines dates libres — jours affichés', 'type' => 'select', 'default' => '6', 'options' => [
+                '6'     => 'Samedis',
+                '5,6'   => 'Vendredis et samedis',
+                '5,6,7' => 'Vendredis, samedis et dimanches',
+                '1,2,3,4,5,6,7' => 'Tous les jours',
+            ]],
+            'faq_title'       => ['label' => 'FAQ — titre', 'default' => 'Questions fréquentes'],
+            'faq_subtitle'    => ['label' => 'FAQ — sous-titre', 'default' => 'Tout ce qu’on nous demande avant de réserver.'],
+            'contact_phone'   => ['label' => 'Téléphone affiché (laisser vide pour ne pas l’afficher)', 'default' => ''],
+            'contact_whatsapp' => ['label' => 'Bouton WhatsApp', 'type' => 'select', 'default' => '0', 'options' => [
+                '0' => 'Non',
+                '1' => 'Oui, sur le numéro ci-dessus (portable)',
+            ]],
+            'contact_form_intro' => ['label' => 'Formulaire de contact — phrase d’introduction', 'default' => 'Une question, une visite à organiser ? Écrivez-nous, réponse rapide.'],
+        ],
+    ],
     'resa' => [
         'title' => 'Page « Réserver en ligne » / maintenance',
         'fields' => [
@@ -161,6 +192,9 @@ const ITEM_GROUPS = [
     'plan_facts'    => ['label' => 'Page plan — surfaces', 'menu' => 'contenus', 'fields' => ['title' => 'Valeur', 'text' => 'Libellé']],
     'tarif_infos'   => ['label' => 'Infos tarifaires (caution…)', 'menu' => 'tarifs', 'fields' => ['title' => 'Titre', 'text' => 'Texte']],
     'tarif_options' => ['label' => 'Lignes ajoutées aux options (remise, parking…)', 'menu' => 'tarifs', 'fields' => ['text' => 'Libellé', 'value' => 'Valeur']],
+    'chiffres'      => ['label' => 'Nouvelle page — chiffres clés (bande bleue)', 'menu' => 'contenus', 'fields' => ['title' => 'Chiffre', 'text' => 'Libellé']],
+    'evenements_cartes' => ['label' => 'Nouvelle page — cartes « Pour quel événement ? »', 'menu' => 'contenus', 'fields' => ['icon' => 'Icône', 'title' => 'Titre', 'text' => 'Texte', 'value' => 'N° de photo (#, page Photos)']],
+    'faq'           => ['label' => 'Nouvelle page — questions fréquentes', 'menu' => 'contenus', 'fields' => ['title' => 'Question', 'text' => 'Réponse']],
 ];
 
 const DEFAULT_ITEMS = [
@@ -220,6 +254,28 @@ const DEFAULT_ITEMS = [
         ['text' => 'Remise association à but non lucratif', 'value' => '− 15 %'],
         ['text' => 'Parking', 'value' => 'Gratuit + accès PMR'],
     ],
+    'chiffres' => [
+        ['title' => '125 m²', 'text' => 'de grande salle'],
+        ['title' => '120', 'text' => 'invités assis'],
+        ['title' => '144', 'text' => 'chaises incluses'],
+        ['title' => '5 min', 'text' => 'de l’A6, sortie n°19'],
+    ],
+    'evenements_cartes' => [
+        ['icon' => '💍', 'title' => 'Mariages', 'text' => 'Repas, vin d’honneur et soirée dansante, jusqu’à 120 invités assis.', 'value' => '2'],
+        ['icon' => '🎂', 'title' => 'Anniversaires & fêtes', 'text' => 'Tables rondes ou rectangulaires, bar, sono : il ne manque que vos invités.', 'value' => '10'],
+        ['icon' => '🥂', 'title' => 'Vins d’honneur & cocktails', 'text' => 'Un bar dédié et des mange-debout pour recevoir debout.', 'value' => '6'],
+        ['icon' => '💼', 'title' => 'Séminaires & réunions', 'text' => 'Écran 98 pouces, micros sans fil et Wi-Fi haut débit.', 'value' => '9'],
+    ],
+    'faq' => [
+        ['title' => 'Peut-on faire venir son traiteur ?', 'text' => 'Oui, le traiteur de votre choix. La cuisine sert d’office : maintien au frais et réchauffage des plats (il n’est pas possible de cuisiner sur place).'],
+        ['title' => 'Jusqu’à quelle heure peut-on faire la fête ?', 'text' => 'La musique et les animations s’arrêtent à **2 h**, par respect du voisinage. La location à la journée court de 10 h à 10 h le lendemain.'],
+        ['title' => 'Que comprend la location ?', 'text' => 'La salle, le bar, la cuisine, le mobilier (**144 chaises**, 20 tables de 180 cm, tables rondes, mange-debout), l’eau et l’électricité. D’autres services sont proposés en option lors de la réservation.'],
+        ['title' => 'Peut-on décorer la salle ?', 'text' => 'Oui, librement, à condition de ne rien fixer sur les murs et de ne pas utiliser de confettis ni de flammes (bougies, feux de Bengale…).'],
+        ['title' => 'Comment fonctionne la caution ?', 'text' => 'Une caution de **2 × le loyer HT** est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité) ou par chèque remis à l’état des lieux. Elle est rendue après l’état des lieux de sortie.'],
+        ['title' => 'Et si je dois annuler ?', 'text' => 'Vous pouvez annuler depuis votre espace client. Le montant remboursé dépend du délai avant l’événement, comme indiqué dans les conditions de location.'],
+        ['title' => 'Peut-on visiter la salle avant de réserver ?', 'text' => 'Bien sûr, sur rendez-vous : écrivez-nous avec vos disponibilités.'],
+        ['title' => 'Y a-t-il un parking ?', 'text' => 'Oui, un grand parking public gratuit juste à côté, et un accès adapté aux personnes à mobilité réduite.'],
+    ],
 ];
 
 /** Types de clics suivis dans les statistiques. */
@@ -234,6 +290,10 @@ const CLICK_KINDS = [
     'photo'    => 'Ouverture d’une photo',
     'carte'    => 'Affichage de la carte',
     'avis'     => 'Clic vers les avis Google / 1001Salles',
+    'tel'      => 'Clic téléphone',
+    'whatsapp' => 'Clic WhatsApp',
+    'formulaire' => 'Message envoyé par le formulaire de contact',
+    'date'     => 'Clic sur une prochaine date libre',
 ];
 
 const REVIEW_SOURCES = [
@@ -243,7 +303,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 17;
 
 /** Documents remis aux clients à l'installation : [titre, description, fichier dans /documents]. */
 const DEFAULT_DOCUMENTS = [
@@ -267,4 +327,15 @@ const HOME_SECTIONS = [
     'photos'      => ['label' => 'Galerie photos', 'nav' => 'Photos', 'mobile' => 'Photos', 'href' => '#photos'],
     'avis'        => ['label' => 'Avis clients', 'nav' => 'Avis', 'mobile' => 'Avis clients', 'href' => '#avis'],
     'contact'     => ['label' => 'Contact (encadré bleu)', 'nav' => null, 'mobile' => 'Contact', 'href' => '#contact'],
+    // Sections de la nouvelle page d'accueil uniquement
+    'bandeau1'    => ['label' => 'Bandeau photo 1', 'nav' => null, 'mobile' => null, 'href' => '', 'v2' => true],
+    'chiffres'    => ['label' => 'Chiffres clés (bande bleue)', 'nav' => null, 'mobile' => null, 'href' => '', 'v2' => true],
+    'evenements'  => ['label' => 'Pour quel événement ? (cartes photo)', 'nav' => null, 'mobile' => 'Événements', 'href' => '#evenements', 'v2' => true],
+    'bandeau2'    => ['label' => 'Bandeau photo 2', 'nav' => null, 'mobile' => null, 'href' => '', 'v2' => true],
+    'faq'         => ['label' => 'Questions fréquentes', 'nav' => 'FAQ', 'mobile' => 'Questions fréquentes', 'href' => '#faq', 'v2' => true],
 ];
+
+/** Ordre d'origine de la nouvelle page d'accueil (le mobilier y est regroupé avec les équipements). */
+const HOME_V2_ORDER = ['avis', 'salle', 'bandeau1', 'evenements', 'chiffres', 'equipements', 'plan', 'bandeau2', 'tarifs', 'photos', 'faq', 'acces', 'contact'];
+
+const PHOTO_CATEGORIES = ['salle' => 'Salle', 'bar' => 'Bar', 'cuisine' => 'Cuisine', 'sanitaires' => 'Sanitaires', 'exterieur' => 'Extérieur'];

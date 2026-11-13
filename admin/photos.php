@@ -51,9 +51,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Formulaire de la galerie : on enregistre légendes / visibilité puis l'action
     $pdo->beginTransaction();
-    $upd = $pdo->prepare('UPDATE photos SET alt = ?, visible = ? WHERE id = ?');
+    $upd = $pdo->prepare('UPDATE photos SET alt = ?, visible = ?, category = ? WHERE id = ?');
     foreach ((array)($_POST['p'] ?? []) as $id => $row) {
-        $upd->execute([mb_substr(trim((string)($row['alt'] ?? '')), 0, 300), empty($row['visible']) ? 0 : 1, (int)$id]);
+        $cat = (string)($row['category'] ?? '');
+        $upd->execute([mb_substr(trim((string)($row['alt'] ?? '')), 0, 300), empty($row['visible']) ? 0 : 1, isset(PHOTO_CATEGORIES[$cat]) ? $cat : '', (int)$id]);
     }
     [$action, $id] = array_pad(explode(':', $do, 2), 2, '0');
     $id = (int)$id;
@@ -116,7 +117,7 @@ admin_header('Photos', 'photos');
   <?= csrf_field() ?>
   <button name="do" value="save" tabindex="-1" aria-hidden="true" style="position:absolute;left:-9999px"></button>
   <h2>Galerie <span class="pill"><?= count($photos) ?> photos</span></h2>
-  <p class="muted" style="margin-top:-6px">La légende sert aux malvoyants et au référencement Google. ★ = image de fond du bandeau d’accueil.</p>
+  <p class="muted" style="margin-top:-6px">La légende sert aux malvoyants et au référencement Google. ★ = image de fond du bandeau d’accueil. Le numéro <strong>#</strong> sert à choisir les photos des bandeaux et des cartes « événements » ; l’« espace » crée les onglets de la galerie (Salle, Bar…) de la nouvelle page d’accueil.</p>
   <div class="photos">
     <?php foreach ($photos as $i => $p): $n = 'p[' . $p['id'] . ']'; ?>
       <div class="photo <?= $p['visible'] ? '' : 'hidden' ?>" id="ph<?= $p['id'] ?>">
@@ -129,6 +130,10 @@ admin_header('Photos', 'photos');
         </div>
         <div class="body">
           <textarea name="<?= $n ?>[alt]" rows="2" aria-label="Légende"><?= e($p['alt']) ?></textarea>
+          <select name="<?= $n ?>[category]" aria-label="Espace (onglets de la galerie)" title="Espace : sert aux onglets de la galerie de la nouvelle page d’accueil">
+            <option value="">Espace : —</option>
+            <?php foreach (PHOTO_CATEGORIES as $ck => $cl): ?><option value="<?= e($ck) ?>"<?= ($p['category'] ?? '') === $ck ? ' selected' : '' ?>><?= e($cl) ?></option><?php endforeach; ?>
+          </select>
           <label><input type="checkbox" name="<?= $n ?>[visible]" value="1" <?= $p['visible'] ? 'checked' : '' ?>> Visible sur le site</label>
           <div class="ctrl">
             <button class="btn light sm" name="do" value="first:<?= $p['id'] ?>" title="Mettre en premier" <?= $i === 0 ? 'disabled' : '' ?>>⇤</button>

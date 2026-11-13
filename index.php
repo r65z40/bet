@@ -14,11 +14,14 @@ $showReviews = $reviews || s('google_rating') !== '' || s('salles1001_rating') !
 $reviewsLimit = max(1, (int)s('reviews_visible') ?: 6);
 $mapSrc = s('map_query') !== '' ? 'https://www.google.com/maps?q=' . rawurlencode(s('map_query')) . '&output=embed&hl=fr' : '';
 $blocks = [];
-$sections = home_sections();
+$v2 = home_v2();
+$preview = isset($_GET['apercu']) && s('home_design') !== 'nouveau'; // aperçu avant activation
+$sections = home_sections($v2);
+$faq = $v2 && !empty($sections['faq']) ? items('faq') : [];
 // Liens du menu dans le même ordre que les sections (le plan reste une page à part, toujours accessible)
 $navItems = [];
 foreach ($sections as $k => $visible) {
-    if (($visible || $k === 'plan') && ($k !== 'avis' || $showReviews)) {
+    if (($visible || $k === 'plan') && ($k !== 'avis' || $showReviews) && (HOME_SECTIONS[$k]['mobile'] ?? null) !== null) {
         $navItems[$k] = HOME_SECTIONS[$k];
     }
 }
@@ -54,7 +57,7 @@ $jsonLd  = [
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?= e(s('meta_title')) ?></title>
   <meta name="description" content="<?= e(s('meta_description')) ?>">
-  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="robots" content="<?= isset($_GET['apercu']) ? 'noindex, nofollow' : 'index, follow, max-image-preview:large' ?>">
   <meta name="author" content="<?= e($name) ?>">
   <meta name="theme-color" content="#071c35">
   <link rel="canonical" href="<?= e($siteUrl) ?>/">
@@ -82,6 +85,12 @@ $jsonLd  = [
 <?php endif; ?>
   <link rel="preload" href="assets/fonts/plus-jakarta-sans.woff2" as="font" type="font/woff2" crossorigin>
   <script type="application/ld+json"><?= json_encode($jsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
+<?php if ($faq): ?>
+  <script type="application/ld+json"><?= json_encode(['@context' => 'https://schema.org', '@type' => 'FAQPage', 'mainEntity' => array_map(fn($q) => ['@type' => 'Question', 'name' => $q['title'], 'acceptedAnswer' => ['@type' => 'Answer', 'text' => str_replace('**', '', $q['text'])]], $faq)], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG) ?></script>
+<?php endif; ?>
+<?php if ($v2): ?>
+  <link rel="preload" href="assets/fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+<?php endif; ?>
   <style>
     @font-face{font-family:"Plus Jakarta Sans";src:url("assets/fonts/plus-jakarta-sans.woff2") format("woff2");font-weight:200 800;font-style:normal;font-display:swap}
     :root{
@@ -251,7 +260,7 @@ $jsonLd  = [
 
     .photos-section{background:#fff}
     .gallery{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-    .gallery-item{position:relative;aspect-ratio:4/3;cursor:pointer;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#f7f7f7,#edf0f3);border:1px solid var(--line);box-shadow:0 5px 18px rgba(7,28,53,.04)}
+    .gallery-item{position:relative;margin:0;aspect-ratio:4/3;cursor:pointer;border-radius:18px;overflow:hidden;background:linear-gradient(135deg,#f7f7f7,#edf0f3);border:1px solid var(--line);box-shadow:0 5px 18px rgba(7,28,53,.04)}
     .gallery-item img{position:relative;z-index:2;width:100%;height:100%;object-fit:cover;display:block;transition:transform .25s ease}
     .gallery-item:hover img{transform:scale(1.025)}
     .gallery-empty{position:absolute;z-index:1;inset:0;display:grid;place-items:center;text-align:center;padding:14px;color:#8792a0;font-weight:750;font-size:.9rem}
@@ -448,9 +457,177 @@ $jsonLd  = [
       .js-anim .reveal.in{opacity:1;transform:none}
     }
     .count{font-variant-numeric:tabular-nums}
+<?php if ($v2): ?>
+    /* ===== Nouvelle page d'accueil ===== */
+    @font-face{font-family:"Fraunces";src:url("assets/fonts/fraunces.woff2") format("woff2");font-weight:500 700;font-style:normal;font-display:swap}
+    .v2 h1,.v2 h2,.v2 .details-panel h3,.v2 .pricing-card h3,.v2 .plan-cta-box h2,.v2 .faq-q,.v2 .ev-card h3,.v2 .band p,.v2 .kf b{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-optical-sizing:auto}
+    .v2 h1{letter-spacing:-.03em;font-weight:700}
+    .v2 h2{letter-spacing:-.02em;font-weight:600}
+    .v2 #salle{background:var(--cream)}
+    .v2 #evenements{background:#fff}
+    .v2 #equipements{background:var(--cream);border:0}
+    .v2 #equipements:before{display:none}
+    .v2 .plan-cta-section{background:var(--cream)}
+    .v2 #tarifs{background:#fff}
+    .v2 #photos{background:var(--cream)}
+    .v2 #faq{background:linear-gradient(180deg,#fdf6e3,#fbf1d6);border-top:1px solid rgba(199,154,56,.18);border-bottom:1px solid rgba(199,154,56,.18)}
+    .v2 #acces{background:#fff}
+    .v2 #avis{background:var(--soft-blue)}
+    .v2 #evenements,.v2 #faq,.v2 .band,.v2 .keyfigs{content-visibility:auto;contain-intrinsic-size:1px 700px}
+
+    /* Bandeaux photo pleine largeur */
+    .band{position:relative;min-height:clamp(320px,46vw,520px);display:flex;align-items:flex-end;padding:0;color:#fff;background:var(--navy) center/cover no-repeat;background-image:var(--bg);overflow:hidden}
+    .band:before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,18,31,0) 30%,rgba(5,18,31,.78) 100%)}
+    @supports (background-attachment:fixed){@media (min-width:1000px) and (prefers-reduced-motion:no-preference){.band{background-attachment:fixed}}}
+    .band .wrap{position:relative;padding:0 0 52px}
+    .band p{margin:0;max-width:760px;font-size:clamp(1.7rem,3.6vw,3rem);line-height:1.12;font-weight:600;letter-spacing:-.02em;text-shadow:0 2px 24px rgba(0,0,0,.35)}
+    .band p:before{content:"";display:block;width:54px;height:3px;background:var(--gold-2);margin-bottom:18px;border-radius:2px}
+
+    /* Chiffres clés */
+    .keyfigs{background:radial-gradient(circle at 15% 0%,#123b66 0,transparent 55%),linear-gradient(135deg,var(--navy),#0b2b4f);color:#fff;padding:64px 0}
+    .kf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    .kf{text-align:center;padding:14px 8px;position:relative}
+    .kf + .kf:before{content:"";position:absolute;left:-5px;top:18%;bottom:18%;width:1px;background:rgba(255,255,255,.14)}
+    .kf b{display:block;font-size:clamp(2.6rem,5.4vw,4.2rem);line-height:1;color:var(--gold-2);font-weight:600;letter-spacing:-.03em}
+    .kf span{display:block;margin-top:10px;color:#cfdae6;font-size:.98rem}
+
+    /* Cartes « Pour quel événement ? » */
+    .ev-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+    .ev-card{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:400px;border-radius:22px;overflow:hidden;color:#fff;text-decoration:none!important;background:var(--navy);box-shadow:0 14px 40px rgba(7,28,53,.16);isolation:isolate}
+    .ev-card picture,.ev-card img{position:absolute;inset:0;width:100%;height:100%;z-index:-2}
+    .ev-card img{object-fit:cover;transition:transform .6s ease}
+    .ev-card:after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(5,18,31,.05) 25%,rgba(5,18,31,.86) 100%)}
+    .ev-card:hover img{transform:scale(1.06)}
+    .ev-body{padding:22px}
+    .ev-icon{display:inline-grid;place-items:center;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.16);backdrop-filter:blur(4px);font-size:1.3rem;margin-bottom:12px}
+    .ev-card h3{margin:0 0 6px;font-size:1.5rem;font-weight:600;line-height:1.15}
+    .ev-card p{margin:0 0 14px;color:#dde6ef;font-size:.95rem;line-height:1.45}
+    .ev-cta{display:inline-flex;align-items:center;gap:6px;font-weight:800;color:var(--gold-2);font-size:.95rem}
+    .ev-card:hover .ev-cta{gap:10px}
+
+    /* Équipements + mobilier regroupés */
+    .eq-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:34px;align-items:stretch}
+    .eq-photo{border-radius:24px;overflow:hidden;min-height:420px;box-shadow:var(--shadow);position:relative}
+    .eq-photo picture,.eq-photo img{position:absolute;inset:0;width:100%;height:100%}
+    .eq-photo img{object-fit:cover}
+    .eq-side{display:grid;gap:16px;align-content:start}
+    .eq-side .stat-grid{grid-template-columns:1fr 1fr}
+    .eq-side .stat{background:#fff}
+    .eq-lists{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .eq-lists .details-panel{padding:22px}
+    .eq-lists .details-panel h3{font-size:1.25rem}
+
+    /* Prochaines dates libres */
+    .next-dates{margin-top:22px;padding:22px 24px;border-radius:20px;background:linear-gradient(135deg,var(--navy),#0b315a);color:#fff;display:grid;grid-template-columns:auto 1fr auto;gap:18px 24px;align-items:center}
+    .next-dates h3{margin:0;font-size:1.05rem;font-weight:800;letter-spacing:.01em;display:flex;align-items:center;gap:10px}
+    .next-dates h3:before{content:"";width:9px;height:9px;border-radius:50%;background:#3ddc84;box-shadow:0 0 0 4px rgba(61,220,132,.2)}
+    .nd-list{display:flex;flex-wrap:wrap;gap:10px}
+    .nd{display:inline-flex;flex-direction:column;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);text-decoration:none!important;color:#fff;line-height:1.25;transition:.2s}
+    .nd:hover{background:var(--gold-2);color:var(--navy);border-color:var(--gold-2);transform:translateY(-2px)}
+    .nd strong{font-size:.95rem}
+    .nd small{font-size:.8rem;opacity:.8}
+    .nd-all{color:var(--gold-2)!important;font-weight:800;white-space:nowrap;text-decoration:none!important}
+
+    /* Galerie en mosaïque + onglets */
+    .g-tabs{display:flex;flex-wrap:wrap;gap:8px;margin:-10px 0 22px}
+    .g-tab{border:1px solid var(--line);background:#fff;color:var(--navy);font:inherit;font-weight:700;font-size:.9rem;padding:8px 16px;border-radius:999px;cursor:pointer}
+    .g-tab[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+    .v2 .gallery{grid-template-columns:repeat(4,1fr);grid-auto-rows:210px;gap:12px}
+    .v2 .gallery-item{aspect-ratio:auto;height:100%;border-radius:16px}
+    .v2 .gallery:not(.filtered) .gallery-item:first-child{grid-column:span 2;grid-row:span 2}
+    .v2 .gallery:not(.show-all):not(.filtered) .gallery-item.more{display:none}
+    .v2 .gallery.filtered .gallery-item.out{display:none}
+    .g-more{text-align:center;margin-top:24px}
+    .g-more button{cursor:pointer;font:inherit;font-weight:900}
+
+    /* Avis : bande qui défile */
+    .v2 .reviews-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:24px}
+    .v2 .reviews-head .section-title{margin-bottom:0}
+    .v2 .review-badges{margin:0}
+    .v2 .reviews{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:16px;padding:4px 2px 16px;scrollbar-width:thin}
+    .v2 .review{flex:0 0 min(380px,86%);scroll-snap-align:start}
+    .v2 .review.is-more{display:flex}
+    .v2 .reviews-more{display:none}
+    .rv-nav{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
+    .rv-nav button{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--navy);font-size:1.3rem;cursor:pointer}
+
+    /* FAQ */
+    .faq-list{max-width:860px;display:grid;gap:12px}
+    .faq-item{background:#fff;border:1px solid rgba(199,154,56,.22);border-radius:16px;box-shadow:0 6px 20px rgba(120,84,10,.05)}
+    .faq-q{list-style:none;cursor:pointer;padding:18px 54px 18px 22px;font-size:1.15rem;font-weight:600;color:var(--navy);position:relative}
+    .faq-q::-webkit-details-marker{display:none}
+    .faq-q:after{content:"+";position:absolute;right:20px;top:50%;transform:translateY(-50%);width:28px;height:28px;border-radius:50%;background:#f8efd8;color:#8a6417;display:grid;place-items:center;font-family:"Plus Jakarta Sans",sans-serif;font-weight:800;transition:transform .2s}
+    .faq-item[open] .faq-q:after{content:"−"}
+    .faq-a{padding:0 22px 18px;color:#425166;margin:0}
+
+    /* Accès : adresse + carte côte à côte */
+    .v2 .acces-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:22px;align-items:stretch}
+    .v2 .acces-grid .map-box{margin-top:0;height:auto;min-height:360px}
+
+    /* Contact : formulaire + téléphone */
+    .v2 .contact-box{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:start}
+    .c-ways{display:grid;gap:10px;margin-top:22px}
+    .c-way{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);color:#fff!important;text-decoration:none!important;font-weight:700;word-break:break-word}
+    .c-way:hover{background:rgba(255,255,255,.14)}
+    .c-way i{font-style:normal;flex:0 0 36px;width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--gold-2);color:var(--navy)}
+    .c-way.wa i{background:#25d366;color:#fff}
+    .c-way small{display:block;font-weight:500;color:#b9c7d6;font-size:.8rem}
+    .c-form{background:#fff;color:var(--ink);border-radius:22px;padding:24px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .c-form h3{grid-column:1/-1;margin:0;color:var(--navy);font-size:1.25rem}
+    .c-form p.c-intro{grid-column:1/-1;margin:-6px 0 4px;color:var(--muted);font-size:.92rem}
+    .c-form label{display:grid;gap:5px;font-size:.85rem;font-weight:700;color:var(--navy)}
+    .c-form label.full{grid-column:1/-1}
+    .c-form input,.c-form textarea{font:inherit;font-weight:400;font-size:16px;padding:11px 12px;border:1px solid #d5dce4;border-radius:10px;background:#fbfcfd;color:var(--ink);width:100%}
+    .c-form input:focus,.c-form textarea:focus{outline:2px solid rgba(199,154,56,.45);border-color:var(--gold)}
+    .c-form textarea{min-height:110px;resize:vertical}
+    .c-form .btn{grid-column:1/-1;border:0;cursor:pointer;font:inherit;font-weight:900}
+    .c-form .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+    .c-msg{grid-column:1/-1;margin:0;padding:12px 14px;border-radius:10px;font-weight:700}
+    .c-msg.ok{background:#e7f6ec;color:#14532d}
+    .c-msg.err{background:#fdecea;color:#8a1c12}
+
+    /* Barre « Réserver » fixe sur mobile */
+    .mbar{display:none}
+    @media (max-width:900px){
+      .mbar{display:flex;gap:8px;position:fixed;left:10px;right:10px;bottom:calc(10px + env(safe-area-inset-bottom));z-index:60;padding:8px;border-radius:16px;background:rgba(5,18,31,.94);box-shadow:0 12px 30px rgba(0,0,0,.3);transform:translateY(140%);transition:transform .3s ease}
+      .mbar.on{transform:none}
+      .mbar a{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 10px;border-radius:11px;font-weight:900;text-decoration:none;font-size:.95rem}
+      .mbar .m-book{background:linear-gradient(135deg,#f0cf72,#d8a83f);color:#152131}
+      .mbar .m-alt{background:rgba(255,255,255,.1);color:#fff;flex:0 0 auto;padding:12px 16px}
+      .v2 footer{padding-bottom:100px}
+    }
+
+    /* Aperçu avant activation */
+    .preview-pill{position:fixed;left:12px;bottom:12px;z-index:70;background:#fff7df;color:#5f4b22;border:1px solid #f0d17b;border-radius:12px;padding:8px 12px;font-size:.82rem;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.15);max-width:calc(100% - 24px)}
+    .preview-pill a{color:#1727b8}
+    @media (max-width:900px){.preview-pill{bottom:auto;top:76px}}
+
+    @media (max-width:1000px){
+      .ev-grid{grid-template-columns:1fr 1fr}
+      .ev-card{min-height:340px}
+      .eq-grid,.v2 .acces-grid{grid-template-columns:1fr}
+      .eq-photo{min-height:300px}
+      .next-dates{grid-template-columns:1fr}
+      .v2 .contact-box{grid-template-columns:1fr}
+    }
+    @media (max-width:620px){
+      .kf-grid{grid-template-columns:1fr 1fr;gap:18px 6px}
+      .kf:nth-child(3):before{display:none}
+      .ev-grid{grid-template-columns:1fr}
+      .ev-card{min-height:300px}
+      .eq-lists,.eq-side .stat-grid{grid-template-columns:1fr}
+      .v2 .gallery{grid-template-columns:1fr 1fr;grid-auto-rows:150px}
+      .c-form{grid-template-columns:1fr;padding:20px}
+      .band .wrap{padding-bottom:36px}
+      .band:before{background:linear-gradient(180deg,rgba(5,18,31,.2) 0%,rgba(5,18,31,.85) 100%)}
+      .nd-list{display:grid;grid-template-columns:1fr 1fr}
+      .nd{padding:9px 11px}
+      .rv-nav{display:none}
+    }
+<?php endif; ?>
   </style>
 </head>
-<body>
+<body<?= $v2 ? ' class="v2"' : '' ?>>
   <header>
     <div class="wrap nav">
       <a class="brand" href="#accueil" aria-label="Accueil <?= e($name) ?>">
@@ -575,6 +752,99 @@ $jsonLd  = [
       </div>
     </section>
 <?php $blocks['mobilier'] = ob_get_clean(); ?>
+<?php if ($v2): ?>
+<?php ob_start(); $eqPhoto = home_photo((int)s('equip2_photo')); ?>
+    <section id="equipements">
+      <div class="wrap">
+        <div class="section-title">
+          <h2><?= e(s('mobilier_title')) ?></h2>
+          <p><?= rich(s('equip_subtitle')) ?></p>
+        </div>
+        <div class="eq-grid<?= $eqPhoto ? '' : ' no-photo' ?>"<?= $eqPhoto ? '' : ' style="grid-template-columns:1fr"' ?>>
+<?php if ($eqPhoto): ?>
+          <div class="eq-photo"><?= home_picture($eqPhoto) ?></div>
+<?php endif; ?>
+          <div class="eq-side">
+            <div class="stat-grid">
+<?php foreach (items('equipements') as $it): ?>
+              <div class="stat"><b><?= e($it['title']) ?></b><span><?= rich($it['text']) ?></span></div>
+<?php endforeach; ?>
+            </div>
+            <div class="eq-lists">
+<?php foreach (['mobilier' => 'mobilier_panel1', 'vaisselle' => 'mobilier_panel2'] as $grp => $titleKey): ?>
+              <div class="details-panel">
+                <h3><?= e(s($titleKey)) ?></h3>
+                <ul class="checklist">
+<?php foreach (items($grp) as $it): ?>
+                  <li><span class="check">✓</span><span><?= rich($it['text']) ?></span></li>
+<?php endforeach; ?>
+                </ul>
+              </div>
+<?php endforeach; ?>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+<?php $blocks['equipements'] = ob_get_clean(); ?>
+<?php foreach ([1, 2] as $n): $bp = home_photo((int)s('band' . $n . '_photo')); if ($bp): ob_start(); ?>
+    <section class="band" style="--bg:url('<?= e(home_photo_url($bp)) ?>')" aria-label="<?= e($bp['alt'] ?: s('site_name')) ?>">
+      <div class="wrap"><p><?= e(s('band' . $n . '_text')) ?></p></div>
+    </section>
+<?php $blocks['bandeau' . $n] = ob_get_clean(); endif; endforeach; ?>
+<?php $kf = items('chiffres'); if ($kf): ob_start(); ?>
+    <section class="keyfigs" aria-label="Chiffres clés">
+      <div class="wrap kf-grid">
+<?php foreach ($kf as $it): ?>
+        <div class="kf"><b><?= e($it['title']) ?></b><span><?= e($it['text']) ?></span></div>
+<?php endforeach; ?>
+      </div>
+    </section>
+<?php $blocks['chiffres'] = ob_get_clean(); endif; ?>
+<?php $evs = items('evenements_cartes'); if ($evs): ob_start(); ?>
+    <section id="evenements">
+      <div class="wrap">
+        <div class="section-title">
+          <h2><?= e(s('events_title')) ?></h2>
+          <p><?= rich(s('events_subtitle')) ?></p>
+        </div>
+        <div class="ev-grid">
+<?php foreach ($evs as $it): $ep = home_photo((int)$it['value']); ?>
+          <a class="ev-card" href="<?= e(u('reservation.php')) ?>" data-track="reserver">
+<?php if ($ep): ?>            <?= home_picture($ep, 'thumb') ?>
+<?php endif; ?>
+            <div class="ev-body">
+<?php if ($it['icon'] !== ''): ?>              <span class="ev-icon" aria-hidden="true"><?= e($it['icon']) ?></span>
+<?php endif; ?>
+              <h3><?= e($it['title']) ?></h3>
+              <p><?= rich($it['text']) ?></p>
+              <span class="ev-cta">Voir les disponibilités <span aria-hidden="true">→</span></span>
+            </div>
+          </a>
+<?php endforeach; ?>
+        </div>
+      </div>
+    </section>
+<?php $blocks['evenements'] = ob_get_clean(); endif; ?>
+<?php if ($faq): ob_start(); ?>
+    <section id="faq">
+      <div class="wrap">
+        <div class="section-title">
+          <h2><?= e(s('faq_title')) ?></h2>
+          <p><?= rich(s('faq_subtitle')) ?></p>
+        </div>
+        <div class="faq-list">
+<?php foreach ($faq as $i => $q): ?>
+          <details class="faq-item"<?= $i === 0 ? ' open' : '' ?>>
+            <summary class="faq-q"><?= e($q['title']) ?></summary>
+            <p class="faq-a"><?= rich($q['text']) ?></p>
+          </details>
+<?php endforeach; ?>
+        </div>
+      </div>
+    </section>
+<?php $blocks['faq'] = ob_get_clean(); endif; ?>
+<?php endif; ?>
 
 <?php ob_start(); ?>
     <section class="plan-cta-section" aria-labelledby="plan-cta-title">
@@ -608,6 +878,17 @@ $jsonLd  = [
 <?php endforeach; ?>
         </div>
         <p class="pricing-foot" style="margin-top:14px">Prix de la <strong>journée (24 h)</strong>, de <?= e(str_replace(':', 'h', s('bk_day_start'))) ?> à <?= e(str_replace(':', 'h', s('bk_day_start'))) ?>, selon le jour d’arrivée<?= bk_max_days() > 1 ? ' — possible aussi sur ' . (bk_max_days() >= 3 ? '48 h ou 72 h' : '48 h') : '' ?>. <strong>Location à l’heure</strong> de <?= e(str_replace(':', 'h', s('bk_hour_open'))) ?> à <?= e(str_replace(':', 'h', s('bk_hour_close'))) ?> : <?= money(bk_hour_price_ttc(bk_num('bk_min_hours', 2))) ?> les <?= e(fr_hours(bk_num('bk_min_hours', 2))) ?>, tarif dégressif au-delà. <a href="<?= e(u('reservation.php')) ?>" data-track="reserver">Voir les disponibilités et réserver</a>.</p>
+<?php if ($v2 && ($next = home_next_free(4))): ?>
+        <div class="next-dates">
+          <h3><?= e(s('dates_title')) ?></h3>
+          <div class="nd-list">
+<?php foreach ($next as $nd): ?>
+            <a class="nd" href="<?= e(u('reservation.php') . '?date=' . $nd['date']->format('Y-m-d')) ?>" data-track="date"><strong><?= e(ucfirst(fr_date_long($nd['date']))) ?></strong><small><?= $nd['special'] ? '★ ' . e($nd['special']) . ' · ' : '' ?><?= money($nd['price']) ?> la journée</small></a>
+<?php endforeach; ?>
+          </div>
+          <a class="nd-all" href="<?= e(u('reservation.php')) ?>" data-track="reserver">Tout le calendrier →</a>
+        </div>
+<?php endif; ?>
 <?php $specials = specials_upcoming(4); if ($specials): ?>
         <p class="pricing-foot" style="margin-top:6px">★ <strong>Tarifs spéciaux</strong> : <?= implode(' · ', array_map(fn($sp) => e($sp['label']) . ' (' . e(bk_dt($sp['date_from'])->format('d/m')) . ($sp['date_to'] !== $sp['date_from'] ? '–' . e(bk_dt($sp['date_to'])->format('d/m')) : '') . ') ' . e(special_label($sp)), $specials)) ?>.</p>
 <?php endif; ?>
@@ -654,7 +935,7 @@ $jsonLd  = [
           <h2><?= e(s('acces_title')) ?></h2>
           <p><?= rich(s('acces_subtitle')) ?></p>
         </div>
-        <div class="details-grid">
+        <div class="<?= $v2 ? 'acces-grid' : 'details-grid' ?>">
           <div class="details-panel">
             <h3><?= e(s('acces_panel1')) ?></h3>
             <ul class="checklist">
@@ -666,6 +947,7 @@ $jsonLd  = [
             <div style="margin-top:20px"><a class="btn btn-secondary" target="_blank" rel="noopener" href="<?= e(s('maps_url')) ?>" data-track="maps">Itinéraire dans Google Maps ↗</a></div>
 <?php endif; ?>
           </div>
+<?php if (!$v2): ?>
           <div class="details-panel">
             <h3><?= e(s('acces_panel2')) ?></h3>
             <ul class="checklist">
@@ -675,9 +957,13 @@ $jsonLd  = [
             </ul>
           </div>
         </div>
+<?php endif; ?>
 <?php if ($mapSrc): ?>
         <div class="map-box" id="map">
           <iframe src="<?= e($mapSrc) ?>" title="Carte Google Maps : <?= e(s('map_query')) ?>" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+        </div>
+<?php endif; ?>
+<?php if ($v2): ?>
         </div>
 <?php endif; ?>
       </div>
@@ -691,10 +977,19 @@ $jsonLd  = [
           <h2><?= e(s('photos_title')) ?></h2>
           <p><?= rich(s('photos_subtitle')) ?></p>
         </div>
-        <div class="gallery" aria-label="Galerie photos de <?= e($name) ?>">
+<?php $cats = $v2 ? array_values(array_unique(array_filter(array_column($photos, 'category'), fn($c) => isset(PHOTO_CATEGORIES[$c])))) : []; ?>
+<?php if (count($cats) > 1): ?>
+        <div class="g-tabs" role="group" aria-label="Filtrer les photos">
+          <button type="button" class="g-tab" data-cat="" aria-pressed="true">Toutes</button>
+<?php foreach (array_keys(PHOTO_CATEGORIES) as $c): if (in_array($c, $cats, true)): ?>
+          <button type="button" class="g-tab" data-cat="<?= e($c) ?>" aria-pressed="false"><?= e(PHOTO_CATEGORIES[$c]) ?></button>
+<?php endif; endforeach; ?>
+        </div>
+<?php endif; ?>
+        <div class="gallery" id="gallery" aria-label="Galerie photos de <?= e($name) ?>">
 <?php foreach ($photos as $i => $ph): ?>
-<?php $thumb = variant_src($ph['filename'], 'thumb'); $large = variant_src($ph['filename'], 'large'); ?>
-          <figure class="gallery-item" data-track="photo"<?= $large ? ' data-full="' . e($large) . '"' : '' ?>>
+<?php $thumb = variant_src($ph['filename'], $v2 && $i === 0 ? 'large' : 'thumb'); $large = variant_src($ph['filename'], 'large'); ?>
+          <figure class="gallery-item<?= $v2 && $i >= 5 ? ' more' : '' ?>" data-cat="<?= e($ph['category'] ?? '') ?>" data-track="photo"<?= $large ? ' data-full="' . e($large) . '"' : '' ?>>
             <picture>
 <?php if ($thumb): ?>
               <source type="image/webp" data-srcset="<?= e($thumb) ?>">
@@ -705,6 +1000,9 @@ $jsonLd  = [
           </figure>
 <?php endforeach; ?>
         </div>
+<?php if ($v2 && count($photos) > 5): ?>
+        <div class="g-more"><button type="button" class="btn btn-gold" id="g-more">Voir les <?= count($photos) ?> photos</button></div>
+<?php endif; ?>
       </div>
     </section>
 <?php $blocks['photos'] = ob_get_clean(); ?>
@@ -713,6 +1011,7 @@ $jsonLd  = [
 <?php if ($showReviews): ?>
     <section class="reviews-section" id="avis">
       <div class="wrap">
+<?php if ($v2): ?><div class="reviews-head"><?php endif; ?>
         <div class="section-title">
           <h2><?= e(s('reviews_title')) ?></h2>
           <p><?= rich(s('reviews_subtitle')) ?></p>
@@ -733,6 +1032,7 @@ $jsonLd  = [
           </<?= $tag ?>>
 <?php endif; ?>
         </div>
+<?php if ($v2): ?></div><?php endif; ?>
 <?php if ($reviews): ?>
         <div class="reviews" id="reviews-list">
 <?php foreach ($reviews as $i => $rv): ?>
@@ -752,6 +1052,9 @@ $jsonLd  = [
           </article>
 <?php endforeach; ?>
         </div>
+<?php if ($v2 && count($reviews) > 1): ?>
+        <div class="rv-nav"><button type="button" data-dir="-1" aria-label="Avis précédents">‹</button><button type="button" data-dir="1" aria-label="Avis suivants">›</button></div>
+<?php endif; ?>
 <?php if (count($reviews) > $reviewsLimit): ?>
         <div class="reviews-more"><button class="btn btn-gold" type="button" id="reviews-more"><?= count($reviews) - $reviewsLimit === 1 ? 'Voir l’autre avis' : 'Voir les ' . (count($reviews) - $reviewsLimit) . ' autres avis' ?></button></div>
 <?php endif; ?>
@@ -787,8 +1090,56 @@ $jsonLd  = [
       </div>
     </section>
 <?php $blocks['contact'] = ob_get_clean(); ?>
+<?php if ($v2): ob_start(); $tel = trim(s('contact_phone')); $cst = (string)($_GET['contact'] ?? ''); ?>
+    <section class="contact" id="contact">
+      <div class="wrap">
+        <div class="contact-box">
+          <div>
+            <div class="eyebrow" style="color:var(--gold-2)"><?= e(s('contact_eyebrow')) ?></div>
+            <h2><?= e(s('contact_title')) ?></h2>
+            <p><?= rich(s('contact_text')) ?></p>
+            <div class="c-ways">
+<?php if ($tel !== ''): ?>
+              <a class="c-way" href="tel:<?= e(home_phone_digits($tel)) ?>" data-track="tel"><i aria-hidden="true">📞</i><span><?= e($tel) ?><small>Appelez-nous</small></span></a>
+<?php if (s('contact_whatsapp') === '1'): ?>
+              <a class="c-way wa" href="https://wa.me/<?= e(home_phone_digits($tel, true)) ?>" target="_blank" rel="noopener" data-track="whatsapp"><i aria-hidden="true">✆</i><span>WhatsApp<small>Écrivez-nous en direct</small></span></a>
+<?php endif; ?>
+<?php endif; ?>
+              <a class="c-way" href="<?= e($mailto) ?>" data-track="email"><i aria-hidden="true">✉</i><span><?= e(s('contact_email')) ?><small>Par e-mail</small></span></a>
+            </div>
+          </div>
+          <form class="c-form" id="c-form" method="post" action="contact.php">
+            <h3>Écrivez-nous</h3>
+            <p class="c-intro"><?= e(s('contact_form_intro')) ?></p>
+<?php if ($cst === 'ok'): ?>
+            <p class="c-msg ok" role="status">Merci, votre message est bien parti : nous vous répondons rapidement.</p>
+<?php elseif ($cst === 'err'): ?>
+            <p class="c-msg err" role="alert"><?= e(mb_substr((string)($_GET['m'] ?? 'Envoi impossible.'), 0, 200)) ?></p>
+<?php endif; ?>
+            <label>Nom<input name="name" autocomplete="name" required maxlength="80"></label>
+            <label>E-mail<input name="email" type="email" autocomplete="email" required maxlength="160"></label>
+            <label>Téléphone <span style="font-weight:400;color:var(--muted)">(facultatif)</span><input name="phone" type="tel" autocomplete="tel" maxlength="30"></label>
+            <label>Date souhaitée<input name="date" maxlength="40" placeholder="ex. samedi 14 juin"></label>
+            <label class="full">Votre message<textarea name="message" required maxlength="3000" placeholder="Type d’événement, nombre d’invités, questions…"></textarea></label>
+            <div class="hp" aria-hidden="true"><label>Site web<input name="website" tabindex="-1" autocomplete="off"></label></div>
+            <input type="hidden" name="t" value="<?= time() ?>">
+            <button class="btn btn-primary" type="submit">✉ Envoyer le message</button>
+          </form>
+        </div>
+      </div>
+    </section>
+<?php $blocks['contact'] = ob_get_clean(); endif; ?>
 <?php foreach ($sections as $key => $visible) { if ($visible && isset($blocks[$key])) { echo $blocks[$key]; } } ?>
   </main>
+<?php if ($v2): ?>
+  <nav class="mbar" aria-label="Réserver">
+    <a class="m-book" href="<?= e(u('reservation.php')) ?>" data-track="reserver">📅 Réserver en ligne</a>
+    <a class="m-alt" href="<?= trim(s('contact_phone')) !== '' ? 'tel:' . e(home_phone_digits(s('contact_phone'))) : '#contact' ?>" data-track="<?= trim(s('contact_phone')) !== '' ? 'tel' : 'email' ?>" aria-label="<?= trim(s('contact_phone')) !== '' ? 'Appeler' : 'Nous écrire' ?>"><?= trim(s('contact_phone')) !== '' ? '📞' : '✉' ?></a>
+  </nav>
+<?php endif; ?>
+<?php if ($preview): ?>
+  <div class="preview-pill">👁 Aperçu de la nouvelle page d’accueil — les visiteurs voient encore l’ancienne. <a href="./">Voir la version actuelle</a></div>
+<?php endif; ?>
 
   <footer>
     <div class="wrap foot">
@@ -801,7 +1152,7 @@ $jsonLd  = [
     const CONTACT_EMAIL = <?= json_encode(s('contact_email'), JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     const MAILTO = <?= json_encode($mailto, JSON_HEX_TAG | JSON_HEX_AMP) ?>;
     const btn = document.getElementById('copyMail');
-    btn.addEventListener('click', async () => {
+    if (btn) btn.addEventListener('click', async () => {
       try {
         await navigator.clipboard.writeText(CONTACT_EMAIL);
         const old = btn.textContent;
@@ -935,7 +1286,7 @@ $jsonLd  = [
       if (reduce || !('IntersectionObserver' in window)) return;
       document.documentElement.classList.add('js-anim');
 
-      const targets = document.querySelectorAll('main .section-title, .hero-fact, .card, .stat, .details-panel, .plan-cta-box, .day-price, .pricing-info-item, .pricing-card, .gallery-item, .review-badge, .review, .map-box, .contact-box');
+      const targets = document.querySelectorAll('main .section-title, .hero-fact, .card, .stat, .details-panel, .plan-cta-box, .day-price, .pricing-info-item, .pricing-card, .gallery-item, .review-badge, .review, .map-box, .contact-box, .ev-card, .kf, .faq-item, .next-dates, .eq-photo, .band p');
       const groups = new Map();
       targets.forEach(el => {
         el.classList.add('reveal');
@@ -946,7 +1297,7 @@ $jsonLd  = [
 
       // Chiffres clés : « 120 personnes », « 125 m² », « 11,77 m² »…
       const counters = [];
-      document.querySelectorAll('.hero-fact strong, .card p strong, .stat b').forEach(el => {
+      document.querySelectorAll('.hero-fact strong, .card p strong, .stat b, .kf b').forEach(el => {
         if (el.children.length) return;
         const m = el.textContent.match(/\d+(?:[,.]\d+)?/);
         if (!m) return;
@@ -1007,6 +1358,58 @@ $jsonLd  = [
         timer = setInterval(() => { if (visible && !paused && !document.hidden) go(current() + 1); }, 4500);
       }
     })();
+<?php if ($v2): ?>
+    // ===== Nouvelle page d'accueil =====
+    (function(){
+      // Galerie : « Voir toutes les photos » et onglets par espace
+      const gal = document.getElementById('gallery');
+      const more = document.getElementById('g-more');
+      if (gal && more) more.addEventListener('click', () => { gal.classList.add('show-all'); more.parentNode.remove(); });
+      document.querySelectorAll('.g-tab').forEach(b => b.addEventListener('click', () => {
+        const c = b.dataset.cat;
+        document.querySelectorAll('.g-tab').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+        gal.classList.toggle('filtered', c !== '');
+        gal.querySelectorAll('.gallery-item').forEach(it => it.classList.toggle('out', c !== '' && it.dataset.cat !== c));
+        if (c !== '' && more && more.isConnected) more.parentNode.hidden = true; else if (more && more.isConnected) more.parentNode.hidden = false;
+      }));
+      // Avis : flèches
+      const list = document.getElementById('reviews-list');
+      document.querySelectorAll('.rv-nav button').forEach(b => b.addEventListener('click', () => {
+        if (list) list.scrollBy({ left: +b.dataset.dir * Math.min(list.clientWidth, 400), behavior: 'smooth' });
+      }));
+      // Barre « Réserver » sur mobile : après le bandeau d'accueil, cachée sur le formulaire de contact
+      const bar = document.querySelector('.mbar');
+      if (bar) {
+        const contact = document.getElementById('contact');
+        const upd = () => {
+          const past = window.scrollY > 520;
+          const r = contact ? contact.getBoundingClientRect() : null;
+          const onContact = r && r.top < window.innerHeight && r.bottom > 0;
+          bar.classList.toggle('on', past && !onContact);
+        };
+        window.addEventListener('scroll', upd, { passive: true }); upd();
+      }
+      // Formulaire de contact : envoi sans quitter la page
+      const f = document.getElementById('c-form');
+      if (f && window.fetch && window.FormData) f.addEventListener('submit', async e => {
+        e.preventDefault();
+        const b = f.querySelector('button[type=submit]'), label = b.innerHTML;
+        f.querySelectorAll('.c-msg').forEach(m => m.remove());
+        const say = (cls, txt) => { const p = document.createElement('p'); p.className = 'c-msg ' + cls; p.setAttribute('role', cls === 'ok' ? 'status' : 'alert'); p.textContent = txt; b.before(p); };
+        b.disabled = true; b.textContent = 'Envoi…';
+        try {
+          const r = await fetch(f.action, { method: 'POST', body: new FormData(f), headers: { Accept: 'application/json' } });
+          const j = await r.json();
+          if (j.ok) {
+            say('ok', 'Merci, votre message est bien parti : nous vous répondons rapidement.');
+            f.reset();
+            if (navigator.sendBeacon) { const d = new FormData(); d.append('k', 'formulaire'); d.append('p', 'accueil'); navigator.sendBeacon('track.php', d); }
+          } else say('err', j.error || 'Envoi impossible.');
+        } catch (err) { say('err', 'Connexion impossible : réessayez, ou écrivez-nous par e-mail.'); }
+        b.disabled = false; b.innerHTML = label;
+      });
+    })();
+<?php endif; ?>
   </script>
   <?= tracking_script('accueil') ?>
 </body>
