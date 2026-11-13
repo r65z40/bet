@@ -585,6 +585,47 @@ function request_label(): string
     return ($_SERVER['REQUEST_METHOD'] ?? 'CLI') . ' ' . mb_substr(preg_replace('/([?&](t|k|token|session_id)=)[^&]+/', '$1…', (string)($_SERVER['REQUEST_URI'] ?? implode(' ', $GLOBALS['argv'] ?? []))), 0, 120);
 }
 
+/**
+ * Traceur de requêtes : un petit fichier par requête en cours (data/inflight/), effacé à la fin.
+ * Une requête bloquée puis tuée par l'hébergeur (504/502) laisse son fichier : elle est alors notée
+ * dans data/perf.log, ce qui permet de savoir quelle page ou quelle tâche bloquait.
+ */
+function inflight_start(): void
+{
+    $dir = DATA_DIR . '/inflight';
+    if (!is_dir($dir)) {
+        @mkdir($dir, 0775, true);
+    }
+    $GLOBALS['_inflight_file'] = $dir . '/' . getmypid() . '-' . bin2hex(random_bytes(4));
+    @file_put_contents($GLOBALS['_inflight_file'], time() . '|' . request_label());
+    if (random_int(1, 25) === 1) {
+        inflight_sweep();
+    }
+}
+
+function inflight_end(): void
+{
+    if (!empty($GLOBALS['_inflight_file'])) {
+        @unlink($GLOBALS['_inflight_file']);
+        $GLOBALS['_inflight_file'] = '';
+    }
+}
+
+/** Requêtes restées en cours plus de 90 s : bloquées ou tuées. Notées dans perf.log puis effacées. */
+function inflight_sweep(): array
+{
+    $found = [];
+    foreach (glob(DATA_DIR . '/inflight/*') ?: [] as $f) {
+        [$t, $label] = array_pad(explode('|', (string)@file_get_contents($f), 2), 2, '');
+        if ((int)$t > 0 && time() - (int)$t > 90 && $f !== ($GLOBALS['_inflight_file'] ?? '')) {
+            $found[] = date('d/m H:i:s', (int)$t) . ' ' . $label;
+            perf_log('REQUÊTE BLOQUÉE ou interrompue par l’hébergeur (démarrée le ' . date('d/m à H:i:s', (int)$t) . ') : ' . $label);
+            @unlink($f);
+        }
+    }
+    return $found;
+}
+
 /* ---------- Tâches lancées après l'envoi de la page ---------- */
 
 /** Les tâches peuvent-elles vraiment tourner après l'envoi de la page (PHP-FPM) ? */
@@ -624,6 +665,9 @@ function after_response(callable $task, string $label = 'tâche'): void
             @set_time_limit(60);
             $GLOBALS['_after_response_running'] = true;
             $start = microtime(true);
+            // suivies aussi par le traceur : une tâche de fond bloquée apparaîtra dans perf.log
+            $GLOBALS['_inflight_file'] = DATA_DIR . '/inflight/' . getmypid() . '-bg-' . bin2hex(random_bytes(3));
+            @file_put_contents($GLOBALS['_inflight_file'], time() . '|tâches après la page (' . implode(', ', array_map(fn($q) => $q[1], (array)$queue->getArrayCopy())) . ') — ' . request_label());
             foreach ($queue as $i => [$t, $label]) {
                 if (microtime(true) - $start > 30) {
                     perf_log('ARRÊT : tâches restantes abandonnées (plus de 30 s) — ' . request_label());
@@ -641,6 +685,7 @@ function after_response(callable $task, string $label = 'tâche'): void
                     perf_log(sprintf('tâche « %s » : %.1f s%s (%s)%s', $label, $d, $err, request_label(), can_finish_early() ? '' : ' [sans PHP-FPM : le visiteur a attendu]'));
                 }
             }
+            inflight_end();
         });
     }
     $queue->append([$task, $label]);

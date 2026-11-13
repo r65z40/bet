@@ -128,7 +128,8 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
           <li>Fichiers de la base : <?= e(implode(', ', $files)) ?></li>
           <li>OPcache : <?= function_exists('opcache_get_status') && @opcache_get_status(false) ? 'activé ✓' : 'désactivé' ?></li>
         </ul>
-        <?php $tail = perf_log_tail(60); ?>
+        <?php inflight_sweep(); $tail = perf_log_tail(60); $now_inflight = count(glob(DATA_DIR . '/inflight/*') ?: []); ?>
+        <p class="muted" style="margin:0 0 6px">Requêtes en cours en ce moment : <strong><?= $now_inflight ?></strong> (dont celle-ci).</p>
         <p class="muted" style="margin:0 0 6px">Journal des lenteurs (pages de plus de 2 s, tâches de plus de 1,5 s) — aussi téléchargeable par FTP : <code>data/perf.log</code></p>
         <pre style="max-height:320px;overflow:auto;background:#0b1626;color:#dfe7f1;padding:12px;border-radius:8px;font-size:12px;white-space:pre-wrap"><?= $tail ? e(implode("\n", array_reverse($tail))) : 'Rien de lent enregistré.' ?></pre>
       </details>

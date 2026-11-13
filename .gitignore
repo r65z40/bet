@@ -24,3 +24,4 @@ data/.cron.lock
 data/.storage
 data/perf.log*
 data/.gcal.lock
+data/inflight/

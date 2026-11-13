@@ -31,6 +31,8 @@ function run_scheduled_tasks(bool $force = false): array
         settings(true);
         $now = bk_now();
 
+        inflight_sweep(); // requêtes bloquées ou tuées depuis le dernier passage → perf.log
+
         // 0. Agenda Google relu (blocages ajoutés depuis l'iPhone)
         try {
             gcal_sync_if_needed(true);

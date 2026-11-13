@@ -52,6 +52,13 @@ function admin_header(string $title, string $active = ''): void
 {
     $admin = current_admin();
     $menu = $admin ? admin_menu() : [];
+    // La page est prête à s'afficher : on libère la session tout de suite (jeton CSRF et messages lus avant),
+    // pour qu'un autre onglet de l'admin n'attende jamais la fin de celle-ci.
+    csrf_token();
+    $flashHtml = render_flash();
+    if (session_status() === PHP_SESSION_ACTIVE) {
+        session_write_close();
+    }
     $group = '';
     foreach ($menu as $g => $item) {
         if (isset($item['pages'][$active])) {
@@ -101,7 +108,7 @@ function admin_header(string $title, string $active = ''): void
 <?php endif; ?>
 <?php endif; ?>
 <main class="<?= $admin ? 'page' : 'auth' ?>">
-<?= render_flash() ?>
+<?= $flashHtml ?>
 <?php
 }
 

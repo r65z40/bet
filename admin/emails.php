@@ -11,6 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Lot suivant d'une expédition (appelé en boucle par la page de suivi)
     if ($do === 'process') {
+        session_write_close(); // envoi d'un lot (jusqu'à 20 s) : ne bloque pas les autres pages de l'admin
         $counts = mailing_process((int)($_POST['id'] ?? 0));
         if (!empty($_POST['ajax'])) {
             header('Content-Type: application/json');

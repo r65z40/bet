@@ -82,7 +82,9 @@ require_once __DIR__ . '/layout.php';
 
 // Diagnostic : toute page qui met plus de 2 s à se construire est notée dans data/perf.log (lisible par FTP)
 if (PHP_SAPI !== 'cli') {
+    inflight_start();
     register_shutdown_function(function () {
+        inflight_end();
         $d = microtime(true) - REQUEST_T0;
         $err = error_get_last();
         $fatal = $err && in_array($err['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR, E_USER_ERROR], true);
