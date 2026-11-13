@@ -106,7 +106,7 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
       <strong>Comment fonctionne l’empreinte bancaire ?</strong> Le client enregistre sa carte sur la page sécurisée de Stripe : le montant est <strong>bloqué</strong> sur sa carte, mais <strong>pas débité</strong>.
       Après l’état des lieux de sortie, depuis la fiche de la réservation, vous <strong>libérez</strong> l’empreinte ou vous <strong>encaissez</strong> tout ou partie du montant avec un motif ; sans action de votre part, elle est libérée automatiquement.
       Une empreinte ne dure que <strong>7 jours</strong> : elle est donc demandée peu avant l’arrivée (e-mail automatique), et le client peut aussi la faire à l’état des lieux d’entrée, depuis son téléphone.
-      <?php if (s('bk_deposit_mode') === 'stripe' && !isset(payment_providers()['stripe'])): ?><br><strong style="color:#b42318">Stripe n’est pas activé (Réglages › Paiement) : l’empreinte bancaire ne peut pas fonctionner.</strong><?php endif; ?>
+      <?php if (s('bk_deposit_mode') !== 'cheque' && !isset(payment_providers()['stripe'])): ?><br><strong style="color:#b42318">Stripe n’est pas activé (Réglages › Paiement) : l’empreinte bancaire ne peut pas fonctionner (seul le chèque est proposé).</strong><?php endif; ?>
       <?php if ((int)bk_num('bk_deposit_days_before', 2) + 3 + (int)bk_num('bk_deposit_release_days', 2) > 7): ?><br><strong style="color:#b42318">Attention : pour une location de 72 h, jours avant + 3 jours + jours après dépassent 7 jours : l’empreinte expirerait avant la libération prévue.</strong><?php endif; ?>
     </div>
 <?php elseif ($current === 'emails'): ?>

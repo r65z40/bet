@@ -524,3 +524,39 @@ function stats_quota_reached(string $table, int $perVisitor, int $perDay): bool
     $st->execute([$day]);
     return (int)$st->fetchColumn() >= $perDay;
 }
+
+/* ---------- Documents remis aux clients (règlement intérieur, contrat, état des lieux…) ---------- */
+
+const DOC_DIR = ROOT . '/documents';
+const DOC_TYPES = ['pdf' => 'application/pdf', 'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+
+/** Documents visibles (ou tous), dans l'ordre ; ceux dont le fichier a disparu sont ignorés. */
+function documents(bool $all = false, bool $emailOnly = false): array
+{
+    $rows = db()->query('SELECT * FROM documents' . ($all ? '' : ' WHERE visible = 1') . ' ORDER BY position, id')->fetchAll();
+    return array_values(array_filter($rows, fn($d) => is_file(DOC_DIR . '/' . $d['filename']) && (!$emailOnly || (int)$d['in_emails'])));
+}
+
+/** Adresse relative du fichier (avec version, pour ne jamais servir une ancienne copie). */
+function document_src(array $d): string
+{
+    return 'documents/' . rawurlencode($d['filename']) . '?v=' . @filemtime(DOC_DIR . '/' . $d['filename']);
+}
+
+/** « PDF, 180 Ko » */
+function document_meta(array $d): string
+{
+    $size = (int)@filesize(DOC_DIR . '/' . $d['filename']);
+    return strtoupper(pathinfo($d['filename'], PATHINFO_EXTENSION)) . ', ' . ($size >= 1048576 ? number_format($size / 1048576, 1, ',', '') . ' Mo' : max(1, (int)round($size / 1024)) . ' Ko');
+}
+
+/** Liste des documents pour une page du site. */
+function documents_list_html(array $docs): string
+{
+    $h = '<ul class="docs">';
+    foreach ($docs as $d) {
+        $h .= '<li><a href="' . e(document_src($d)) . '" target="_blank" rel="noopener"><span class="doc-ico" aria-hidden="true">📄</span><span><strong>' . e($d['title']) . '</strong>'
+            . ($d['description'] !== '' ? '<small>' . e($d['description']) . '</small>' : '') . '<small class="m">' . e(document_meta($d)) . '</small></span><em>' . e(document_meta($d)) . '</em></a></li>';
+    }
+    return $h . '</ul>';
+}

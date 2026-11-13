@@ -19,16 +19,16 @@ Location de 24 heures (horaires indiqués lors de la réservation) ou location �
 La capacité maximale de la salle est de 120 personnes assises. Le client s’engage à ne pas la dépasser.
 
 # 5. Caution et état des lieux
-Une caution de 2 × le montant du loyer HT est remise par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie, déduction faite des éventuelles dégradations, du ménage non effectué ou du matériel manquant.
+Une caution de 2 × le montant du loyer HT est demandée. Au choix du client, elle prend la forme d’une **empreinte bancaire** réalisée en ligne depuis l’espace client, quelques jours avant l’arrivée ou à l’état des lieux d’entrée (la somme est bloquée sur la carte sans être débitée, puis libérée après l’état des lieux de sortie), ou d’un **chèque** remis lors de l’état des lieux d’entrée (non encaissé, puis restitué après l’état des lieux de sortie). En cas de dégradation, de ménage non effectué ou de matériel manquant, le montant correspondant est retenu et son motif est communiqué au client.
 
 # 6. Annulation par le client
 Toute annulation doit être faite par e-mail. **Au moins 30 jours avant** la date : remboursement intégral du montant payé. **Entre 30 et 7 jours avant** : remboursement de 50 %. **Moins de 7 jours avant** : aucun remboursement.
 
 # 7. Responsabilité et assurance
-Le client est responsable de la salle, du matériel et de ses invités pendant toute la durée de la location. Il doit disposer d’une assurance responsabilité civile couvrant l’événement.
+Le client est responsable de la salle, du matériel et de ses invités pendant toute la durée de la location. Il doit disposer d’une assurance responsabilité civile couvrant l’événement et en remettre l’attestation avant la mise à disposition de la salle.
 
 # 8. Règlement intérieur
-Respect du voisinage, du volume sonore, de l’interdiction de fumer à l’intérieur et des consignes de sécurité. La salle est rendue rangée et propre.
+Le client s’engage à respecter le règlement intérieur de la salle (à télécharger ci-dessous) et à le faire respecter par ses invités et prestataires, notamment : fin de la musique et des animations à 2 h, respect du voisinage, interdiction de cuisiner sur place (la cuisine sert uniquement d’office pour conserver et réchauffer), interdiction de fumer ou de vapoter à l’intérieur, ni flammes, confettis ou fixations sur les murs. La salle est rendue rangée et propre.
 
 # 9. Données personnelles
 Les informations demandées servent uniquement à la gestion de la réservation et à la facturation. Elles sont conservées pendant la durée légale de conservation des pièces comptables.
@@ -96,9 +96,10 @@ const BOOKING_SETTINGS = [
     'caution' => [
         'title' => 'Caution',
         'fields' => [
-            'bk_deposit_mode' => ['label' => 'Mode de caution', 'type' => 'select', 'default' => 'cheque', 'options' => [
+            'bk_deposit_mode' => ['label' => 'Mode de caution', 'type' => 'select', 'default' => 'choix', 'options' => [
+                'choix'  => 'Au choix du client : empreinte bancaire en ligne ou chèque à l’état des lieux',
                 'cheque' => 'Chèque remis à l’état des lieux (suivi manuel dans la fiche)',
-                'stripe' => 'Empreinte bancaire par carte (Stripe) : rien n’est débité, sauf en cas de dégâts',
+                'stripe' => 'Empreinte bancaire uniquement (Stripe) : rien n’est débité, sauf en cas de dégâts',
             ], 'help' => 'L’empreinte bancaire nécessite Stripe activé (Réglages › Paiement).'],
             'bk_deposit_factor' => ['label' => 'Montant : multiple du prix de la location HT', 'default' => '2', 'type' => 'number',
                 'help' => 'Ex. 2 = deux fois le prix de la location (hors options). Ignoré si un montant fixe est indiqué ci-dessous. Modifiable au cas par cas dans la fiche.'],
@@ -107,7 +108,7 @@ const BOOKING_SETTINGS = [
                 'help' => 'Une empreinte bancaire n’est valable que 7 jours chez les banques : elle ne peut donc pas être prise plus tôt. Le client reçoit un e-mail avec le lien ce jour-là ; il peut aussi la faire sur place, à l’état des lieux, depuis son téléphone.'],
             'bk_deposit_release_days' => ['label' => 'Empreinte : libérée automatiquement combien de jours après le départ', 'default' => '2', 'type' => 'number',
                 'help' => 'Si vous n’avez rien retenu d’ici là, l’empreinte est annulée et le client prévenu. Respectez : jours avant + durée de location + jours après ≤ 7.'],
-            'bk_deposit_text'  => ['label' => 'Caution (texte affiché au client)', 'type' => 'textarea', 'default' => 'Une caution de 2 × le montant du loyer HT est demandée par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie.', 'help' => 'Affiché dans les e-mails et sur la page client. Avec l’empreinte bancaire, par exemple : « Une empreinte bancaire de caution vous sera demandée 2 jours avant votre arrivée. Rien n’est débité, sauf en cas de dégradation constatée à l’état des lieux de sortie. »'],
+            'bk_deposit_text'  => ['label' => 'Caution (texte affiché au client)', 'type' => 'textarea', 'default' => 'Une caution de 2 × le montant du loyer HT est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité, elle est libérée après l’état des lieux de sortie) ou par chèque remis lors de l’état des lieux d’entrée.', 'help' => 'Affiché dans les e-mails et sur la page client. Avec l’empreinte bancaire, par exemple : « Une empreinte bancaire de caution vous sera demandée 2 jours avant votre arrivée. Rien n’est débité, sauf en cas de dégradation constatée à l’état des lieux de sortie. »'],
         ],
     ],
     'emails' => [

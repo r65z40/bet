@@ -18,7 +18,13 @@ const DEPOSIT_VALIDITY_DAYS = 7;
 
 function deposit_by_card(): bool
 {
-    return s('bk_deposit_mode') === 'stripe' && isset(payment_providers()['stripe']);
+    return in_array(s('bk_deposit_mode'), ['stripe', 'choix'], true) && isset(payment_providers()['stripe']);
+}
+
+/** Le client peut-il aussi donner un chèque (caution au choix, ou chèque seul) ? */
+function deposit_cheque_allowed(): bool
+{
+    return s('bk_deposit_mode') !== 'stripe' || !isset(payment_providers()['stripe']);
 }
 
 /** Prix HT de la location seule (sans options), base du calcul de la caution. */
@@ -180,6 +186,8 @@ function deposit_mail(array $b, string $tpl): bool
     $vars['montant_retenu'] = money2((float)$b['deposit_captured']);
     $vars['motif'] = (string)$b['deposit_reason'];
     $vars['date_limite'] = fr_date(bk_dt($b['end_at']), false);
+    $blocks['option_cheque'] = $tpl === 'caution_demande' && deposit_cheque_allowed()
+        ? '<p style="margin:0 0 14px">Vous préférez le chèque ? Remettez-le simplement lors de l’état des lieux d’entrée : il ne sera pas encaissé et vous sera rendu après l’état des lieux de sortie.</p>' : '';
     $blocks['bouton'] = '<p style="margin:18px 0">' . mail_button(bk_client_url($b) . '#caution', $tpl === 'caution_demande' ? '🔒 Déposer la caution' : 'Ma réservation') . '</p>';
     [$subject, $html] = mail_from_template($tpl, $vars, $blocks);
     $ok = send_mail($b['email'], $subject, $html, s('contact_email'));
@@ -194,7 +202,7 @@ function deposit_mail(array $b, string $tpl): bool
 /** Tâche planifiée : demandes à J-x, libérations automatiques, empreintes expirées. Retourne [demandes, libérations]. */
 function deposit_cron(array &$errors): array
 {
-    if (s('bk_deposit_mode') !== 'stripe') {
+    if (!in_array(s('bk_deposit_mode'), ['stripe', 'choix'], true)) {
         return [0, 0];
     }
     $now = bk_now();

@@ -84,6 +84,9 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
       <p>La caution prend la forme d’une <strong>empreinte bancaire</strong> : la somme est bloquée sur votre carte, <strong>rien n’est débité</strong>. Elle est libérée après l’état des lieux de sortie, sauf dégradation constatée.</p>
       <form method="post" action="caution.php"><input type="hidden" name="ref" value="<?= e($b['ref']) ?>"><input type="hidden" name="t" value="<?= e($b['token']) ?>">
         <button class="btn btn-blue">🔒 Déposer la caution par carte</button></form>
+<?php if (deposit_cheque_allowed()): ?>
+      <p class="muted" style="margin:12px 0 0;font-size:.92rem">Vous préférez le chèque ? Remettez-le simplement lors de l’état des lieux d’entrée : il ne sera pas encaissé et vous sera rendu après l’état des lieux de sortie.</p>
+<?php endif; ?>
 <?php else: ?>
       <p><?= e(s('bk_deposit_text')) ?></p>
       <p class="muted">Vous pourrez déposer l’empreinte bancaire à partir du <strong><?= e(fr_date(deposit_opens_at($b))) ?></strong> (un e-mail vous le rappellera), ou sur place à votre arrivée. Une empreinte n’est valable que quelques jours, c’est pourquoi elle n’est pas demandée plus tôt.</p>
@@ -91,6 +94,13 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
     </div>
 <?php else: ?>
     <p class="notice" style="margin-top:20px"><span>🔑</span><span><?= e(s('bk_deposit_text')) ?></span></p>
+<?php endif; ?>
+<?php if ($docs = documents()): ?>
+    <div style="margin-top:22px">
+      <h3 style="margin:0 0 4px;font-size:1.1rem;color:var(--navy)">📎 Documents utiles</h3>
+      <p class="muted" style="margin:0;font-size:.92rem">À lire avant votre événement. Pensez à préparer votre <strong>attestation d’assurance responsabilité civile</strong>, à remettre avant la remise des clés.</p>
+      <?= documents_list_html($docs) ?>
+    </div>
 <?php endif; ?>
     <p class="muted" style="font-size:.92rem">Adresse : <?= e(s('address')) ?><?php if (s('maps_url')): ?> — <a href="<?= e(s('maps_url')) ?>" target="_blank" rel="noopener">itinéraire</a><?php endif; ?>.
       Pour modifier ou annuler, écrivez-nous à <a href="<?= e(mailto()) ?>"><?= e(s('contact_email')) ?></a> (voir les <a href="<?= e(u('conditions.php')) ?>">conditions d’annulation</a>).</p>

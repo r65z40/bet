@@ -151,7 +151,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
     <form method="post" class="card">
       <?= csrf_field() ?>
       <h2>Suivi</h2>
-      <?php if (!deposit_by_card() && $b['deposit_pi'] === ''): ?>
+      <?php if (deposit_cheque_allowed() && $b['deposit_pi'] === ''): ?>
       <?= field('deposit_status', 'Caution (chèque à l’état des lieux)', $b['deposit_status'], 'select', '', ['' => '— Non reçue', 'recue' => 'Reçue', 'restituee' => 'Restituée', 'retenue' => 'Retenue (en partie ou totalité)']) ?>
       <?php endif; ?>
       <?= field('admin_notes', 'Notes internes', $b['admin_notes'], 'textarea') ?>
@@ -186,7 +186,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
     </form>
     <?php endif; ?>
 
-    <?php if ((deposit_by_card() || $b['deposit_pi'] !== '') && ($b['status'] === 'confirmed' || $b['deposit_status'] === 'empreinte')):
+    <?php if (($b['deposit_pi'] !== '' || (deposit_by_card() && in_array($b['deposit_status'], ['', 'expiree'], true))) && ($b['status'] === 'confirmed' || $b['deposit_status'] === 'empreinte')):
         [$dl, $dc] = DEPOSIT_STATUSES[$b['deposit_status']] ?? ['?', 'gray']; $exp = deposit_expires_at($b); ?>
     <div class="card" id="caution">
       <h2>Caution <span class="pill" style="vertical-align:middle;<?= $dc === 'green' ? 'background:#e7f6ec;color:#1d7a46' : ($dc === 'red' ? 'background:#fdecea;color:#b42318' : '') ?>"><?= e($dl) ?></span></h2>
@@ -213,7 +213,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
       <?php else: ?>
         <p class="muted" style="margin-top:-6px">Montant demandé : <strong><?= money2(bk_deposit_amount($b)) ?></strong><?= ($b['deposit_amount'] ?? null) === null ? ' (calcul automatique)' : '' ?>.
           Le client peut déposer l’empreinte à partir du <strong><?= e(deposit_opens_at($b)->format('d/m/Y')) ?></strong> depuis sa page « Ma réservation »<?= $b['deposit_requested_at'] ? ' — demande envoyée le ' . e(bk_dt($b['deposit_requested_at'])->format('d/m/Y')) : ' — e-mail automatique ce jour-là' ?>.
-          À l’état des lieux, il peut aussi le faire sur son téléphone (bouton « Page client » ci-contre).</p>
+          À l’état des lieux, il peut aussi le faire sur son téléphone (bouton « Page client » ci-contre).<?= deposit_cheque_allowed() ? ' Il peut aussi donner un <strong>chèque</strong> à l’état des lieux : indiquez-le dans « Suivi » (caution reçue).' : '' ?></p>
         <form method="post" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap"><?= csrf_field() ?>
           <label class="field" style="flex:1 1 150px;margin:0"><span>Montant propre à cette réservation (€)</span><input type="text" name="deposit_amount" inputmode="decimal" value="<?= ($b['deposit_amount'] ?? null) !== null ? e(rating_label((string)$b['deposit_amount'])) : '' ?>" placeholder="auto : <?= e(rating_label((string)bk_deposit_amount($b))) ?>"></label>
           <button class="btn light" name="do" value="deposit_amount">Enregistrer</button>

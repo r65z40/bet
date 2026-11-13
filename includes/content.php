@@ -243,7 +243,14 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
+
+/** Documents remis aux clients à l'installation : [titre, description, fichier dans /documents]. */
+const DEFAULT_DOCUMENTS = [
+    ['Règlement intérieur', 'Les règles d’utilisation de la salle, à respecter et à faire respecter par vos invités et prestataires.', 'reglement-interieur.pdf'],
+    ['Contrat de location (modèle)', 'Le contrat signé lors de la remise des clés : vous pouvez en prendre connaissance à l’avance.', 'contrat-de-location.pdf'],
+    ['État des lieux et inventaire', 'Le document rempli ensemble à l’arrivée et au départ (salle, mobilier, équipements, caution).', 'etat-des-lieux.pdf'],
+];
 
 /**
  * Sections de la page d'accueil dont l'ordre et l'affichage se règlent dans

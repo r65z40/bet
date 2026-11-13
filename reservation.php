@@ -155,7 +155,7 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
     <div class="sum-total" id="dueRow" hidden style="margin-top:6px"><span>Reste à payer</span><strong id="sumDue" style="font-size:1.35rem">—</strong></div>
     <div id="errors"></div>
     <p class="notice" style="margin:14px 0 0;font-size:.86rem"><span>🔑</span><span><?= e(s('bk_deposit_text')) ?></span></p>
-    <label class="check"><input type="checkbox" name="cgv" id="cgv"> <span>J’accepte les <a href="<?= e(u('conditions.php')) ?>" target="_blank">conditions de location</a> et j’ai lu la <a href="<?= e(u('confidentialite.php')) ?>" target="_blank">politique de confidentialité</a>.</span></label>
+    <label class="check"><input type="checkbox" name="cgv" id="cgv"> <span>J’accepte les <a href="<?= e(u('conditions.php')) ?>" target="_blank">conditions de location</a><?= documents() ? ' et le <a href="' . e(u('conditions.php')) . '#documents" target="_blank">règlement intérieur</a>' : '' ?> et j’ai lu la <a href="<?= e(u('confidentialite.php')) ?>" target="_blank">politique de confidentialité</a>.</span></label>
     <div class="pay">
 <?php foreach ($providers as $key => $label): ?>
       <button type="submit" class="btn <?= $key === 'paypal' ? 'btn-paypal' : 'btn-blue' ?>" data-provider="<?= e($key) ?>" disabled>

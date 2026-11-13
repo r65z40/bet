@@ -11,9 +11,9 @@ const MAIL_TEMPLATES = [
         'label' => 'Confirmation de réservation (client)',
         'title' => 'Votre réservation est confirmée',
         'subject' => 'Réservation confirmée — {site} — {date}',
-        'body' => "Bonjour {prenom},\n\nMerci pour votre réservation : votre paiement a bien été reçu et **la salle vous est réservée**.\n\n{recapitulatif}\n\n{boutons}\n\n{caution}\n\n**Adresse :** {adresse} — itinéraire : {itineraire}\n\nUne question ? Répondez simplement à cet e-mail.\n\nConditions de location : {conditions}",
+        'body' => "Bonjour {prenom},\n\nMerci pour votre réservation : votre paiement a bien été reçu et **la salle vous est réservée**.\n\n{recapitulatif}\n\n{boutons}\n\n{caution}\n\n{documents}\n\n**Adresse :** {adresse} — itinéraire : {itineraire}\n\nUne question ? Répondez simplement à cet e-mail.\n\nConditions de location : {conditions}",
         'vars' => ['prenom', 'nom', 'date', 'reservation', 'reference', 'evenement', 'personnes', 'total', 'adresse', 'itineraire', 'conditions', 'lien'],
-        'blocks' => ['recapitulatif', 'boutons', 'caution'],
+        'blocks' => ['recapitulatif', 'boutons', 'caution', 'documents'],
     ],
     'annulation' => [
         'label' => 'Annulation (client)',
@@ -35,9 +35,9 @@ const MAIL_TEMPLATES = [
         'label' => 'Caution : demande d’empreinte bancaire (client)',
         'title' => 'Votre caution',
         'subject' => 'Votre événement approche : déposez la caution — {site}',
-        'body' => "Bonjour {prenom},\n\nVotre location à {site} approche ({reservation}).\n\nComme prévu dans les conditions de location, une caution de **{montant_caution}** est demandée sous forme d’**empreinte bancaire** : la somme est seulement bloquée sur votre carte, **rien n’est débité**. Elle est libérée automatiquement après l’état des lieux de sortie, sauf dégradation constatée.\n\nCela prend une minute, par carte bancaire, sur une page sécurisée :\n\n{bouton}\n\nVous pouvez aussi le faire sur place, à votre arrivée, depuis votre téléphone.",
+        'body' => "Bonjour {prenom},\n\nVotre location à {site} approche ({reservation}).\n\nComme prévu dans les conditions de location, une caution de **{montant_caution}** est demandée sous forme d’**empreinte bancaire** : la somme est seulement bloquée sur votre carte, **rien n’est débité**. Elle est libérée automatiquement après l’état des lieux de sortie, sauf dégradation constatée.\n\nCela prend une minute, par carte bancaire, sur une page sécurisée :\n\n{bouton}\n\nVous pouvez aussi le faire sur place, à votre arrivée, depuis votre téléphone.\n\n{option_cheque}",
         'vars' => ['prenom', 'nom', 'reservation', 'reference', 'montant_caution', 'lien'],
-        'blocks' => ['bouton'],
+        'blocks' => ['bouton', 'option_cheque'],
     ],
     'caution_liberee' => [
         'label' => 'Caution : empreinte libérée (client)',
@@ -67,9 +67,9 @@ const MAIL_TEMPLATES = [
         'label' => 'Rappel avant l’événement (J-7)',
         'title' => 'Votre événement approche',
         'subject' => 'J-{jours} : infos pratiques pour votre {evenement} — {site}',
-        'body' => "Bonjour {prenom},\n\nVotre événement à {site} approche ! Voici les informations utiles pour que tout se passe bien.\n\n**Arrivée** : {arrivee}\n**Départ** : {depart}\n**Adresse** : {adresse} — itinéraire : {itineraire}\n\n{infos_pratiques}\n\n{caution}\n\nUne question ? Répondez simplement à cet e-mail.\n\n{bouton}",
+        'body' => "Bonjour {prenom},\n\nVotre événement à {site} approche ! Voici les informations utiles pour que tout se passe bien.\n\n**Arrivée** : {arrivee}\n**Départ** : {depart}\n**Adresse** : {adresse} — itinéraire : {itineraire}\n\n{infos_pratiques}\n\n{caution}\n\n**À préparer :** votre attestation d’assurance responsabilité civile, à remettre avant la remise des clés.\n\n{documents}\n\nUne question ? Répondez simplement à cet e-mail.\n\n{bouton}",
         'vars' => ['prenom', 'nom', 'evenement', 'personnes', 'arrivee', 'depart', 'reservation', 'adresse', 'itineraire', 'jours', 'lien'],
-        'blocks' => ['recapitulatif', 'infos_pratiques', 'caution', 'bouton'],
+        'blocks' => ['recapitulatif', 'infos_pratiques', 'caution', 'documents', 'bouton'],
     ],
     'avis' => [
         'label' => 'Demande d’avis après l’événement (J+1)',
@@ -105,7 +105,7 @@ const MAIL_VAR_HELP = [
     'lien' => 'lien principal (espace client ou activation)', 'identifiant' => 'identifiant du compte', 'site' => 'nom de la salle',
     'recapitulatif' => 'tableau du détail et du total', 'boutons' => 'boutons espace client + ajout à l’agenda', 'caution' => 'encadré caution',
     'bouton' => 'bouton principal', 'arrivee' => 'date et heure d’arrivée', 'depart' => 'date et heure de départ', 'jours' => 'nombre de jours avant l’événement',
-    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'montant_caution' => 'montant de la caution', 'montant_retenu' => 'montant retenu sur la caution', 'motif' => 'motif de la retenue', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
+    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'montant_caution' => 'montant de la caution', 'montant_retenu' => 'montant retenu sur la caution', 'motif' => 'motif de la retenue', 'documents' => 'liens vers les documents (règlement intérieur, contrat…)', 'option_cheque' => 'phrase « vous préférez le chèque ? » (caution au choix)', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
 ];
 
 const MAIL_STYLE_DEFAULTS = [
@@ -204,6 +204,7 @@ function mail_booking_data(array $b): array
             . mail_button(gcal_template_url($b), 'Ajouter à Google Agenda', false)
             . mail_button(bk_client_url($b) . '&ics=1', 'Ajouter à mon agenda (Apple, Outlook)', false) . '</p>',
         'caution' => '<p style="background:#fff8e8;border:1px solid #f0dca8;border-radius:8px;padding:12px 14px;font-size:14px"><strong>Caution :</strong> ' . e(s('bk_deposit_text')) . '</p>',
+        'documents' => mail_documents_block(),
         'message_client' => $b['message'] !== '' ? '<p style="background:#f4f6f8;border-radius:8px;padding:12px 14px"><strong>Message du client :</strong><br>' . nl2br(e($b['message'])) . '</p>' : '',
     ];
     return [$vars, $blocks];
@@ -220,4 +221,18 @@ function mail_sample_booking(): array
         'message' => 'Le traiteur arrivera vers 9 h.', 'discount_ht' => 0, 'total_ht' => 600, 'vat' => 120, 'total_ttc' => 720,
         'lines_json' => json_encode([['label' => 'Location 24 h — exemple', 'total_ht' => 500], ['label' => 'Écran + sonorisation', 'total_ht' => 100]]),
     ];
+}
+
+/** Encadré des documents à lire (liens vers les PDF), vide s'il n'y en a pas. */
+function mail_documents_block(): string
+{
+    $docs = documents(false, true);
+    if (!$docs) {
+        return '';
+    }
+    $h = '<div style="background:#f4f6f8;border-radius:8px;padding:12px 16px;margin:0 0 14px"><p style="margin:0 0 6px"><strong>📎 Documents à lire avant votre événement</strong></p>';
+    foreach ($docs as $d) {
+        $h .= '<p style="margin:4px 0"><a href="' . e(bk_url(document_src($d))) . '" style="color:#0b2b4f;font-weight:bold">' . e($d['title']) . '</a> <span style="color:#617083;font-size:13px">(' . e(document_meta($d)) . ')</span></p>';
+    }
+    return $h . '</div>';
 }

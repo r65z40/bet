@@ -1,0 +1,8 @@
+# Documents téléchargeables par les clients : aucun script exécuté ici
+Options -Indexes
+<FilesMatch "\.(php\d?|phtml|phar|cgi|pl|py|sh|html?|svg)$">
+  Require all denied
+</FilesMatch>
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+</IfModule>

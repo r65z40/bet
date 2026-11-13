@@ -125,3 +125,6 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(242,212,123,.6);b
 .day small.sp{color:#b42318}
 
 .deposit{margin-top:22px;padding:18px 20px;border:1px solid #f0dca8;background:#fff8e8;border-radius:14px}.deposit h3{margin:0 0 8px;font-size:1.1rem;color:var(--navy,#071c35)}.deposit p{margin:0 0 12px}.deposit form{margin:0}
+.docs{list-style:none;padding:0;margin:14px 0 0;display:grid;gap:10px}.docs a{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-radius:14px;background:#fff;text-decoration:none;color:var(--ink);transition:.15s}.docs a:hover{border-color:var(--gold);box-shadow:0 6px 18px rgba(7,28,53,.08)}.docs .doc-ico{font-size:1.5rem}.docs strong{display:block;color:var(--navy)}.docs small{display:block;color:var(--muted);font-size:.88rem;line-height:1.4}.docs em{margin-left:auto;font-style:normal;font-size:.8rem;color:var(--muted);white-space:nowrap}
+.docs small.m{display:none}
+@media(max-width:520px){.docs a{align-items:flex-start}.docs em{display:none}.docs small.m{display:block;margin-top:4px;font-size:.8rem}}

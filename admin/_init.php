@@ -26,6 +26,7 @@ const ADMIN_MENU = [
         'avis'     => ['avis.php', 'Avis', 'contenu'],
         'contenus' => ['listes.php', 'Listes & cartes', 'contenu'],
         'sections' => ['sections.php', 'Ordre des sections', 'contenu'],
+        'documents' => ['documents.php', 'Documents', 'contenu'],
     ]],
     'stats' => ['label' => 'Statistiques', 'icon' => '📊', 'pages' => [
         'stats'  => ['stats.php', 'Statistiques', 'stats'],

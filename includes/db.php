@@ -269,6 +269,15 @@ function install_schema(PDO $pdo): void
             email TEXT PRIMARY KEY,
             at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT NOT NULL DEFAULT '',
+            description TEXT NOT NULL DEFAULT '',
+            filename TEXT NOT NULL,
+            position INTEGER NOT NULL DEFAULT 0,
+            visible INTEGER NOT NULL DEFAULT 1,
+            in_emails INTEGER NOT NULL DEFAULT 1
+        );
         CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             author TEXT NOT NULL,
@@ -403,6 +412,24 @@ function migrate(PDO $pdo): void
     // Lien secret du flux agenda (abonnement depuis l'iPhone / Google Agenda) et de la tâche planifiée
     $set->execute(['bk_ics_token', bin2hex(random_bytes(16))]);
     $set->execute(['bk_cron_token', bin2hex(random_bytes(16))]);
+    // v14 : caution au choix (empreinte bancaire ou chèque), CGV et texte de caution mis à jour s'ils n'avaient pas été personnalisés
+    if ((int)setting_raw($pdo, '_schema_version') < 14 && setting_raw($pdo, '_seeded') !== null) {
+        $pdo->prepare("UPDATE settings SET value = 'choix' WHERE key = 'bk_deposit_mode' AND value = 'cheque'")->execute();
+        foreach ([['Une caution de 2 × le montant du loyer HT est remise par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie, déduction faite des éventuelles dégradations, du ménage non effectué ou du matériel manquant.', 'Une caution de 2 × le montant du loyer HT est demandée. Au choix du client, elle prend la forme d’une **empreinte bancaire** réalisée en ligne depuis l’espace client, quelques jours avant l’arrivée ou à l’état des lieux d’entrée (la somme est bloquée sur la carte sans être débitée, puis libérée après l’état des lieux de sortie), ou d’un **chèque** remis lors de l’état des lieux d’entrée (non encaissé, puis restitué après l’état des lieux de sortie). En cas de dégradation, de ménage non effectué ou de matériel manquant, le montant correspondant est retenu et son motif est communiqué au client.'], ['Le client est responsable de la salle, du matériel et de ses invités pendant toute la durée de la location. Il doit disposer d’une assurance responsabilité civile couvrant l’événement.', 'Le client est responsable de la salle, du matériel et de ses invités pendant toute la durée de la location. Il doit disposer d’une assurance responsabilité civile couvrant l’événement et en remettre l’attestation avant la mise à disposition de la salle.'], ['Respect du voisinage, du volume sonore, de l’interdiction de fumer à l’intérieur et des consignes de sécurité. La salle est rendue rangée et propre.', 'Le client s’engage à respecter le règlement intérieur de la salle (à télécharger ci-dessous) et à le faire respecter par ses invités et prestataires, notamment : fin de la musique et des animations à 2 h, respect du voisinage, interdiction de cuisiner sur place (la cuisine sert uniquement d’office pour conserver et réchauffer), interdiction de fumer ou de vapoter à l’intérieur, ni flammes, confettis ou fixations sur les murs. La salle est rendue rangée et propre.']] as [$o, $n]) {
+            $pdo->prepare("UPDATE settings SET value = replace(value, ?, ?) WHERE key = 'bk_cgv'")->execute([$o, $n]);
+        }
+        $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'bk_deposit_text' AND value = ?")->execute(['Une caution de 2 × le montant du loyer HT est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité, elle est libérée après l’état des lieux de sortie) ou par chèque remis lors de l’état des lieux d’entrée.', 'Une caution de 2 × le montant du loyer HT est demandée par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie.']);
+    }
+    // Documents remis aux clients (règlement intérieur, contrat, état des lieux) : une seule fois
+    if (setting_raw($pdo, '_documents_seeded') === null) {
+        $ins = $pdo->prepare('INSERT INTO documents(title, description, filename, position, visible, in_emails) VALUES(?,?,?,?,1,1)');
+        foreach (DEFAULT_DOCUMENTS as $i => $d) {
+            if (is_file(ROOT . '/documents/' . $d[2])) {
+                $ins->execute([$d[0], $d[1], $d[2], $i + 1]);
+            }
+        }
+        $pdo->exec("INSERT OR REPLACE INTO settings(key, value) VALUES('_documents_seeded', '1')");
+    }
     // v11 : remboursement intégral au moins 30 jours avant (au lieu de 80 %), si la règle n'a pas été personnalisée
     if ((int)setting_raw($pdo, '_schema_version') < 11 && setting_raw($pdo, '_seeded') !== null) {
         $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'bk_cancel_rules' AND replace(value, char(13), '') = ?")->execute(["30 = 100\n7 = 50", "30 = 80\n7 = 50"]);
