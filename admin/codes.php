@@ -58,7 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
             flash('Adresse e-mail invalide.', 'err');
         } else {
-            $ok = send_mail($to, 'Votre bon cadeau — ' . s('site_name'), mail_layout('Un bon cadeau pour vous !', gift_card_html($row, true)), s('contact_email'));
+            $ok = send_mail($to, 'Votre bon cadeau — ' . s('site_name'), mail_layout('Un bon cadeau pour vous !', gift_card_html($row, true)), mail_reply_to());
             admin_log('Bon cadeau ' . $row['code'] . ' envoyé à ' . $to);
             flash($ok ? 'Bon cadeau envoyé à ' . $to . '.' : 'Échec de l’envoi : ' . mail_last_error(), $ok ? 'ok' : 'err');
         }

@@ -105,7 +105,7 @@ admin_header('Modèles d’e-mails', 'emails');
         <label class="field"><span>Couleur du bandeau</span><input type="color" name="mail_color_header" value="<?= e(mail_style('mail_color_header')) ?>" style="height:46px"></label>
         <label class="field"><span>Couleur des boutons</span><input type="color" name="mail_color_accent" value="<?= e(mail_style('mail_color_accent')) ?>" style="height:46px"></label>
       </div>
-      <label style="display:block;margin-bottom:14px"><input type="checkbox" name="mail_show_logo" value="1" <?= mail_style('mail_show_logo') === '1' ? 'checked' : '' ?>> Afficher le logo dans le bandeau</label>
+      <label style="display:block;margin-bottom:14px"><input type="checkbox" name="mail_show_logo" value="1" <?= mail_style('mail_show_logo') === '1' ? 'checked' : '' ?>> Afficher le logo dans le bandeau <span class="muted" style="font-size:.85rem">(seulement dans les e-mails assez longs : une image avec peu de texte fait baisser la note anti-spam)</span></label>
       <?= field('mail_footer', 'Pied de page', mail_style('mail_footer'), 'textarea', 'Variables : {site} {adresse} {email_contact}') ?>
       <div class="actions">
         <button class="btn gold" name="do" value="save">💾 Enregistrer</button>

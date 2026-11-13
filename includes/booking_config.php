@@ -132,6 +132,8 @@ const BOOKING_SETTINGS = [
             'bk_mail_from'    => ['label' => 'Nom de l’expéditeur', 'default' => 'La Salle RN6'],
             'bk_mail_from_addr' => ['label' => 'Adresse d’expédition (facultatif)', 'type' => 'email', 'default' => '',
                 'help' => 'Vide = l’identifiant SMTP. Gmail et OVH n’acceptent en général que l’adresse du compte ou un alias déclaré.'],
+            'bk_mail_reply_to' => ['label' => 'Adresse de réponse des clients (facultatif)', 'type' => 'email', 'default' => '',
+                'help' => 'Vide (recommandé) = les clients répondent à l’adresse d’expédition. Évitez une adresse Gmail, Hotmail… si l’expédition se fait avec l’adresse de votre domaine : les filtres anti-spam pénalisent ce mélange. Pour recevoir les réponses sur Gmail, créez plutôt une redirection chez OVH.'],
         ],
     ],
     'automatique' => [

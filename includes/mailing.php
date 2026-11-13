@@ -123,7 +123,7 @@ function mailing_send_one(array $campaign, array $recipient, bool $test = false)
         $headers[] = 'List-Unsubscribe-Post: List-Unsubscribe=One-Click';
     }
     $subject = ($test ? '[TEST] ' : '') . strtr($campaign['subject'], $vars);
-    return send_mail($recipient['email'], $subject, mail_layout(strtr($campaign['subject'], $vars), $content), s('contact_email'), $headers);
+    return send_mail($recipient['email'], $subject, mail_layout(strtr($campaign['subject'], $vars), $content), mail_reply_to(), $headers);
 }
 
 /** Crée une expédition et sa file d'attente. Retourne l'identifiant. */

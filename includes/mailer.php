@@ -44,6 +44,16 @@ function mail_last_error(?string $set = null): string
     return $err;
 }
 
+/**
+ * Adresse de réponse des e-mails envoyés aux clients : le réglage s'il est rempli, sinon aucune
+ * (le client répond alors à l'adresse d'expédition, ce que préfèrent les filtres anti-spam).
+ */
+function mail_reply_to(): ?string
+{
+    $r = mail_clean(s('bk_mail_reply_to'));
+    return filter_var($r, FILTER_VALIDATE_EMAIL) ? $r : null;
+}
+
 function mail_from_address(): string
 {
     $from = mail_clean(s('bk_mail_from_addr'));
@@ -76,11 +86,12 @@ function send_mail(string $to, string $subject, string $html, ?string $replyTo =
     $headers = [
         'Date: ' . date('r'),
         'From: ' . mail_header_encode($fromName) . ' <' . $fromAddr . '>',
-        'Message-ID: <' . bin2hex(random_bytes(12)) . '@' . $domain . '>',
+        // Forme « date.aléa@domaine » : une longue suite aléatoire seule est un motif de spam (règle MSGID_RANDY)
+        'Message-ID: <' . date('YmdHis') . '.' . bin2hex(random_bytes(6)) . '@' . $domain . '>',
         'MIME-Version: 1.0',
         'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
     ];
-    if ($replyTo && filter_var(mail_clean($replyTo), FILTER_VALIDATE_EMAIL)) {
+    if ($replyTo && filter_var(mail_clean($replyTo), FILTER_VALIDATE_EMAIL) && strcasecmp(mail_clean($replyTo), $fromAddr) !== 0) {
         $headers[] = 'Reply-To: ' . mail_clean($replyTo);
     }
     foreach ($extraHeaders as $h) {
@@ -197,18 +208,23 @@ function html_to_text(string $html): string
 
 /* ---------- Modèles ---------- */
 
+const MAIL_LOGO_MIN_TEXT = 1000; // caractères de texte au-dessous desquels le logo est omis
+
 function mail_layout(string $title, string $content): string
 {
     $name = e(s('site_name'));
     $head = mail_style('mail_color_header');
     $headText = mail_contrast($head);
-    $logo = mail_style('mail_show_logo') === '1' && is_file(ROOT . '/logo-mail.png')
-        ? '<img src="' . e(bk_url('logo-mail.png')) . '" width="44" height="44" alt="" style="vertical-align:middle;border-radius:50%;background:#fff;margin-right:12px">' : '';
+    // Les filtres anti-spam pénalisent une image accompagnée de peu de texte (règles HTML_IMAGE_ONLY) :
+    // le logo n'est donc affiché que dans les e-mails suffisamment riches en texte.
+    $textLen = strlen(trim(preg_replace('/\s+/', ' ', html_entity_decode(strip_tags($content), ENT_QUOTES, 'UTF-8'))));
+    $logo = mail_style('mail_show_logo') === '1' && $textLen >= MAIL_LOGO_MIN_TEXT && is_file(ROOT . '/logo-mail.png')
+        ? '<img src="' . e(bk_url('logo-mail.png')) . '" width="44" height="44" alt="' . e(s('site_name')) . '" style="vertical-align:middle;border-radius:50%;background:#fff;margin-right:12px">' : '';
     $footer = nl2br(e(strtr(mail_style('mail_footer'), mail_common_vars())), false);
     return '<!doctype html><html lang="fr"><head><meta name="viewport" content="width=device-width, initial-scale=1"></head><body style="margin:0;background:#f4f6f8;font-family:Arial,Helvetica,sans-serif;color:#152131">'
         . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f8;padding:24px 8px"><tr><td align="center">'
         . '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:14px;overflow:hidden">'
-        . '<tr><td style="background:' . $head . ';padding:20px 26px;color:' . $headText . ';font-size:20px;font-weight:bold">' . $logo . '<span style="vertical-align:middle">' . $name
+        . '<tr><td bgcolor="' . $head . '" style="background-color:' . $head . ';padding:20px 26px;color:' . $headText . ';font-size:20px;font-weight:bold">' . $logo . '<span style="vertical-align:middle">' . $name
         . '<span style="display:block;font-size:12px;opacity:.8;letter-spacing:2px;text-transform:uppercase;margin-top:3px;font-weight:normal">' . e(s('site_location')) . '</span></span></td></tr>'
         . '<tr><td style="padding:26px;font-size:15px">'
         . '<h1 style="font-family:Georgia,serif;color:#071c35;font-size:23px;margin:0 0 16px">' . e($title) . '</h1>'
@@ -251,7 +267,7 @@ function bk_mail_confirmation(array $b): bool
 {
     [$vars, $blocks] = mail_booking_data($b);
     [$subject, $html] = mail_from_template('confirmation', $vars, $blocks);
-    $ok = send_mail($b['email'], $subject, $html, s('contact_email'));
+    $ok = send_mail($b['email'], $subject, $html, mail_reply_to());
     bk_log((int)$b['id'], $ok ? 'E-mail de confirmation envoyé à ' . $b['email'] : 'ÉCHEC de l’envoi de l’e-mail de confirmation (voir Réglages › E-mails)');
     return $ok;
 }
@@ -282,7 +298,7 @@ function bk_mail_cancelled(array $b, float $refund): bool
         : 'Conformément aux conditions de location, aucun remboursement n’est effectué.') . '</p>';
     $blocks['bouton'] = '<p>' . mail_button(bk_client_url($b), 'Voir ma réservation') . '</p>';
     [$subject, $html] = mail_from_template('annulation', $vars, $blocks);
-    $ok = send_mail($b['email'], $subject, $html, s('contact_email'));
+    $ok = send_mail($b['email'], $subject, $html, mail_reply_to());
     bk_log((int)$b['id'], $ok ? 'E-mail d’annulation envoyé' : 'ÉCHEC de l’envoi de l’e-mail d’annulation');
     return $ok;
 }
@@ -301,7 +317,7 @@ function bk_mail_moved(array $b, string $oldLabel): bool
     $vars['ancienne_date'] = $oldLabel;
     $blocks['changement'] = mail_move_block($oldLabel, bk_slot_label($b));
     [$subject, $html] = mail_from_template('deplacement', $vars, $blocks);
-    $ok = send_mail($b['email'], $subject, $html, s('contact_email'));
+    $ok = send_mail($b['email'], $subject, $html, mail_reply_to());
     bk_log((int)$b['id'], $ok ? 'E-mail de changement de date envoyé au client' : 'ÉCHEC de l’e-mail de changement de date : ' . mail_last_error());
     return $ok;
 }

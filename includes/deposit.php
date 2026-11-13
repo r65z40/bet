@@ -192,7 +192,7 @@ function deposit_mail(array $b, string $tpl): bool
         ? '<p style="margin:0 0 14px">Vous préférez le chèque ? Remettez-le simplement lors de l’état des lieux d’entrée : il ne sera pas encaissé et vous sera rendu après l’état des lieux de sortie.</p>' : '';
     $blocks['bouton'] = '<p style="margin:18px 0">' . mail_button(bk_client_url($b) . '#caution', $tpl === 'caution_demande' ? '🔒 Déposer la caution' : 'Ma réservation') . '</p>';
     [$subject, $html] = mail_from_template($tpl, $vars, $blocks);
-    $ok = send_mail($b['email'], $subject, $html, s('contact_email'));
+    $ok = send_mail($b['email'], $subject, $html, mail_reply_to());
     $labels = ['caution_demande' => 'Demande de caution', 'caution_liberee' => 'E-mail « caution libérée »', 'caution_retenue' => 'E-mail « retenue sur caution »'];
     bk_log((int)$b['id'], ($labels[$tpl] ?? $tpl) . ($ok ? ($tpl === 'caution_demande' ? ' envoyée au client' : ' envoyé au client') : ' : ÉCHEC de l’envoi (' . mail_last_error() . ')'));
     if ($ok && $tpl === 'caution_demande') {

@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('Nouveau lien d’abonnement créé : l’ancien ne fonctionne plus.');
     } elseif ($do === 'testmail') {
         $to = notify_emails()[0] ?? s('contact_email');
-        $ok = send_mail($to, 'Test d’envoi — ' . s('site_name'), mail_layout('Test réussi', '<p>Les e-mails du site partiront correctement.</p>'));
+        $ok = send_mail($to, 'Test d’envoi — ' . s('site_name'), mail_layout('Test réussi', mail_render_text("Bonjour,\n\nCet e-mail de test confirme que les messages de **{site}** partent correctement : confirmations de réservation, factures, rappels avant l’événement, demandes de caution et réponses à vos clients.\n\nSi vous le recevez dans votre boîte de réception, tout fonctionne. S’il arrive dans les indésirables, vérifiez dans l’espace OVH que les enregistrements SPF, DKIM et DMARC de votre domaine sont actifs, puis marquez ce message comme « non indésirable ».\n\nAdresse de la salle : {adresse}.\n\nBonne journée,\n{site}", [])));
         flash($ok ? 'E-mail de test envoyé à ' . $to . ' depuis ' . mail_from_address() . '. Vérifiez votre boîte (et les spams).' : 'Échec : ' . mail_last_error(), $ok ? 'ok' : 'err');
     } elseif ($do === 'testpay') {
         try {

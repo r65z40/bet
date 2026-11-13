@@ -133,7 +133,7 @@ function bk_mail_reminder(array $b): bool
     $blocks['infos_pratiques'] = s('bk_practical_info') !== '' ? '<div style="background:#f4f6f8;border-radius:8px;padding:12px 16px;margin:0 0 14px">' . render_mail_paragraphs(s('bk_practical_info')) . '</div>' : '';
     $blocks['bouton'] = '<p>' . mail_button(bk_client_url($b), 'Ma réservation') . '</p>';
     [$subject, $html] = mail_from_template('rappel', $vars, $blocks);
-    $ok = send_mail($b['email'], $subject, $html, s('contact_email'));
+    $ok = send_mail($b['email'], $subject, $html, mail_reply_to());
     bk_log((int)$b['id'], $ok ? 'Rappel J-' . (int)bk_num('bk_remind_days', 7) . ' envoyé' : 'ÉCHEC du rappel avant l’événement');
     return $ok;
 }
@@ -154,7 +154,7 @@ function bk_mail_review(array $b): bool
     [$subject, $html] = mail_from_template('avis', $vars, $blocks);
     $unsub = optout_url($b['email']);
     $html = str_replace('</td></tr><tr><td style="background:#fbf8f1', '<p style="font-size:12px;color:#617083;margin-top:20px"><a href="' . e($unsub) . '" style="color:#617083">Ne plus recevoir ces e-mails</a></p></td></tr><tr><td style="background:#fbf8f1', $html);
-    $ok = send_mail($b['email'], $subject, $html, s('contact_email'), ['List-Unsubscribe: <' . $unsub . '>', 'List-Unsubscribe-Post: List-Unsubscribe=One-Click']);
+    $ok = send_mail($b['email'], $subject, $html, mail_reply_to(), ['List-Unsubscribe: <' . $unsub . '>', 'List-Unsubscribe-Post: List-Unsubscribe=One-Click']);
     bk_log((int)$b['id'], $ok ? 'Demande d’avis envoyée' : 'ÉCHEC de la demande d’avis');
     return $ok;
 }
