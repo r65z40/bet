@@ -52,7 +52,7 @@ const SETTINGS_SCHEMA = [
             'salle_subtitle'     => ['label' => 'La salle — sous-titre', 'type' => 'textarea', 'default' => 'Des espaces fonctionnels pour accueillir vos invités, organiser votre réception et faciliter le travail de vos prestataires.'],
             'equip_title'        => ['label' => 'Équipements — titre', 'default' => 'Des équipements déjà sur place'],
             'equip_subtitle'     => ['label' => 'Équipements — sous-titre', 'default' => 'Pour simplifier l’organisation de vos événements privés comme professionnels.'],
-            'mobilier_title'     => ['label' => 'Mobilier — titre', 'default' => 'Équipements & mobilier inclus'],
+            'mobilier_title'     => ['label' => 'Mobilier — titre', 'default' => 'Mobilier inclus & équipements'],
             'mobilier_subtitle'  => ['label' => 'Mobilier — sous-titre', 'type' => 'textarea', 'default' => 'Le mobilier et plusieurs équipements sont disponibles sur place pour faciliter l’organisation de votre événement.'],
             'mobilier_panel1'    => ['label' => 'Mobilier — titre colonne 1', 'default' => 'Mobilier'],
             'mobilier_panel2'    => ['label' => 'Mobilier — titre colonne 2', 'default' => 'Vaisselle & matériel de cuisine'],
@@ -213,8 +213,8 @@ const DEFAULT_ITEMS = [
         ['icon' => 'P', 'title' => 'Stationnement', 'text' => 'Grand parking public immédiatement accessible pour les invités.'],
     ],
     'equipements' => [
-        ['title' => '98 pouces', 'text' => 'Écran grand format pour présentations, séminaires et vidéos.'],
-        ['title' => 'Audio pro', 'text' => 'Sonorisation intégrée avec micros sans fil.'],
+        ['title' => '98 pouces', 'text' => 'Écran grand format pour présentations, séminaires et vidéos, **disponible en option**.'],
+        ['title' => 'Audio pro', 'text' => 'Sonorisation intégrée avec micros sans fil, **disponible en option**.'],
         ['title' => 'Wi‑Fi', 'text' => 'Connexion haut débit gratuite dans tout l’établissement.'],
         ['title' => 'Confort', 'text' => 'Climatisation réversible et chauffage par pompe à chaleur.'],
     ],
@@ -262,13 +262,13 @@ const DEFAULT_ITEMS = [
     ],
     'evenements_cartes' => [
         ['icon' => '💍', 'title' => 'Mariages', 'text' => 'Repas, vin d’honneur et soirée dansante, jusqu’à 120 invités assis.', 'value' => '2'],
-        ['icon' => '🎂', 'title' => 'Anniversaires & fêtes', 'text' => 'Tables rondes ou rectangulaires, bar, sono : il ne manque que vos invités.', 'value' => '10'],
+        ['icon' => '🎂', 'title' => 'Anniversaires & fêtes', 'text' => 'Tables rondes ou rectangulaires, bar, et la sono en option : il ne manque que vos invités.', 'value' => '10'],
         ['icon' => '🥂', 'title' => 'Vins d’honneur & cocktails', 'text' => 'Un bar dédié et des mange-debout pour recevoir debout.', 'value' => '6'],
-        ['icon' => '💼', 'title' => 'Séminaires & réunions', 'text' => 'Écran 98 pouces, micros sans fil et Wi-Fi haut débit.', 'value' => '9'],
+        ['icon' => '💼', 'title' => 'Séminaires & réunions', 'text' => 'Wi-Fi haut débit, et en option un écran 98 pouces avec sono et micros sans fil.', 'value' => '9'],
     ],
     'faq' => [
         ['title' => 'Peut-on faire venir son traiteur ?', 'text' => 'Oui, le traiteur de votre choix. La cuisine sert d’office : maintien au frais et réchauffage des plats (il n’est pas possible de cuisiner sur place).'],
-        ['title' => 'Jusqu’à quelle heure peut-on faire la fête ?', 'text' => 'La musique et les animations s’arrêtent à **2 h**, par respect du voisinage. La location à la journée court de 10 h à 10 h le lendemain.'],
+        ['title' => 'Jusqu’à quelle heure peut-on faire la fête ?', 'text' => 'La musique et les animations s’arrêtent à **2 h**, par respect du voisinage. La location à la journée court de 10 h 30 au lendemain 10 h.'],
         ['title' => 'Que comprend la location ?', 'text' => 'La salle, le bar, la cuisine, le mobilier (**144 chaises**, 20 tables de 180 cm, tables rondes, mange-debout), l’eau et l’électricité. D’autres services sont proposés en option lors de la réservation.'],
         ['title' => 'Peut-on décorer la salle ?', 'text' => 'Oui, librement, à condition de ne rien fixer sur les murs et de ne pas utiliser de confettis ni de flammes (bougies, feux de Bengale…).'],
         ['title' => 'Comment fonctionne la caution ?', 'text' => 'Une caution de **2 × le loyer HT** est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité) ou par chèque remis à l’état des lieux. Elle est rendue après l’état des lieux de sortie.'],
@@ -303,7 +303,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 
 /** Documents remis aux clients à l'installation : [titre, description, fichier dans /documents]. */
 const DEFAULT_DOCUMENTS = [

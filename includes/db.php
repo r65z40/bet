@@ -477,6 +477,21 @@ function migrate(PDO $pdo): void
         }
         $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'bk_deposit_text' AND value = ?")->execute(['Une caution de 2 × le montant du loyer HT est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité, elle est libérée après l’état des lieux de sortie) ou par chèque remis lors de l’état des lieux d’entrée.', 'Une caution de 2 × le montant du loyer HT est demandée par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie.']);
     }
+    // v19 : écran et sono présentés « en option », horaires de la journée (10 h 30 → 10 h) — seulement les textes non personnalisés
+    if ((int)setting_raw($pdo, '_schema_version') < 19 && setting_raw($pdo, '_seeded') !== null) {
+        $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'mobilier_title' AND value = ?")->execute(['Mobilier inclus & équipements', 'Équipements & mobilier inclus']);
+        $up = $pdo->prepare('UPDATE items SET text = ? WHERE text = ?');
+        foreach ([
+            ['Écran grand format pour présentations, séminaires et vidéos, **disponible en option**.', 'Écran grand format pour présentations, séminaires et vidéos.'],
+            ['Sonorisation intégrée avec micros sans fil, **disponible en option**.', 'Sonorisation intégrée avec micros sans fil.'],
+            ['Tables rondes ou rectangulaires, bar, et la sono en option : il ne manque que vos invités.', 'Tables rondes ou rectangulaires, bar, sono : il ne manque que vos invités.'],
+            ['Wi-Fi haut débit, et en option un écran 98 pouces avec sono et micros sans fil.', 'Écran 98 pouces, micros sans fil et Wi-Fi haut débit.'],
+        ] as [$new, $old]) {
+            $up->execute([$new, $old]);
+        }
+        $pdo->prepare('UPDATE items SET text = replace(text, ?, ?) WHERE grp = ?')
+            ->execute(['La location à la journée court de 10 h à 10 h le lendemain.', 'La location à la journée court de 10 h 30 au lendemain 10 h.', 'faq']);
+    }
     // v18 : la nouvelle page d'accueil devient la page principale (retour possible dans Ordre des sections)
     if ((int)setting_raw($pdo, '_schema_version') < 18) {
         $pdo->exec("INSERT INTO settings(key, value) VALUES('home_design', 'nouveau') ON CONFLICT(key) DO UPDATE SET value = 'nouveau'");

@@ -31,9 +31,10 @@ for ($i = 1; $i <= 7; $i++) {
     $dayPricesTtc[$i] = ttc(bk_day_price($i));
     $hourFrom = min($hourFrom, ttc(bk_rental_price('hour', $ref->modify('+' . ($i - 1) . ' days'), $minH)));
 }
-[$dh, $dm] = bk_time('bk_day_start', '10:00');
+[$dayIn, $dayOut] = bk_day_slot(bk_now());
 $config = [
-    'dayStart' => sprintf('%02dh%02d', $dh, $dm),
+    'dayStart' => $dayOut->format('H\hi'),
+    'dayArrive' => $dayIn->format('H\hi'),
     'maxDays' => bk_max_days(),
     'dayDiscounts' => [2 => bk_multiday_discount(2), 3 => bk_multiday_discount(3)],
     'dayPrices' => $dayPricesTtc,
@@ -61,7 +62,7 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
       <div class="formulas">
         <button type="button" class="formula" data-mode="day" aria-pressed="false">
           <strong>Location à la journée</strong>
-          <span><?= bk_max_days() >= 3 ? '24 h, 48 h ou 72 h' : (bk_max_days() === 2 ? '24 h ou 48 h' : '24 h') ?>, de <?= e($config['dayStart']) ?> à <?= e($config['dayStart']) ?></span>
+          <span><?= bk_max_days() >= 3 ? '24 h, 48 h ou 72 h' : (bk_max_days() === 2 ? '24 h ou 48 h' : '24 h') ?>, de <?= e($config['dayArrive']) ?> au lendemain <?= e($config['dayStart']) ?></span>
           <em>à partir de <?= money(min($dayPricesTtc)) ?> TTC les 24 h</em>
         </button>
         <button type="button" class="formula" data-mode="hour" aria-pressed="false">

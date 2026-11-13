@@ -151,9 +151,7 @@ function bk_quote(array $req, ?int $ignoreBooking = null): array
         if ($days > bk_max_days()) {
             return ['ok' => false, 'errors' => ['Durée non proposée.']];
         }
-        [$h, $mi] = bk_time('bk_day_start', '10:00');
-        $start = bk_dt($date)->setTime($h, $mi);
-        $end = $start->modify("+$days day");
+        [$start, $end] = bk_day_slot(bk_dt($date), $days);
         $hours = 24.0 * $days;
     } else {
         if (!preg_match('/^(\d{2}):(\d{2})$/', (string)($req['start'] ?? ''), $m)) {
@@ -246,13 +244,25 @@ function bk_quote(array $req, ?int $ignoreBooking = null): array
 /* ---------- Disponibilités ---------- */
 
 /** Intervalles occupés [début, fin] (timestamps) entre deux dates, toutes sources confondues. */
+/**
+ * Horaires d'une location à la journée commençant le jour $date : départ à l'heure réglée (10 h,
+ * état des lieux de sortie), arrivée du client suivant après un court battement (10 h 30).
+ * Deux journées peuvent ainsi s'enchaîner. Retourne [arrivée, départ].
+ */
+function bk_day_slot(DateTimeImmutable $date, int $days = 1): array
+{
+    [$h, $m] = bk_time('bk_day_start', '10:00');
+    $out = $date->setTime($h, $m);
+    return [$out->modify('+' . max(0, (int)bk_num('bk_day_gap', 30)) . ' minutes'), $out->modify('+' . max(1, $days) . ' day')];
+}
+
 function bk_busy(DateTimeImmutable $from, DateTimeImmutable $to, ?int $ignoreBooking = null): array
 {
     $a = $from->format(BK_FMT);
     $b = $to->format(BK_FMT);
     $now = bk_now()->format(BK_FMT);
     $busy = [];
-    $st = db()->prepare("SELECT id, start_at, end_at FROM bookings
+    $st = db()->prepare("SELECT id, mode, start_at, end_at FROM bookings
         WHERE end_at > ? AND start_at < ?
           AND (status = 'confirmed' OR (status = 'pending' AND hold_until > ?))");
     $st->execute([$a, $b, $now]);
@@ -260,7 +270,7 @@ function bk_busy(DateTimeImmutable $from, DateTimeImmutable $to, ?int $ignoreBoo
         if ($ignoreBooking && (int)$r['id'] === $ignoreBooking) {
             continue;
         }
-        $busy[] = [strtotime($r['start_at']), strtotime($r['end_at']), 'booking'];
+        $busy[] = [strtotime($r['start_at']), strtotime($r['end_at']), 'booking', $r['mode']];
     }
     $st = db()->prepare('SELECT start_at, end_at FROM booking_blocks WHERE end_at > ? AND start_at < ?');
     $st->execute([$a, $b]);
@@ -311,14 +321,20 @@ function bk_conflict_day(int $s, int $e, array $dayBusy): bool
             return true;
         }
     }
-    return bk_conflict($s, $e, array_filter($dayBusy, fn($iv) => ($iv[2] ?? '') !== 'agenda-jour'));
+    return bk_conflict($s, $e, array_filter($dayBusy, fn($iv) => ($iv[2] ?? '') !== 'agenda-jour'), true);
 }
 
-function bk_conflict(int $s, int $e, array $busy): bool
+/**
+ * Chevauchement avec le temps mort. Entre deux locations à la journée, pas de temps mort :
+ * le battement (départ 10 h, arrivée suivante 10 h 30) est déjà compris dans leurs horaires.
+ */
+function bk_conflict(int $s, int $e, array $busy, bool $isDay = false): bool
 {
     $buf = (int)round(bk_num('bk_buffer_hours', 2) * 3600);
-    foreach ($busy as [$bs, $be]) {
-        if ($s < $be + $buf && $e > $bs - $buf) {
+    foreach ($busy as $iv) {
+        [$bs, $be] = $iv;
+        $b = $isDay && ($iv[2] ?? '') === 'booking' && ($iv[3] ?? '') === 'day' ? 0 : $buf;
+        if ($s < $be + $b && $e > $bs - $b) {
             return true;
         }
     }
@@ -379,7 +395,6 @@ function bk_month_availability(int $year, int $month): array
     $busy = bk_busy($first->modify('-2 days'), $last->modify('+' . ($maxDays + 2) . ' days'));
     $dayBusy = bk_busy_for_days($busy);
 
-    [$dh, $dm] = bk_time('bk_day_start', '10:00');
     [$oh, $om] = bk_time('bk_hour_open', '08:00');
     [$ch, $cm] = bk_time('bk_hour_close', '21:00');
     $step = max(15, (int)s('bk_hour_step') ?: 60);
@@ -388,10 +403,10 @@ function bk_month_availability(int $year, int $month): array
     $out = [];
     for ($d = $first; $d <= $last; $d = $d->modify('+1 day')) {
         $key = $d->format('Y-m-d');
-        $ds = $d->setTime($dh, $dm);
+        [$ds] = bk_day_slot($d);
         $nbDays = 0; // nombre de journées consécutives possibles à partir de ce jour (24 h, 48 h…)
         if ($ds >= $minStart && $ds <= $maxStart) {
-            while ($nbDays < $maxDays && !bk_conflict_day($ds->getTimestamp(), $ds->modify('+' . ($nbDays + 1) . ' day')->getTimestamp(), $dayBusy)) {
+            while ($nbDays < $maxDays && !bk_conflict_day($ds->getTimestamp(), bk_day_slot($d, $nbDays + 1)[1]->getTimestamp(), $dayBusy)) {
                 $nbDays++;
             }
         }
@@ -608,7 +623,10 @@ function bk_move(array $b, DateTimeImmutable $newStart): array
     $oldStart = bk_dt($b['start_at']);
     $oldEnd = bk_dt($b['end_at']);
     $newEnd = $newStart->modify('+' . ($oldEnd->getTimestamp() - $oldStart->getTimestamp()) . ' seconds');
-    if ($newStart == $oldStart) {
+    if ($b['mode'] === 'day') { // horaires actuels de la journée (arrivée 10 h 30, départ 10 h)
+        [$newStart, $newEnd] = bk_day_slot($newStart->setTime(0, 0), max(1, (int)round(($oldEnd->getTimestamp() - $oldStart->getTimestamp()) / 86400)));
+    }
+    if ($newStart == $oldStart && $newEnd == $oldEnd) {
         throw new DomainException('La nouvelle date est identique à l’actuelle.');
     }
     $pdo = db();

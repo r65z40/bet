@@ -185,7 +185,7 @@
     const d = new Date(st.date + 'T12:00:00');
     const e = new Date(d.getTime()); e.setDate(e.getDate() + st.days);
     $('#sumSlot').textContent = st.mode === 'day'
-      ? `${24 * st.days} h — du ${daysFr[isoDow(d) - 1]} ${d.getDate()} ${monthsFr[d.getMonth()]} ${C.dayStart} au ${daysFr[isoDow(e) - 1]} ${e.getDate()} ${monthsFr[e.getMonth()]} ${C.dayStart}`
+      ? `${24 * st.days} h — du ${daysFr[isoDow(d) - 1]} ${d.getDate()} ${monthsFr[d.getMonth()]} ${C.dayArrive} au ${daysFr[isoDow(e) - 1]} ${e.getDate()} ${monthsFr[e.getMonth()]} ${C.dayStart}`
       : `${daysFr[isoDow(d) - 1]} ${d.getDate()} ${monthsFr[d.getMonth()]} — ${st.start.replace(':', 'h')}, ${hoursLabel(st.hours)}`;
     lines.innerHTML = (j.lines || []).map((l, i) => `<li><span>${i === 0 ? (/tarif « /.test(l.label) ? 'Location (' + esc(l.label.split('tarif « ')[1].replace(' »', '')) + ')' : 'Location') : esc(l.label)}</span><span>${eur.format(l.ttc)}</span></li>`).join('')
       + (j.discount_ttc > 0 ? `<li><span>Remise association</span><span>− ${eur.format(j.discount_ttc)}</span></li>` : '')

@@ -38,13 +38,14 @@ const BOOKING_SETTINGS = [
     'regles' => [
         'title' => 'Horaires & règles',
         'fields' => [
-            'bk_day_start'        => ['label' => 'Location à la journée : heure d’arrivée et de départ', 'default' => '10:00', 'type' => 'time', 'help' => 'Ex. 10:00 = du jour J 10 h au lendemain 10 h (ou 2 / 3 jours plus tard).'],
+            'bk_day_start'        => ['label' => 'Location à la journée : heure de départ (état des lieux de sortie)', 'default' => '10:00', 'type' => 'time', 'help' => 'Ex. 10:00 = départ à 10 h le lendemain (ou 2 / 3 jours plus tard).'],
+            'bk_day_gap'          => ['label' => 'Location à la journée : battement avant l’arrivée du client suivant (minutes)', 'default' => '30', 'type' => 'number', 'help' => 'Ex. 30 = arrivée à 10 h 30 et départ à 10 h : deux locations à la journée peuvent se suivre. Le temps mort ci-dessous ne s’applique qu’aux locations à l’heure.'],
             'bk_max_days'         => ['label' => 'Location à la journée : durées proposées', 'type' => 'select', 'default' => '3', 'options' => ['1' => '24 h uniquement', '2' => '24 h ou 48 h', '3' => '24 h, 48 h ou 72 h']],
             'bk_hour_open'        => ['label' => 'Location à l’heure : ouverture', 'default' => '08:00', 'type' => 'time'],
             'bk_hour_close'       => ['label' => 'Location à l’heure : fermeture (fin au plus tard)', 'default' => '21:00', 'type' => 'time'],
             'bk_hour_step'        => ['label' => 'Location à l’heure : pas des horaires', 'default' => '60', 'type' => 'select', 'options' => ['30' => 'Toutes les 30 minutes', '60' => 'Toutes les heures']],
             'bk_min_hours'        => ['label' => 'Durée minimum à l’heure (heures)', 'default' => '2', 'type' => 'number'],
-            'bk_buffer_hours'     => ['label' => 'Temps mort entre deux locations (heures)', 'default' => '2', 'type' => 'number', 'help' => 'S’applique aussi aux événements de votre agenda Google et aux blocages.'],
+            'bk_buffer_hours'     => ['label' => 'Temps mort autour des locations à l’heure (heures)', 'default' => '2', 'type' => 'number', 'help' => 'S’applique aussi aux événements de votre agenda Google et aux blocages. Pas entre deux locations à la journée : elles se suivent avec le battement réglé ci-dessus.'],
             'bk_min_notice_hours' => ['label' => 'Délai minimum avant le début (heures)', 'default' => '48', 'type' => 'number'],
             'bk_max_months'       => ['label' => 'Réservation possible jusqu’à (mois à l’avance)', 'default' => '18', 'type' => 'number'],
             'bk_max_guests'       => ['label' => 'Nombre maximum de personnes', 'default' => '120', 'type' => 'number'],

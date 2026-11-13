@@ -34,7 +34,6 @@ function home_next_free(int $n = 4): array
     $now = bk_now();
     $minStart = $now->modify('+' . (int)bk_num('bk_min_notice_hours', 48) . ' hours');
     $until = $now->modify('+' . min(6, max(1, (int)bk_num('bk_max_months', 18))) . ' months');
-    [$dh, $dm] = bk_time('bk_day_start', '10:00');
     try {
         $dayBusy = bk_busy_for_days(bk_busy($now->setTime(0, 0), $until->modify('+3 days')));
     } catch (Throwable) {
@@ -45,8 +44,8 @@ function home_next_free(int $n = 4): array
         if (!in_array((int)$d->format('N'), $days, true)) {
             continue;
         }
-        $s = $d->setTime($dh, $dm);
-        if ($s < $minStart || bk_conflict_day($s->getTimestamp(), $s->modify('+1 day')->getTimestamp(), $dayBusy)) {
+        [$s, $e] = bk_day_slot($d);
+        if ($s < $minStart || bk_conflict_day($s->getTimestamp(), $e->getTimestamp(), $dayBusy)) {
             continue;
         }
         $out[] = ['date' => $d, 'price' => ttc(bk_day_price_for($d)), 'special' => special_for($d)['label'] ?? null];
