@@ -103,7 +103,6 @@ function http_get_text(string $url): string
         $body = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $err = curl_error($ch);
-        curl_close($ch);
         if ($body === false || $code >= 400) {
             throw new RuntimeException('lecture impossible (' . ($err ?: 'HTTP ' . $code) . ')');
         }

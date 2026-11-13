@@ -35,6 +35,12 @@ function run_scheduled_tasks(bool $force = false): array
 
         // 0. Sauvegarde automatique quotidienne de la base
         $report['sauvegarde'] = backup_cron($report['erreurs']) ? 1 : 0;
+        // Copie sur Google Drive (archive complète mensuelle : seulement depuis la tâche planifiée OVH)
+        try {
+            $report['drive'] = count(drive_sync(defined('NO_CRON')));
+        } catch (Throwable $e) {
+            $report['erreurs'][] = 'Google Drive : ' . $e->getMessage();
+        }
 
         // 0 bis. Agenda Google relu (blocages ajoutés depuis l'iPhone)
         try {
@@ -67,7 +73,7 @@ function run_scheduled_tasks(bool $force = false): array
         // 3. Demande d'avis après l'événement
         if (notif_on('review', 'client')) {
             $delay = max(0, (int)bk_num('bk_review_days', 1));
-            $st = db()->prepare("SELECT * FROM bookings WHERE status = 'confirmed' AND review_sent_at IS NULL AND COALESCE(deposit_status, '') <> 'retenue' AND end_at <= ? AND end_at >= ?");
+            $st = db()->prepare("SELECT * FROM bookings WHERE status = 'confirmed' AND review_sent_at IS NULL AND COALESCE(deposit_status, '') <> 'retenue' AND refunded_amount = 0 AND no_review = 0 AND end_at <= ? AND end_at >= ?");
             $st->execute([$now->modify("-$delay days")->format(BK_FMT), $now->modify('-' . ($delay + 7) . ' days')->format(BK_FMT)]);
             foreach ($st->fetchAll() as $b) {
                 if (!is_opted_out($b['email'])) {

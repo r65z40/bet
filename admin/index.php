@@ -48,6 +48,9 @@ $can = fn($p) => admin_can($p);
 <?php if ($can('reglages') && time() - ($lastBackup = backup_last_time()) > 3 * 86400): ?>
 <div class="flash flash-err">💾 <?= $lastBackup ? 'Aucune sauvegarde depuis le ' . e(date('d/m/Y', $lastBackup)) : 'Aucune sauvegarde n’a encore été faite' ?>. <a href="sauvegardes.php">Sauvegarder maintenant</a><?= s('_backup_error') !== '' ? ' — dernière erreur : ' . e(s('_backup_error')) : '' ?></div>
 <?php endif; ?>
+<?php if ($can('reglages') && s('_drive_error') !== ''): ?>
+<div class="flash flash-err">☁ Copie des sauvegardes sur Google Drive en échec : <?= e(s('_drive_error')) ?> <a href="sauvegardes.php#drive">Voir</a></div>
+<?php endif; ?>
 
 <?php if ($admin['email'] === ''): ?>
   <div class="flash flash-err">Ajoutez votre adresse e-mail dans <a href="compte.php">Mon compte</a> : sans elle, impossible de récupérer votre mot de passe en cas d’oubli.</div>

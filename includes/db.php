@@ -351,6 +351,7 @@ function install_schema(PDO $pdo): void
         'deposit_amount' => 'REAL', 'deposit_held' => 'REAL NOT NULL DEFAULT 0', 'deposit_captured' => 'REAL NOT NULL DEFAULT 0',
         'deposit_pi' => "TEXT NOT NULL DEFAULT ''", 'deposit_at' => 'TEXT', 'deposit_requested_at' => 'TEXT', 'deposit_reason' => "TEXT NOT NULL DEFAULT ''", 'deposit_captured_at' => 'TEXT',
         'eve_notified_at' => 'TEXT', 'abandon_notified' => 'INTEGER NOT NULL DEFAULT 0',
+        'no_review' => 'INTEGER NOT NULL DEFAULT 0', // litige : pas de demande d'avis
     ] as $col => $def) {
         if (!in_array($col, $bcols, true)) {
             $pdo->exec("ALTER TABLE bookings ADD COLUMN $col $def");

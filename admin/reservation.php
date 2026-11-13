@@ -18,8 +18,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($b['deposit_pi'] !== '' || !in_array($dep, ['', 'recue', 'restituee', 'retenue'], true)) {
             $dep = $b['deposit_status']; // caution par empreinte : statut géré par Stripe, jamais à la main
         }
-        db()->prepare('UPDATE bookings SET admin_notes = ?, deposit_status = ? WHERE id = ?')
-            ->execute([mb_substr(trim((string)($_POST['admin_notes'] ?? '')), 0, 5000), $dep, $id]);
+        $noReview = !empty($_POST['no_review']) ? 1 : 0;
+        db()->prepare('UPDATE bookings SET admin_notes = ?, deposit_status = ?, no_review = ? WHERE id = ?')
+            ->execute([mb_substr(trim((string)($_POST['admin_notes'] ?? '')), 0, 5000), $dep, $noReview, $id]);
+        if ($noReview !== (int)$b['no_review']) {
+            bk_log($id, ($noReview ? 'Litige : pas de demande d’avis' : 'Demande d’avis réactivée') . ' (' . current_admin()['username'] . ')');
+        }
         flash('Notes enregistrées.');
     } elseif ($do === 'deposit_amount' && in_array($b['deposit_status'], ['', 'expiree'], true)) {
         $v = round((float)str_replace([',', ' '], ['.', ''], (string)($_POST['deposit_amount'] ?? '')), 2);
@@ -61,7 +65,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $done = bk_cancel($b, $amount, !empty($_POST['notify']), !empty($_POST['restore_gift']));
             bk_log($id, 'Action effectuée par ' . current_admin()['username']);
             admin_log(($do === 'cancel' ? 'Annulation' : 'Remboursement') . ' de la réservation ' . $b['ref'] . ($done > 0 ? ' — ' . money2($done) . ' remboursés' : ''));
-            flash($done > 0 ? 'Remboursement de ' . money2($done) . ' effectué' . ($do === 'cancel' ? ' et réservation annulée.' : '.') : 'Réservation annulée sans remboursement.');
+            flash(($done > 0 ? 'Remboursement de ' . money2($done) . ' effectué' . ($do === 'cancel' ? ' et réservation annulée.' : '.') : 'Réservation annulée sans remboursement.')
+                . ($do === 'cancel' && $b['deposit_status'] === 'recue' ? ' Pensez à rendre (ou détruire) le chèque de caution, puis passez-le en « Restituée ».' : ''));
         } catch (Throwable $e) {
             flash('Opération refusée : ' . $e->getMessage(), 'err');
         }
@@ -171,6 +176,9 @@ admin_header('Réservation ' . $b['ref'], 'resa');
       <?= field('deposit_status', 'Caution (chèque à l’état des lieux)', $b['deposit_status'], 'select', '', ['' => '— Non reçue', 'recue' => 'Reçue', 'restituee' => 'Restituée', 'retenue' => 'Retenue (en partie ou totalité)']) ?>
       <?php endif; ?>
       <?= field('admin_notes', 'Notes internes', $b['admin_notes'], 'textarea') ?>
+      <?php if (empty($b['review_sent_at'])): ?>
+      <label style="display:block;margin:0 0 12px"><input type="checkbox" name="no_review" value="1"<?= (int)$b['no_review'] ? ' checked' : '' ?>> Litige : ne pas demander d’avis à ce client</label>
+      <?php endif; ?>
       <button class="btn" name="do" value="notes">Enregistrer</button>
     </form>
   </div>

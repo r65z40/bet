@@ -119,7 +119,6 @@ function push_send(array $sub, array $message): int
         CURLOPT_HTTPHEADER => ['Authorization: vapid t=' . $jwt . ', k=' . b64url($pub), 'Content-Encoding: aes128gcm', 'Content-Type: application/octet-stream', 'TTL: 86400', 'Urgency: high']]);
     curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
-    curl_close($ch);
     if (in_array($code, [404, 410], true)) {
         db()->prepare('DELETE FROM push_subs WHERE id = ?')->execute([$sub['id']]); // abonnement expiré
     }

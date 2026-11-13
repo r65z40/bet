@@ -44,7 +44,6 @@ function http_api(string $method, string $url, array $headers = [], array|string
     $res = curl_exec($ch);
     $code = (int)curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
     $err = curl_error($ch);
-    curl_close($ch);
     if ($res === false) {
         throw new RuntimeException('Service de paiement injoignable (' . $err . ').');
     }
@@ -284,9 +283,13 @@ function bk_cancel_locked(array $b, float $amount, bool $notify, bool $restoreGi
             bk_log((int)$b['id'], 'Empreinte de caution non libérée : ' . $e->getMessage());
         }
     }
+    $chequeHeld = $b['deposit_status'] === 'recue';
+    if ($chequeHeld) {
+        bk_log((int)$b['id'], 'Chèque de caution à rendre au client (réservation annulée)');
+    }
     if ($notify && $b['status'] === 'confirmed') {
         $nb = bk_get((int)$b['id']);
-        after_response(fn() => bk_mail_cancelled($nb, $amount, $depositReleased), 'e-mail annulation');
+        after_response(fn() => bk_mail_cancelled($nb, $amount, $depositReleased, $chequeHeld), 'e-mail annulation');
     }
     if ($b['status'] === 'confirmed' || $amount > 0) {
         admin_notify('cancelled', ($b['status'] === 'confirmed' ? 'Réservation annulée' : 'Remboursement') . ' : ' . $b['first_name'] . ' ' . $b['last_name'], [

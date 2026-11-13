@@ -8,7 +8,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $do = (string)($_POST['do'] ?? '');
     $name = (string)($_POST['name'] ?? '');
     // Télécharger, restaurer ou supprimer touche aux données de tous les clients : mot de passe redemandé
-    if (in_array($do, ['zip', 'db', 'restore', 'upload', 'delete'], true)) {
+    if (in_array($do, ['zip', 'db', 'restore', 'upload', 'delete', 'drive_keys', 'drive_start', 'drive_off'], true)) {
         require_reauth('sauvegardes.php');
     }
     try {
@@ -63,6 +63,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             admin_log('Restauration depuis un fichier envoyé : ' . basename((string)$f['name']));
             $safety = backup_restore_file($tmp);
             flash('Base restaurée depuis le fichier envoyé. L’état précédent a été sauvegardé (' . $safety . ').');
+        } elseif ($do === 'drive_keys') {
+            $id = trim((string)($_POST['drive_client_id'] ?? ''));
+            $secret = trim((string)($_POST['drive_client_secret'] ?? ''));
+            if ($id !== '' && !preg_match('/^[\w.-]+\.apps\.googleusercontent\.com$/', $id)) {
+                throw new RuntimeException('l’« ID client » doit se terminer par .apps.googleusercontent.com');
+            }
+            if ($id !== s('bk_drive_client_id') && drive_connected()) {
+                drive_disconnect();
+            }
+            save_setting('bk_drive_client_id', $id);
+            if ($secret !== '' || $id === '') {
+                save_setting('bk_drive_client_secret', $secret);
+            }
+            admin_log('Identifiants Google Drive modifiés');
+            flash($id === '' ? 'Identifiants Google Drive effacés.' : 'Identifiants enregistrés : cliquez maintenant sur « Connecter Google Drive ».');
+        } elseif ($do === 'drive_start' && drive_configured()) {
+            $_SESSION['drive_state'] = bin2hex(random_bytes(16));
+            $_SESSION['drive_state_at'] = time();
+            $url = drive_auth_url($_SESSION['drive_state']);
+            // Page relais : la politique de sécurité de l'admin interdit de rediriger un formulaire vers un autre site
+            echo '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Google Drive</title>'
+                . '<p style="font:16px system-ui;margin:40px auto;max-width:420px;text-align:center">Ouverture de Google…<br><br><a href="' . e($url) . '" id="go">Continuer vers Google</a></p>'
+                . '<script>location.replace(document.getElementById("go").href)</script>';
+            exit;
+        } elseif ($do === 'drive_now') {
+            $sent = drive_sync(true, true);
+            admin_log('Copie manuelle sur Google Drive');
+            flash($sent ? 'Copié sur Google Drive : ' . implode(', ', $sent) . '.' : 'Rien à copier : faites d’abord une sauvegarde.');
+        } elseif ($do === 'drive_off') {
+            drive_disconnect();
+            admin_log('Google Drive déconnecté des sauvegardes');
+            flash('Google Drive déconnecté. Les copies déjà faites restent sur votre Drive.');
         } elseif ($do === 'delete') {
             $path = backup_path($name) ?? throw new RuntimeException('sauvegarde introuvable');
             unlink($path);
@@ -107,7 +139,7 @@ admin_header('Sauvegardes', 'reglages');
     <div class="card">
       <h2>Sauvegardes disponibles (<?= count($list) ?>)</h2>
       <?php if (!$list): ?><p class="muted">Aucune pour l’instant.</p><?php else: ?>
-      <div style="overflow-x:auto"><table>
+      <div style="overflow-x:auto"><table class="bklist">
         <tr><th>Date</th><th>Type</th><th class="num">Taille</th><th></th></tr>
         <?php foreach ($list as $b): ?>
         <tr>
@@ -126,6 +158,43 @@ admin_header('Sauvegardes', 'reglages');
         </tr>
         <?php endforeach; ?>
       </table></div>
+      <?php endif; ?>
+    </div>
+
+    <div class="card" id="drive">
+      <h2>Copie sur Google Drive</h2>
+      <?php if (s('_drive_error') !== ''): ?><div class="flash flash-err">Dernière copie en échec : <?= e(s('_drive_error')) ?></div><?php endif; ?>
+      <?php if (drive_connected()): ?>
+        <p>✅ Connecté<?= s('_drive_email') !== '' ? ' à <strong>' . e(s('_drive_email')) . '</strong>' : '' ?>, dossier « <?= e(DRIVE_FOLDER_NAME) ?> ».<br>
+          <span class="muted">Chaque jour, la base y est copiée après la sauvegarde automatique (<?= DRIVE_KEEP_DB ?> dernières gardées) ; chaque mois, l’archive complète avec les photos et documents (<?= DRIVE_KEEP_ZIP ?> dernières gardées).
+          Dernière copie : <?= (int)s('_drive_last') ? e(date('d/m/Y à H:i', (int)s('_drive_last'))) : 'pas encore' ?><?= (int)s('_drive_last_zip') ? ' · dernière archive complète : ' . e(date('d/m/Y', (int)s('_drive_last_zip'))) : '' ?>.</span></p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <form method="post"><?= csrf_field() ?><button class="btn" name="do" value="drive_now">☁ Copier maintenant (base + archive complète)</button></form>
+          <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><?= csrf_field() ?><?= reauth_needed() ? '<input type="password" name="reauth" placeholder="Votre mot de passe" style="width:170px" autocomplete="current-password">' : '' ?><button class="btn light" name="do" value="drive_off" onclick="return confirm('Arrêter les copies sur Google Drive ?')">Déconnecter</button></form>
+        </div>
+        <p class="muted" style="font-size:.85rem;margin-top:12px">Pour restaurer : téléchargez le fichier depuis votre Drive, puis utilisez « Restaurer depuis un fichier » ci-dessous. Ce dossier contient les données de vos clients : ne le partagez avec personne.</p>
+      <?php else: ?>
+        <p class="muted" style="margin-top:-6px">Une copie de chaque sauvegarde part automatiquement sur votre Google Drive : si l’hébergement avait un problème, vos réservations restent récupérables. Le site n’a accès qu’à son propre dossier, pas au reste de votre Drive.</p>
+        <?php if (drive_configured()): ?>
+          <form method="post" style="margin:10px 0 16px"><?= csrf_field() ?><?= reauth_field() ?><button class="btn gold" name="do" value="drive_start">Connecter Google Drive</button></form>
+        <?php endif; ?>
+        <details<?= drive_configured() ? '' : ' open' ?>>
+          <summary style="cursor:pointer;font-weight:700">Mise en place (une seule fois, 10 minutes)</summary>
+          <ol style="line-height:1.6;padding-left:20px">
+            <li>Ouvrez <a href="https://console.cloud.google.com/" target="_blank" rel="noopener">console.cloud.google.com</a> avec votre compte Google, dans le même projet que pour l’agenda.</li>
+            <li>« API et services » › « Bibliothèque » : cherchez <strong>Google Drive API</strong> et cliquez sur « Activer ».</li>
+            <li>« Écran de consentement OAuth » (ou « Google Auth Platform ») : type <strong>Externe</strong>, nom de l’application « La Salle RN6 », votre adresse e-mail. Puis dans « Audience », cliquez sur <strong>Publier l’application</strong> (« En production ») : sinon Google coupe l’accès au bout de 7 jours. Aucune validation par Google n’est nécessaire.</li>
+            <li>« Identifiants » (ou « Clients ») › « Créer des identifiants » › <strong>ID client OAuth</strong> › type « Application Web ». Dans « URI de redirection autorisés », ajoutez exactement :<br><code style="user-select:all;word-break:break-all"><?= e(drive_redirect_uri()) ?></code></li>
+            <li>Copiez l’<strong>ID client</strong> et le <strong>code secret</strong> ci-dessous, enregistrez, puis cliquez sur « Connecter Google Drive ».</li>
+          </ol>
+          <form method="post">
+            <?= csrf_field() ?>
+            <?= field('drive_client_id', 'ID client', s('bk_drive_client_id'), 'text', '….apps.googleusercontent.com') ?>
+            <?= field('drive_client_secret', 'Code secret du client', '', 'password', s('bk_drive_client_secret') !== '' ? 'Enregistré — laissez vide pour le garder' : 'GOCSPX-…') ?>
+            <?= reauth_field() ?>
+            <button class="btn" name="do" value="drive_keys">Enregistrer</button>
+          </form>
+        </details>
       <?php endif; ?>
     </div>
 
@@ -148,4 +217,13 @@ admin_header('Sauvegardes', 'reglages');
     </form>
   </div>
 </div>
+<style>
+@media(max-width:640px){
+  table.bklist tr:first-child{display:none}
+  table.bklist tr{display:grid;grid-template-columns:1fr auto auto;gap:4px 10px;padding:10px 0;border-bottom:1px solid var(--line,#e5e7eb)}
+  table.bklist td{border:0;padding:0}
+  table.bklist td:last-child{grid-column:1/-1}
+  table.bklist td:last-child form{justify-content:flex-start!important}
+}
+</style>
 <?php admin_footer();

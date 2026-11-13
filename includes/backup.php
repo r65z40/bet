@@ -10,7 +10,7 @@
  */
 
 const BACKUP_DIR = DATA_DIR . '/backups';
-const BACKUP_RE = '/^sauvegarde-(\d{4}-\d{2}-\d{2})-(\d{4})(?:-(\w+))?\.sqlite\.gz$/';
+const BACKUP_RE = '/^sauvegarde-(\d{4}-\d{2}-\d{2})-(\d{4})(?:-([a-z]+)(?:-[0-9a-f]{3})?)?\.sqlite\.gz$/';
 
 function backup_dir(): string
 {
@@ -79,10 +79,10 @@ function backup_snapshot(string $dest): void
 function backup_create(string $kind = 'manuelle'): string
 {
     $dir = backup_dir();
-    $kind = preg_replace('/\W/', '', $kind) ?: 'manuelle';
+    $kind = preg_replace('/[^a-z]/', '', strtolower($kind)) ?: 'manuelle';
     $name = 'sauvegarde-' . date('Y-m-d-Hi') . '-' . $kind . '.sqlite.gz';
     if (is_file($dir . '/' . $name)) {
-        $name = 'sauvegarde-' . date('Y-m-d-Hi') . '-' . $kind . substr(bin2hex(random_bytes(2)), 0, 3) . '.sqlite.gz';
+        $name = 'sauvegarde-' . date('Y-m-d-Hi') . '-' . $kind . '-' . substr(bin2hex(random_bytes(2)), 0, 3) . '.sqlite.gz';
     }
     $tmp = $dir . '/.tmp-' . bin2hex(random_bytes(6)) . '.sqlite';
     try {
