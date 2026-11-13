@@ -33,7 +33,10 @@ function run_scheduled_tasks(bool $force = false): array
 
         inflight_sweep(); // requêtes bloquées ou tuées depuis le dernier passage → perf.log
 
-        // 0. Agenda Google relu (blocages ajoutés depuis l'iPhone)
+        // 0. Sauvegarde automatique quotidienne de la base
+        $report['sauvegarde'] = backup_cron($report['erreurs']) ? 1 : 0;
+
+        // 0 bis. Agenda Google relu (blocages ajoutés depuis l'iPhone)
         try {
             gcal_sync_if_needed(true);
         } catch (Throwable $e) {

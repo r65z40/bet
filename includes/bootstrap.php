@@ -74,6 +74,7 @@ require_once __DIR__ . '/ical.php';
 require_once __DIR__ . '/gcal_write.php';
 require_once __DIR__ . '/deposit.php';
 require_once __DIR__ . '/notify.php';
+require_once __DIR__ . '/backup.php';
 require_once __DIR__ . '/invoice.php';
 require_once __DIR__ . '/compta.php';
 require_once __DIR__ . '/webpush.php';

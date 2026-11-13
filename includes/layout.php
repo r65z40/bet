@@ -31,7 +31,7 @@ function public_footer(string $page = ''): void
 {
     ?>
 </main>
-<footer class="foot-bar"><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?></span><span><a href="<?= e(u('conditions.php')) ?>">Conditions de location</a> · <a href="<?= e(u('mentions-legales.php')) ?>">Mentions légales</a> · <a href="<?= e(u('confidentialite.php')) ?>">Confidentialité</a> · <a href="<?= e(mailto()) ?>" data-track="email"><?= e(s('contact_email')) ?></a></span></div></footer>
+<footer class="foot-bar"><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?></span><span><a href="<?= e(u('conditions.php')) ?>">Conditions de location</a> · <a href="<?= e(u('mentions-legales.php')) ?>">Mentions légales</a> · <a href="<?= e(u('confidentialite.php')) ?>">Confidentialité</a> · <a href="<?= e(mailto()) ?>" data-track="email"><?= e(s('contact_email')) ?></a> · Site web réalisé par <a href="https://www.linkedin.com/in/fendyb/" target="_blank" rel="noopener" style="color:inherit">FBA</a></span></div></footer>
 <?= $page !== '' ? tracking_script($page) : '' ?>
 </body></html>
 <?php

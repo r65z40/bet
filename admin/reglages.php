@@ -93,6 +93,7 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
       <a href="?s=<?= e($key) ?>" class="<?= $key === $current ? 'on' : '' ?>"><?= e($sec['title']) ?></a>
     <?php endforeach; ?>
       <a href="notifications.php">Notifications</a>
+      <a href="sauvegardes.php">Sauvegardes</a>
   </aside>
   <div>
 <?php endif; ?>

@@ -36,6 +36,7 @@ admin_header('Notifications', 'reglages');
       <a href="reglages.php?s=<?= e($key) ?>"><?= e($sec['title']) ?></a>
     <?php endforeach; ?>
     <a href="notifications.php" class="on">Notifications</a>
+    <a href="sauvegardes.php">Sauvegardes</a>
   </aside>
   <div style="min-width:0">
     <form method="post" class="card">

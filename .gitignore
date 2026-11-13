@@ -25,3 +25,4 @@ data/.storage
 data/perf.log*
 data/.gcal.lock
 data/inflight/
+data/backups/
