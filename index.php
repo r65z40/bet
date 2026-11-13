@@ -186,6 +186,25 @@ $jsonLd  = [
     section{padding:72px 0}
     .section-title{max-width:740px;margin-bottom:34px}
     .section-title p{margin:8px 0 0;color:var(--muted);font-size:1.04rem}
+    /* Petit carrousel d'aperçu à droite du titre « La salle » */
+    .salle-head{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,470px);gap:44px;align-items:center;margin-bottom:38px}
+    .salle-head .section-title{margin-bottom:0}
+    .salle-head.no-carousel{display:block}
+    .mini-carousel{position:relative;border-radius:22px;overflow:hidden;aspect-ratio:4/3;background:#e9edf2;box-shadow:0 22px 55px rgba(7,28,53,.18);border:1px solid rgba(255,255,255,.6)}
+    .mc-track{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;outline:none}
+    .mc-track::-webkit-scrollbar{display:none}
+    .mc-slide{flex:0 0 100%;height:100%;scroll-snap-align:start;border:0;padding:0;margin:0;background:none;cursor:zoom-in;display:block}
+    .mc-slide picture,.mc-slide img{display:block;width:100%;height:100%}
+    .mc-slide img{object-fit:cover;transition:transform .6s ease}
+    .mini-carousel:hover .mc-slide img{transform:scale(1.03)}
+    .mc-nav{position:absolute;top:50%;transform:translateY(-50%);width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.88);color:var(--navy);font-size:26px;line-height:1;cursor:pointer;display:grid;place-items:center;box-shadow:0 6px 18px rgba(0,0,0,.18);opacity:0;transition:opacity .2s ease}
+    .mc-prev{left:12px}.mc-next{right:12px}
+    .mini-carousel:hover .mc-nav,.mc-nav:focus-visible{opacity:1}
+    .mc-dots{position:absolute;left:0;right:0;bottom:12px;display:flex;justify-content:center;gap:6px;pointer-events:none}
+    .mc-dots span{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.55);transition:.25s}
+    .mc-dots span.on{background:#fff;width:20px;border-radius:4px}
+    .mc-all{position:absolute;right:12px;top:12px;background:rgba(7,28,53,.72);color:#fff!important;text-decoration:none!important;font-size:.8rem;font-weight:700;padding:6px 11px;border-radius:999px;backdrop-filter:blur(4px)}
+    @media (max-width:900px){.salle-head{grid-template-columns:1fr;gap:22px}.mini-carousel{max-width:560px}.mc-nav{opacity:1;width:36px;height:36px;font-size:22px}}
     h2{font-family:Georgia,"Times New Roman",serif;font-size:clamp(2rem,4vw,3.25rem);line-height:1.08;color:var(--navy);margin:0}
 
     .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
@@ -488,9 +507,26 @@ $jsonLd  = [
 <?php ob_start(); ?>
     <section id="salle">
       <div class="wrap">
+        <div class="salle-head<?= $photos ? '' : ' no-carousel' ?>">
         <div class="section-title">
           <h2><?= e(s('salle_title')) ?></h2>
           <p><?= rich(s('salle_subtitle')) ?></p>
+        </div>
+<?php if ($photos): $mini = array_slice($photos, 0, 8); ?>
+        <div class="mini-carousel" role="region" aria-roledescription="carrousel" aria-label="Aperçu de la salle en photos">
+          <div class="mc-track" tabindex="0">
+<?php foreach ($mini as $i => $ph): $thumb = variant_src($ph['filename'], 'thumb'); ?>
+            <button type="button" class="mc-slide" data-photo="<?= $i ?>" aria-label="Agrandir la photo <?= $i + 1 ?> sur <?= count($mini) ?><?= $ph['alt'] !== '' ? ' : ' . e($ph['alt']) : '' ?>">
+              <picture><?php if ($thumb): ?><source type="image/webp" srcset="<?= e($thumb) ?>"><?php endif; ?><img src="<?= e(photo_src($ph['filename'])) ?>" alt="<?= e($ph['alt']) ?>" width="<?= (int)$ph['width'] ?>" height="<?= (int)$ph['height'] ?>" loading="<?= $i === 0 ? 'eager' : 'lazy' ?>" decoding="async"></picture>
+            </button>
+<?php endforeach; ?>
+          </div>
+          <button type="button" class="mc-nav mc-prev" aria-label="Photo précédente">‹</button>
+          <button type="button" class="mc-nav mc-next" aria-label="Photo suivante">›</button>
+          <div class="mc-dots" aria-hidden="true"><?php foreach ($mini as $i => $ph): ?><span<?= $i === 0 ? ' class="on"' : '' ?>></span><?php endforeach; ?></div>
+          <a class="mc-all" href="#photos">Toutes les photos →</a>
+        </div>
+<?php endif; ?>
         </div>
         <div class="cards">
 <?php foreach (items('salle_cards') as $it): ?>
@@ -842,6 +878,7 @@ $jsonLd  = [
       lightbox.classList.add('open');
       document.body.style.overflow = 'hidden';
     }
+    window.rn6OpenPhoto = openPhoto;
 
     function closeLightbox(){
       lightbox.classList.remove('open');
@@ -942,6 +979,33 @@ $jsonLd  = [
       }, {rootMargin:'0px 0px -8% 0px', threshold:0.08});
       targets.forEach(el => io.observe(el));
       counters.forEach(el => { if (!el.closest('.reveal')) io.observe(el); });
+    })();
+
+    // Petit carrousel « La salle » : défilement automatique (si visible, sans survol), glisser au doigt, clic = grand format
+    (function(){
+      const box = document.querySelector('.mini-carousel');
+      if (!box) return;
+      const track = box.querySelector('.mc-track');
+      const slides = [...box.querySelectorAll('.mc-slide')];
+      const dots = [...box.querySelectorAll('.mc-dots span')];
+      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let paused = false, visible = false, timer = null;
+      const current = () => Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
+      const go = i => { const n = (i + slides.length) % slides.length; track.scrollTo({ left: n * track.clientWidth, behavior: reduce ? 'auto' : 'smooth' }); };
+      track.addEventListener('scroll', () => { const c = current(); dots.forEach((d, k) => d.classList.toggle('on', k === c)); }, { passive: true });
+      box.querySelector('.mc-prev').addEventListener('click', () => go(current() - 1));
+      box.querySelector('.mc-next').addEventListener('click', () => go(current() + 1));
+      track.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { e.preventDefault(); go(current() + 1); } if (e.key === 'ArrowLeft') { e.preventDefault(); go(current() - 1); } });
+      slides.forEach(s => s.addEventListener('click', () => {
+        if (typeof window.rn6OpenPhoto === 'function' && document.querySelector('.gallery-item')) window.rn6OpenPhoto(+s.dataset.photo);
+        else location.hash = 'photos';
+      }));
+      ['mouseenter', 'focusin', 'touchstart'].forEach(ev => box.addEventListener(ev, () => { paused = true; }, { passive: true }));
+      ['mouseleave', 'focusout'].forEach(ev => box.addEventListener(ev, () => { paused = false; }));
+      if (!reduce && slides.length > 1) {
+        if ('IntersectionObserver' in window) new IntersectionObserver(en => { visible = en[0].isIntersecting; }, { threshold: .4 }).observe(box); else visible = true;
+        timer = setInterval(() => { if (visible && !paused && !document.hidden) go(current() + 1); }, 4500);
+      }
     })();
   </script>
   <?= tracking_script('accueil') ?>
