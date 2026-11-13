@@ -274,9 +274,19 @@ function bk_cancel_locked(array $b, float $amount, bool $notify, bool $restoreGi
     $pdo->prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = ?, refunded_amount = refunded_amount + ?, credit_number = ?, hold_until = NULL WHERE id = ?")
         ->execute([bk_now()->format(BK_FMT), $amount, $credit, $b['id']]);
     bk_log((int)$b['id'], 'Réservation annulée' . ($amount > 0 ? ' — remboursement ' . money2($amount) . ' (' . $b['provider'] . ' ' . $refundId . '), avoir ' . $credit : ' sans remboursement'));
+    // Empreinte de caution libérée avant l'e-mail, pour que celui-ci puisse l'annoncer au client
+    $depositReleased = false;
+    if ($b['deposit_status'] === 'empreinte') {
+        try {
+            deposit_release($b, false, 'réservation annulée');
+            $depositReleased = true;
+        } catch (Throwable $e) {
+            bk_log((int)$b['id'], 'Empreinte de caution non libérée : ' . $e->getMessage());
+        }
+    }
     if ($notify && $b['status'] === 'confirmed') {
         $nb = bk_get((int)$b['id']);
-        after_response(fn() => bk_mail_cancelled($nb, $amount), 'e-mail annulation');
+        after_response(fn() => bk_mail_cancelled($nb, $amount, $depositReleased), 'e-mail annulation');
     }
     if ($b['status'] === 'confirmed' || $amount > 0) {
         admin_notify('cancelled', ($b['status'] === 'confirmed' ? 'Réservation annulée' : 'Remboursement') . ' : ' . $b['first_name'] . ' ' . $b['last_name'], [
@@ -285,12 +295,5 @@ function bk_cancel_locked(array $b, float $amount, bool $notify, bool $restoreGi
     }
     $after = bk_get((int)$b['id']);
     after_response(fn() => gcal_sync_booking($after), 'Google Agenda (annulation)'); // retirée de Google Agenda, après l'envoi de la page
-    if ($b['deposit_status'] === 'empreinte') {
-        try {
-            deposit_release($b, false, 'réservation annulée');
-        } catch (Throwable $e) {
-            bk_log((int)$b['id'], 'Empreinte de caution non libérée : ' . $e->getMessage());
-        }
-    }
     return $amount;
 }

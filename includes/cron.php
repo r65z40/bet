@@ -67,7 +67,7 @@ function run_scheduled_tasks(bool $force = false): array
         // 3. Demande d'avis après l'événement
         if (notif_on('review', 'client')) {
             $delay = max(0, (int)bk_num('bk_review_days', 1));
-            $st = db()->prepare("SELECT * FROM bookings WHERE status = 'confirmed' AND review_sent_at IS NULL AND end_at <= ? AND end_at >= ?");
+            $st = db()->prepare("SELECT * FROM bookings WHERE status = 'confirmed' AND review_sent_at IS NULL AND COALESCE(deposit_status, '') <> 'retenue' AND end_at <= ? AND end_at >= ?");
             $st->execute([$now->modify("-$delay days")->format(BK_FMT), $now->modify('-' . ($delay + 7) . ' days')->format(BK_FMT)]);
             foreach ($st->fetchAll() as $b) {
                 if (!is_opted_out($b['email'])) {

@@ -289,13 +289,14 @@ function bk_mail_admin_new(array $b, ?string $warning = null): bool
     return $ok;
 }
 
-function bk_mail_cancelled(array $b, float $refund): bool
+function bk_mail_cancelled(array $b, float $refund, bool $depositReleased = false): bool
 {
     [$vars, $blocks] = mail_booking_data($b);
     $vars['montant_rembourse'] = money2($refund);
     $blocks['remboursement'] = '<p style="margin:0 0 14px">' . ($refund > 0
         ? 'Un remboursement de <strong>' . money2($refund) . '</strong> a été effectué sur votre moyen de paiement. Il apparaît sous 5 à 10 jours selon votre banque.'
-        : 'Conformément aux conditions de location, aucun remboursement n’est effectué.') . '</p>';
+        : 'Conformément aux conditions de location, aucun remboursement n’est effectué.') . '</p>'
+        . ($depositReleased ? '<p style="margin:0 0 14px">L’empreinte bancaire de caution de <strong>' . money2((float)$b['deposit_held']) . '</strong> a été <strong>libérée</strong> : aucune somme n’a été débitée. Selon votre banque, le montant réservé peut rester visible quelques jours sur votre compte avant de disparaître.</p>' : '');
     $blocks['bouton'] = '<p>' . mail_button(bk_client_url($b), 'Voir ma réservation') . '</p>';
     [$subject, $html] = mail_from_template('annulation', $vars, $blocks);
     $ok = send_mail($b['email'], $subject, $html, mail_reply_to());
