@@ -3,6 +3,18 @@
 require __DIR__ . '/_init.php';
 $admin = require_admin();
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['do'] ?? '') === 'notifprefs') {
+    check_csrf();
+    $want = array_keys((array)($_POST['p'] ?? []));
+    $prev = admin_notif_off(db()->query('SELECT notif_off FROM admins WHERE id = ' . (int)$admin['id'])->fetch() ?: []);
+    // une notification coupée pour tout le monde n'est pas modifiable ici : son choix personnel est conservé
+    $off = array_values(array_filter(array_keys(NOTIF_EVENTS), fn($ev) => isset(NOTIF_EVENTS[$ev][2]['push'])
+        && (notif_on($ev, 'push') ? !in_array($ev, $want, true) : in_array($ev, $prev, true))));
+    db()->prepare('UPDATE admins SET notif_off = ? WHERE id = ?')->execute([implode(',', $off), $admin['id']]);
+    flash('Vos notifications sont enregistrées.');
+    redirect('compte.php#mes-notifications');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
     $st = db()->prepare('SELECT password_hash FROM admins WHERE id = ?');
@@ -71,8 +83,22 @@ admin_header('Mon compte', 'compte');
     <button class="btn danger sm" type="button" id="pushOff" hidden>Désactiver sur cet appareil</button>
   </div>
   <?php $nbDev = db()->prepare('SELECT COUNT(*) FROM push_subs WHERE admin_id = ?'); $nbDev->execute([$admin['id']]); ?>
-  <p class="muted" style="font-size:.85rem;margin-bottom:0">Appareils abonnés sur votre compte : <?= (int)$nbDev->fetchColumn() ?>. Notifications envoyées : nouvelles réservations payées<?= admin_can('reservations') ? '' : ' (nécessite le droit « Réservations »)' ?>.</p>
+  <p class="muted" style="font-size:.85rem;margin-bottom:0">Appareils abonnés sur votre compte : <?= (int)$nbDev->fetchColumn() ?>.<?= admin_can('reservations') ? '' : ' Les notifications de réservation nécessitent le droit « Réservations ».' ?></p>
 </div>
+
+<?php $myOff = admin_notif_off(db()->query('SELECT notif_off FROM admins WHERE id = ' . (int)$admin['id'])->fetch() ?: []); ?>
+<form method="post" class="card" id="mes-notifications" style="max-width:640px">
+  <?= csrf_field() ?><input type="hidden" name="do" value="notifprefs">
+  <h2>🔔 Mes notifications sur l’appli</h2>
+  <p class="muted" style="margin-top:-6px">Ce que <strong>vous</strong> recevez sur vos appareils. Une notification désactivée pour tout le monde (<?= admin_can('reglages') ? '<a href="notifications.php">Réglages › Notifications</a>' : 'par l’administrateur' ?>) n’est envoyée à personne.</p>
+  <?php foreach (NOTIF_EVENTS as $ev => [$label, $help, $channels]): if (!isset($channels['push'])) continue; $global = notif_on($ev, 'push'); ?>
+    <label style="display:flex;gap:10px;align-items:flex-start;margin:0 0 10px<?= $global ? '' : ';opacity:.55' ?>">
+      <input type="checkbox" name="p[<?= e($ev) ?>]" value="1" style="margin-top:4px"<?= !in_array($ev, $myOff, true) ? ' checked' : '' ?><?= $global ? '' : ' disabled' ?>>
+      <span><strong><?= e($label) ?></strong><?= $global ? '' : ' <em class="muted">(désactivée pour tout le monde)</em>' ?><br><span class="muted" style="font-size:.85rem"><?= e($help) ?></span></span>
+    </label>
+  <?php endforeach; ?>
+  <button class="btn">Enregistrer mes notifications</button>
+</form>
 <script>
 (function () {
   const KEY = <?= json_encode(vapid_public_b64()) ?>;

@@ -53,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         save_setting('bk_ics_token', bin2hex(random_bytes(16)));
         flash('Nouveau lien d’abonnement créé : l’ancien ne fonctionne plus.');
     } elseif ($do === 'testmail') {
-        $to = s('bk_notify_email') ?: s('contact_email');
+        $to = notify_emails()[0] ?? s('contact_email');
         $ok = send_mail($to, 'Test d’envoi — ' . s('site_name'), mail_layout('Test réussi', '<p>Les e-mails du site partiront correctement.</p>'));
         flash($ok ? 'E-mail de test envoyé à ' . $to . ' depuis ' . mail_from_address() . '. Vérifiez votre boîte (et les spams).' : 'Échec : ' . mail_last_error(), $ok ? 'ok' : 'err');
     } elseif ($do === 'testpay') {
@@ -92,6 +92,7 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
     <?php foreach ($sections as $key => $sec): if ($key === 'tarifs') continue; ?>
       <a href="?s=<?= e($key) ?>" class="<?= $key === $current ? 'on' : '' ?>"><?= e($sec['title']) ?></a>
     <?php endforeach; ?>
+      <a href="notifications.php">Notifications</a>
   </aside>
   <div>
 <?php endif; ?>
@@ -171,6 +172,7 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
     <form method="post" class="card">
       <?= csrf_field() ?>
       <h2><?= e($sections[$current]['title']) ?></h2>
+      <?php if (!empty($sections[$current]['intro'])): ?><p class="muted" style="margin-top:-6px"><?= e($sections[$current]['intro']) ?> <a href="notifications.php">Ouvrir</a></p><?php endif; ?>
       <?php if ($current === 'tarifs'): ?>
         <div class="grid g4" style="margin-bottom:8px">
           <?php for ($i = 1; $i <= 7; $i++): $f = $sections['tarifs']['fields']['bk_price_' . $i]; ?>

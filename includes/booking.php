@@ -472,14 +472,20 @@ function bk_confirm_paid(int $id, string $provider, string $paymentRef, int $amo
         bk_log($id, 'ATTENTION : ' . $err);
     }
     $b = bk_get($id);
-    bk_mail_confirmation($b);
-    bk_mail_admin_new($b, $err);
+    if (notif_on('new_booking', 'client')) {
+        bk_mail_confirmation($b);
+    } else {
+        bk_log($id, 'E-mail de confirmation non envoyé (désactivé dans Réglages › Notifications)');
+    }
+    if (notif_on('new_booking', 'admin') || ($err && notif_on('conflict', 'admin'))) {
+        bk_mail_admin_new($b, $err);
+    }
     gcal_sync_booking($b);
     $s = bk_dt($b['start_at']);
-    push_notify('reservations', '💶 Nouvelle réservation — ' . money2((float)$b['total_ttc']),
+    if (notif_on('new_booking', 'push') || ($err && notif_on('conflict', 'push'))) push_notify('reservations', ($err ? '⚠ ' : '💶 ') . 'Nouvelle réservation — ' . money2((float)$b['total_ttc']),
         $b['first_name'] . ' ' . $b['last_name'] . ' · ' . $b['event_type'] . ', ' . (int)$b['guests'] . ' pers. · ' . fr_date($s) . ' ' . $s->format('H\hi')
         . ($b['mode'] === 'day' ? ' (' . (int)$b['hours'] . ' h)' : ' (' . fr_hours((float)$b['hours']) . ')') . ($err ? ' ⚠ conflit d’agenda' : ''),
-        'reservation.php?id=' . (int)$b['id'], 'resa-' . $b['id']);
+        'reservation.php?id=' . (int)$b['id'], 'resa-' . $b['id'], $err && !notif_on('new_booking', 'push') ? 'conflict' : 'new_booking');
     return true;
 }
 
@@ -586,6 +592,21 @@ function bk_expire_pending(): void
 {
     db()->prepare("UPDATE bookings SET status = 'expired' WHERE status = 'pending' AND hold_until < ?")
         ->execute([bk_now()->modify('-1 hour')->format(BK_FMT)]);
+    if (notif_on('abandoned', 'admin') || notif_on('abandoned', 'push')) {
+        $st = db()->query("SELECT * FROM bookings WHERE status = 'expired' AND abandon_notified = 0 AND paid_at IS NULL");
+        foreach ($st->fetchAll() as $b) {
+            $upd = db()->prepare('UPDATE bookings SET abandon_notified = 1 WHERE id = ? AND abandon_notified = 0');
+            $upd->execute([$b['id']]);
+            if ($upd->rowCount()) {
+                admin_notify('abandoned', 'Paiement abandonné : ' . $b['first_name'] . ' ' . $b['last_name'], [
+                    notif_booking_line($b), 'Total : ' . money2((float)$b['total_ttc']) . ' — ' . $b['email'] . ' · ' . $b['phone'],
+                    'Le créneau a été libéré. Vous pouvez recontacter le client.',
+                ], 'reservation.php?id=' . (int)$b['id']);
+            }
+        }
+    } else {
+        db()->exec("UPDATE bookings SET abandon_notified = 1 WHERE status = 'expired' AND abandon_notified = 0");
+    }
 }
 
 /** Pourcentage remboursable selon la politique d'annulation. */

@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('emails.php');
     }
     if ($do === 'test') {
-        $me = current_admin()['email'] ?: (s('bk_notify_email') ?: s('contact_email'));
+        $me = current_admin()['email'] ?: (notify_emails()[0] ?? s('contact_email'));
         $sample = reset($recipients) ?: mailing_sample_recipient();
         $ok = mailing_send_one(['audience' => $form['audience'], 'subject' => $form['subject'], 'body' => $form['body']], array_merge($sample, ['email' => $me]), true);
         flash($ok ? 'E-mail de test envoyé à ' . $me . ' (avec les informations ' . ($recipients ? 'de ' . ($sample['first_name'] ?: $sample['email']) : 'd’un client fictif') . ').' : 'Échec de l’envoi : ' . mail_last_error(), $ok ? 'ok' : 'err');

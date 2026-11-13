@@ -126,7 +126,7 @@ function deposit_check_session(array $b, string $sessionId): bool
     $st->execute([(string)$pi['id'], $held, bk_now()->format(BK_FMT), $b['id'], (string)$pi['id']]);
     if ($st->rowCount() > 0) {
         bk_log((int)$b['id'], 'Empreinte bancaire de caution en place : ' . money2($held) . ' (Stripe ' . $pi['id'] . ')');
-        push_notify('reservations', 'Caution déposée', $b['first_name'] . ' ' . $b['last_name'] . ' — ' . money2($held), 'reservation.php?id=' . (int)$b['id'], 'caution-' . $b['id']);
+        admin_notify('deposit_held', 'Caution déposée : ' . $b['first_name'] . ' ' . $b['last_name'], [money2($held) . ' bloqués par empreinte bancaire', notif_booking_line($b)], 'reservation.php?id=' . (int)$b['id'], 'caution-' . $b['id']);
     }
     return true;
 }
@@ -150,6 +150,7 @@ function deposit_release(array $b, bool $notify, string $by = ''): void
     if ($notify) {
         deposit_mail(bk_get((int)$b['id']), 'caution_liberee');
     }
+    admin_notify('deposit_released', 'Caution libérée : ' . $b['first_name'] . ' ' . $b['last_name'], [money2((float)$b['deposit_held']) . ($by !== '' ? ' — ' . $by : ''), notif_booking_line($b)], 'reservation.php?id=' . (int)$b['id']);
 }
 
 /** Encaisse tout ou partie de l'empreinte (le reste est libéré automatiquement par Stripe). */
@@ -175,6 +176,7 @@ function deposit_capture(array $b, float $amount, string $reason, bool $notify):
     if ($notify) {
         deposit_mail(bk_get((int)$b['id']), 'caution_retenue');
     }
+    admin_notify('deposit_retained', 'Retenue sur caution : ' . $b['first_name'] . ' ' . $b['last_name'], [money2($got) . ' retenus sur ' . money2((float)$b['deposit_held']) . ' — ' . $reason, notif_booking_line($b)], 'reservation.php?id=' . (int)$b['id']);
     return $got;
 }
 
@@ -213,7 +215,7 @@ function deposit_cron(array &$errors): array
             AND start_at > ? AND start_at <= ?");
         $st->execute([$now->format(BK_FMT), $now->modify('+' . (max(0, (int)bk_num('bk_deposit_days_before', 2)) + 1) . ' days')->format(BK_FMT)]);
         foreach ($st->fetchAll() as $b) {
-            if (deposit_can_hold($b)) {
+            if (deposit_can_hold($b) && notif_on('deposit_request', 'client')) {
                 if (deposit_mail($b, 'caution_demande')) {
                     $asked++;
                 } else {
@@ -235,7 +237,7 @@ function deposit_cron(array &$errors): array
         }
         if ($due || ($b['status'] === 'cancelled')) {
             try {
-                deposit_release($b, $b['status'] !== 'cancelled', 'automatique');
+                deposit_release($b, $b['status'] !== 'cancelled' && notif_on('deposit_released', 'client'), 'automatique');
                 $released++;
             } catch (Throwable $e) {
                 $errors[] = 'caution ' . $b['ref'] . ' : ' . $e->getMessage();

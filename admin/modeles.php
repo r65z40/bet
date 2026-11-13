@@ -68,7 +68,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         admin_log('Modèle d’e-mail modifié : ' . MAIL_TEMPLATES[$cur]['label']);
         if ($do === 'test') {
             [$s, $h] = sample_mail($cur);
-            $to = current_admin()['email'] ?: s('bk_notify_email');
+            $to = current_admin()['email'] ?: (notify_emails()[0] ?? '');
             $ok = send_mail($to, '[TEST] ' . $s, $h);
             flash($ok ? 'Exemple envoyé à ' . $to . '.' : 'Échec de l’envoi : ' . mail_last_error(), $ok ? 'ok' : 'err');
         } elseif ($do !== 'reset') {

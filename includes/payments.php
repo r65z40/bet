@@ -277,6 +277,11 @@ function bk_cancel_locked(array $b, float $amount, bool $notify, bool $restoreGi
     if ($notify && $b['status'] === 'confirmed') {
         bk_mail_cancelled(bk_get((int)$b['id']), $amount);
     }
+    if ($b['status'] === 'confirmed' || $amount > 0) {
+        admin_notify('cancelled', ($b['status'] === 'confirmed' ? 'Réservation annulée' : 'Remboursement') . ' : ' . $b['first_name'] . ' ' . $b['last_name'], [
+            notif_booking_line($b), $amount > 0 ? 'Remboursé : ' . money2($amount) . ' (avoir ' . $credit . ')' : 'Sans remboursement',
+        ], 'reservation.php?id=' . (int)$b['id']);
+    }
     gcal_sync_booking(bk_get((int)$b['id'])); // retirée de Google Agenda
     if ($b['deposit_status'] === 'empreinte') {
         try {

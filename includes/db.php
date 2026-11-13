@@ -300,6 +300,7 @@ function install_schema(PDO $pdo): void
         'moved_at' => 'TEXT', 'moved_from' => "TEXT NOT NULL DEFAULT ''",
         'deposit_amount' => 'REAL', 'deposit_held' => 'REAL NOT NULL DEFAULT 0', 'deposit_captured' => 'REAL NOT NULL DEFAULT 0',
         'deposit_pi' => "TEXT NOT NULL DEFAULT ''", 'deposit_at' => 'TEXT', 'deposit_requested_at' => 'TEXT', 'deposit_reason' => "TEXT NOT NULL DEFAULT ''", 'deposit_captured_at' => 'TEXT',
+        'eve_notified_at' => 'TEXT', 'abandon_notified' => 'INTEGER NOT NULL DEFAULT 0',
     ] as $col => $def) {
         if (!in_array($col, $bcols, true)) {
             $pdo->exec("ALTER TABLE bookings ADD COLUMN $col $def");
@@ -313,6 +314,7 @@ function install_schema(PDO $pdo): void
         'active' => 'INTEGER NOT NULL DEFAULT 1',
         'pw_changed_at' => 'INTEGER NOT NULL DEFAULT 0',
         'last_login' => 'TEXT',
+        'notif_off' => "TEXT NOT NULL DEFAULT ''",      // notifications de l'appli refusées par ce compte (liste)
     ] as $col => $def) {
         if (!in_array($col, $cols, true)) {
             $pdo->exec("ALTER TABLE admins ADD COLUMN $col $def");
@@ -419,6 +421,14 @@ function migrate(PDO $pdo): void
             $pdo->prepare("UPDATE settings SET value = replace(value, ?, ?) WHERE key = 'bk_cgv'")->execute([$o, $n]);
         }
         $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'bk_deposit_text' AND value = ?")->execute(['Une caution de 2 × le montant du loyer HT est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité, elle est libérée après l’état des lieux de sortie) ou par chèque remis lors de l’état des lieux d’entrée.', 'Une caution de 2 × le montant du loyer HT est demandée par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie.']);
+    }
+    // v15 : notifications réglables — les paiements abandonnés déjà connus ne sont pas signalés
+    if ((int)setting_raw($pdo, '_schema_version') < 15 && setting_raw($pdo, '_seeded') !== null) {
+        $pdo->exec("UPDATE bookings SET abandon_notified = 1 WHERE status IN ('expired', 'cancelled')");
+        $pdo->prepare("UPDATE bookings SET eve_notified_at = ? WHERE start_at < ?")->execute([date('Y-m-d H:i:s'), date('Y-m-d H:i:s', strtotime('+30 hours'))]);
+    }
+    if (setting_raw($pdo, 'bk_notify_email') === null) {
+        $pdo->exec("INSERT OR IGNORE INTO settings(key, value) VALUES('bk_notify_email', 'lasallern6@gmail.com')");
     }
     // Documents remis aux clients (règlement intérieur, contrat, état des lieux) : une seule fois
     if (setting_raw($pdo, '_documents_seeded') === null) {

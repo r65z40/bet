@@ -127,12 +127,12 @@ function push_send(array $sub, array $message): int
 }
 
 /** Notifie tous les appareils des comptes actifs ayant le droit demandé. Ne bloque jamais. */
-function push_notify(string $perm, string $title, string $body, string $url = 'index.php', string $tag = ''): int
+function push_notify(string $perm, string $title, string $body, string $url = 'index.php', string $tag = '', string $event = ''): int
 {
     $sent = 0;
     try {
-        foreach (db()->query('SELECT s.*, a.perms, a.active FROM push_subs s JOIN admins a ON a.id = s.admin_id')->fetchAll() as $sub) {
-            if (!(int)$sub['active'] || !in_array($perm, admin_perms($sub), true)) {
+        foreach (db()->query('SELECT s.*, a.perms, a.active, a.notif_off FROM push_subs s JOIN admins a ON a.id = s.admin_id')->fetchAll() as $sub) {
+            if (!(int)$sub['active'] || !in_array($perm, admin_perms($sub), true) || ($event !== '' && in_array($event, admin_notif_off($sub), true))) {
                 continue;
             }
             try {

@@ -37,7 +37,7 @@ function run_scheduled_tasks(bool $force = false): array
         $report['expires'] = (int)db()->query("SELECT COUNT(*) FROM bookings WHERE status = 'expired'")->fetchColumn() - $before;
 
         // 2. Rappel avant l'événement (infos pratiques)
-        if (s('bk_remind_enabled') !== '0') {
+        if (notif_on('reminder', 'client')) {
             $days = max(1, (int)bk_num('bk_remind_days', 7));
             $st = db()->prepare("SELECT * FROM bookings WHERE status = 'confirmed' AND reminder_sent_at IS NULL
                 AND start_at > ? AND start_at <= ? AND paid_at <= ?");
@@ -53,7 +53,7 @@ function run_scheduled_tasks(bool $force = false): array
         }
 
         // 3. Demande d'avis après l'événement
-        if (s('bk_review_enabled') !== '0') {
+        if (notif_on('review', 'client')) {
             $delay = max(0, (int)bk_num('bk_review_days', 1));
             $st = db()->prepare("SELECT * FROM bookings WHERE status = 'confirmed' AND review_sent_at IS NULL AND end_at <= ? AND end_at >= ?");
             $st->execute([$now->modify("-$delay days")->format(BK_FMT), $now->modify('-' . ($delay + 7) . ' days')->format(BK_FMT)]);
@@ -68,6 +68,9 @@ function run_scheduled_tasks(bool $force = false): array
                 db()->prepare('UPDATE bookings SET review_sent_at = ? WHERE id = ?')->execute([$now->format(BK_FMT), $b['id']]);
             }
         }
+
+        // 3 ter. Récapitulatif la veille de l'événement (administration)
+        $report['veilles'] = notify_eve_cron();
 
         // 3 bis. Cautions par empreinte bancaire : demandes, libérations automatiques, expirations
         [$report['cautions_demandees'], $report['cautions_liberees']] = deposit_cron($report['erreurs']);

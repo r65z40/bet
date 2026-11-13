@@ -79,6 +79,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $nb = bk_move($b, $ns);
             bk_log($id, 'Action effectuée par ' . current_admin()['username']);
             admin_log('Déplacement de la réservation ' . $b['ref'] . ' : ' . $oldLabel . ' → ' . bk_slot_label($nb));
+            admin_notify('moved', 'Réservation déplacée : ' . $b['first_name'] . ' ' . $b['last_name'], [$oldLabel . ' → ' . bk_slot_label($nb), 'Par ' . current_admin()['username']], 'reservation.php?id=' . $id);
             $msg = 'Réservation déplacée : ' . bk_slot_label($nb) . '.';
             if (!empty($_POST['notify'])) {
                 $msg .= bk_mail_moved($nb, $oldLabel) ? ' Le client a été prévenu par e-mail.' : ' ⚠ L’e-mail au client n’a pas pu être envoyé : ' . mail_last_error();
@@ -170,7 +171,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
       <?php if ((float)$b['gift_amount'] > 0 && !(int)$b['gift_restored']): ?>
         <label style="display:block;margin-bottom:10px"><input type="checkbox" name="restore_gift" value="1"> Recréditer le bon cadeau <?= e($b['gift_code']) ?> de <?= money2((float)$b['gift_amount']) ?></label>
       <?php endif; ?>
-      <label style="display:block;margin-bottom:14px"><input type="checkbox" name="notify" value="1" checked> Prévenir le client par e-mail</label>
+      <label style="display:block;margin-bottom:14px"><input type="checkbox" name="notify" value="1"<?= notif_on('cancelled', 'client') ? ' checked' : '' ?>> Prévenir le client par e-mail</label>
       <?php if ($b['status'] === 'confirmed'): ?>
         <button class="btn danger" name="do" value="cancel" onclick="return confirm('Annuler la réservation et rembourser le montant indiqué ? Cette action est définitive.')">Annuler la réservation</button>
       <?php else: ?>
@@ -199,7 +200,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
             <label class="field" style="flex:1 1 130px"><span>Montant à retenir (€)</span><input type="text" name="capture_amount" inputmode="decimal" placeholder="max. <?= e(rating_label((string)$b['deposit_held'])) ?>"></label>
             <label class="field" style="flex:3 1 240px"><span>Motif (envoyé au client)</span><input type="text" name="capture_reason" maxlength="500" placeholder="Ex. : chaise cassée, ménage non fait…"></label>
           </div>
-          <label style="display:block;margin:4px 0 14px"><input type="checkbox" name="notify" value="1" checked> Prévenir le client par e-mail</label>
+          <label style="display:block;margin:4px 0 14px"><input type="checkbox" name="notify" value="1"<?= notif_on('deposit_released', 'client') || notif_on('deposit_retained', 'client') ? ' checked' : '' ?>> Prévenir le client par e-mail</label>
           <div style="display:flex;gap:10px;flex-wrap:wrap">
             <button class="btn" name="do" value="deposit_release" onclick="return confirm('Libérer l’empreinte ? Rien ne sera débité au client.')">✓ Tout s’est bien passé : libérer</button>
             <button class="btn danger" name="do" value="deposit_capture" onclick="return confirm('Encaisser ce montant sur la carte du client ? Le reste sera libéré. Action définitive.')">Retenir ce montant</button>
@@ -233,7 +234,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
           <label class="field" style="flex:1 1 120px"><span>Heure d’arrivée</span><input type="time" name="new_time" required step="<?= max(15, (int)s('bk_hour_step') ?: 60) * 60 ?>" value="<?= e(bk_dt($b['start_at'])->format('H:i')) ?>"></label>
         <?php endif; ?>
       </div>
-      <label style="display:block;margin:10px 0 14px"><input type="checkbox" name="notify" value="1" checked> Prévenir le client par e-mail (ancienne et nouvelle date, boutons pour mettre à jour son agenda)</label>
+      <label style="display:block;margin:10px 0 14px"><input type="checkbox" name="notify" value="1"<?= notif_on('moved', 'client') ? ' checked' : '' ?>> Prévenir le client par e-mail (ancienne et nouvelle date, boutons pour mettre à jour son agenda)</label>
       <button class="btn" name="do" value="move" onclick="return confirm('Déplacer la réservation à cette date ?')">Déplacer la réservation</button>
     </form>
 

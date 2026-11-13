@@ -258,15 +258,19 @@ function bk_mail_confirmation(array $b): bool
 
 function bk_mail_admin_new(array $b, ?string $warning = null): bool
 {
-    $to = s('bk_notify_email');
-    if ($to === '') {
+    $to = notify_emails();
+    if (!$to) {
         return false;
     }
     [$vars, $blocks] = mail_booking_data($b);
     $blocks['attention'] = $warning ? '<p style="background:#fdecea;color:#b42318;padding:10px 14px;border-radius:8px"><strong>Attention :</strong> ' . e($warning) . '</p>' : '';
     $blocks['bouton'] = '<p>' . mail_button(bk_url('admin/reservation.php?id=' . (int)$b['id']), 'Voir dans l’administration') . '</p>';
     [$subject, $html] = mail_from_template('alerte', $vars, $blocks);
-    return send_mail($to, $subject, $html, $b['email']);
+    $ok = true;
+    foreach ($to as $addr) {
+        $ok = send_mail($addr, $subject, $html, $b['email']) && $ok;
+    }
+    return $ok;
 }
 
 function bk_mail_cancelled(array $b, float $refund): bool
