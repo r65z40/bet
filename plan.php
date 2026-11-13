@@ -12,11 +12,11 @@ $siteUrl = rtrim(s('site_url'), '/');
   <meta name="description" content="<?= e(s('plan_meta_desc')) ?>">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#071c35">
-  <link rel="canonical" href="<?= e($siteUrl) ?>/plan.php">
+  <link rel="canonical" href="<?= e($siteUrl . '/' . u('plan.php')) ?>">
   <meta property="og:type" content="website">
   <meta property="og:locale" content="fr_FR">
   <meta property="og:site_name" content="<?= e($name) ?>">
-  <meta property="og:url" content="<?= e($siteUrl) ?>/plan.php">
+  <meta property="og:url" content="<?= e($siteUrl . '/' . u('plan.php')) ?>">
   <meta property="og:image" content="<?= e($siteUrl . '/' . plan_image()) ?>">
   <meta property="og:image:alt" content="Plan de <?= e($name) ?>">
   <meta property="og:title" content="<?= e(s('plan_meta_title')) ?>">
@@ -48,8 +48,8 @@ $siteUrl = rtrim(s('site_url'), '/');
 <?php endforeach; ?>
   </div>
   <div class="plan-card"><picture><?php if ($small = plan_image_small()): ?><source media="(max-width:640px)" srcset="<?= e($small) ?>" type="image/webp"><?php endif; ?><img src="<?= e(plan_image()) ?>" alt="Plan de <?= e($name) ?> à Appoigny"<?php if ($sz = image_size(plan_image())): ?> width="<?= $sz[0] ?>" height="<?= $sz[1] ?>"<?php endif; ?> fetchpriority="high" decoding="async"></picture><p class="hint"><?= e(s('plan_hint')) ?></p></div>
-  <div class="actions"><a class="btn primary" href="reservation.php" data-track="reserver">Réserver en ligne</a><a class="btn secondary" href="<?= e(mailto()) ?>" data-track="email">Demander une réservation</a><a class="btn secondary" href="./#photos">Voir les photos</a></div>
+  <div class="actions"><a class="btn primary" href="<?= e(u('reservation.php')) ?>" data-track="reserver">Réserver en ligne</a><a class="btn secondary" href="<?= e(mailto()) ?>" data-track="email">Demander une réservation</a><a class="btn secondary" href="./#photos">Voir les photos</a></div>
 </div></main>
-<footer><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?> · <a href="mentions-legales.php" style="color:inherit">Mentions légales</a> · <a href="confidentialite.php" style="color:inherit">Confidentialité</a></span><span><?= e(s('footer_tagline')) ?></span></div></footer>
+<footer><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?> · <a href="<?= e(u('mentions-legales.php')) ?>" style="color:inherit">Mentions légales</a> · <a href="<?= e(u('confidentialite.php')) ?>" style="color:inherit">Confidentialité</a></span><span><?= e(s('footer_tagline')) ?></span></div></footer>
 <?= tracking_script('plan') ?>
 </body></html>

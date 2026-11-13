@@ -6,27 +6,27 @@
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://lasallern6.fr/plan.php</loc>
+    <loc>https://lasallern6.fr/plan</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://lasallern6.fr/reservation.php</loc>
+    <loc>https://lasallern6.fr/reservation</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://lasallern6.fr/conditions.php</loc>
+    <loc>https://lasallern6.fr/conditions</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://lasallern6.fr/mentions-legales.php</loc>
+    <loc>https://lasallern6.fr/mentions-legales</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>
   <url>
-    <loc>https://lasallern6.fr/confidentialite.php</loc>
+    <loc>https://lasallern6.fr/confidentialite</loc>
     <changefreq>yearly</changefreq>
     <priority>0.2</priority>
   </url>

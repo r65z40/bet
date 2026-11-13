@@ -7,8 +7,8 @@ AddType text/javascript .js
 
 # Anciennes adresses .html -> nouvelles pages PHP (conserve le référencement)
 RedirectMatch 301 ^(.*/)?index\.html$ $1
-RedirectMatch 301 ^(.*/)?plan\.html$ $1plan.php
-RedirectMatch 301 ^(.*/)?reservation\.html$ $1reservation.php
+RedirectMatch 301 ^(.*/)?plan\.html$ $1plan
+RedirectMatch 301 ^(.*/)?reservation\.html$ $1reservation
 
 # Forcer le HTTPS (décommenter une fois le certificat SSL actif ;
 # ne pas activer si le site est derrière un CDN qui gère lui-même le HTTPS)
@@ -17,6 +17,28 @@ RedirectMatch 301 ^(.*/)?reservation\.html$ $1reservation.php
 #   RewriteCond %{HTTPS} off
 #   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 # </IfModule>
+
+# Adresses sans « .php » : /plan, /reservation, /conditions…
+# Les anciennes adresses en .php sont redirigées définitivement (301 : Google transfère le référencement).
+# Seules les pages vues par les visiteurs sont concernées : api.php, paiement, webhook Stripe, cron… gardent leur adresse.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  # Signale au site que les adresses propres fonctionnent (liens générés sans .php)
+  RewriteRule ^ - [E=RN6_CLEAN_URLS:1]
+  # /page.php → /page (visites directes uniquement, jamais les envois de formulaires)
+  RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+  RewriteCond %{ENV:REDIRECT_STATUS} ^$
+  RewriteRule ^(plan|reservation|conditions|mentions-legales|confidentialite|ma-reservation|facture|desinscription)\.php$ $1 [R=301,L]
+  RewriteCond %{REQUEST_METHOD} ^(GET|HEAD)$
+  RewriteCond %{ENV:REDIRECT_STATUS} ^$
+  RewriteRule ^index\.php$ ./ [R=301,L]
+  # /page → page.php (en interne, invisible pour le visiteur)
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}.php -f
+  RewriteRule ^([a-z0-9-]+)$ $1.php [L]
+</IfModule>
 
 # Dossiers et fichiers internes jamais accessibles depuis le web
 RedirectMatch 404 ^(.*/)?(data|includes|\.git)(/.*)?$

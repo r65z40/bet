@@ -33,7 +33,7 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
 <?php elseif (isset($_GET['erreur'])): ?>
   <div class="alert alert-err">Le paiement n’a pas pu être confirmé. Si votre compte a été débité, ne réessayez pas : contactez-nous à <?= e(s('contact_email')) ?>.</div>
 <?php elseif (isset($_GET['indispo'])): ?>
-  <div class="alert alert-err">Désolé, ce créneau a été réservé entre-temps. <a href="reservation.php">Choisir une autre date</a>.</div>
+  <div class="alert alert-err">Désolé, ce créneau a été réservé entre-temps. <a href="<?= e(u('reservation.php')) ?>">Choisir une autre date</a>.</div>
 <?php elseif (isset($_GET['annule']) && $pending): ?>
   <div class="alert alert-err">Paiement annulé. Votre créneau reste réservé quelques minutes : vous pouvez réessayer ci-dessous.</div>
 <?php endif; ?>
@@ -93,7 +93,7 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
     <p class="notice" style="margin-top:20px"><span>🔑</span><span><?= e(s('bk_deposit_text')) ?></span></p>
 <?php endif; ?>
     <p class="muted" style="font-size:.92rem">Adresse : <?= e(s('address')) ?><?php if (s('maps_url')): ?> — <a href="<?= e(s('maps_url')) ?>" target="_blank" rel="noopener">itinéraire</a><?php endif; ?>.
-      Pour modifier ou annuler, écrivez-nous à <a href="<?= e(mailto()) ?>"><?= e(s('contact_email')) ?></a> (voir les <a href="conditions.php">conditions d’annulation</a>).</p>
+      Pour modifier ou annuler, écrivez-nous à <a href="<?= e(mailto()) ?>"><?= e(s('contact_email')) ?></a> (voir les <a href="<?= e(u('conditions.php')) ?>">conditions d’annulation</a>).</p>
 <?php elseif ($b['status'] === 'cancelled' && $b['credit_number'] !== ''): ?>
     <p style="margin-top:18px"><a class="btn btn-light" href="<?= e(bk_client_url($b, 'facture.php')) ?>" target="_blank">🧾 Facture</a> <a class="btn btn-light" href="<?= e(bk_client_url($b, 'facture.php')) ?>&amp;avoir=1" target="_blank">🧾 Avoir (remboursement)</a></p>
 <?php elseif ($pending && $providers): ?>

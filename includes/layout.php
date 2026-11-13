@@ -11,7 +11,7 @@ function public_header(string $title, string $description = '', bool $index = tr
 <title><?= e($title) ?></title>
 <?php if ($description !== ''): ?><meta name="description" content="<?= e($description) ?>"><?php endif; ?>
 <meta name="robots" content="<?= $index ? 'index, follow' : 'noindex, nofollow' ?>">
-<?php if ($index && preg_match('#^https?://#', s('site_url'))): $canon = rtrim(s('site_url'), '/') . '/' . basename($_SERVER['SCRIPT_NAME'] ?? ''); ?>
+<?php if ($index && preg_match('#^https?://#', s('site_url'))): $canon = rtrim(s('site_url'), '/') . '/' . u(basename($_SERVER['SCRIPT_NAME'] ?? '')); ?>
 <link rel="canonical" href="<?= e($canon) ?>">
 <meta property="og:type" content="website"><meta property="og:locale" content="fr_FR"><meta property="og:site_name" content="<?= e($name) ?>">
 <meta property="og:url" content="<?= e($canon) ?>"><meta property="og:title" content="<?= e($title) ?>"><?php if ($description !== ''): ?><meta property="og:description" content="<?= e($description) ?>"><?php endif; ?>
@@ -31,7 +31,7 @@ function public_footer(string $page = ''): void
 {
     ?>
 </main>
-<footer class="foot-bar"><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?></span><span><a href="conditions.php">Conditions de location</a> · <a href="mentions-legales.php">Mentions légales</a> · <a href="confidentialite.php">Confidentialité</a> · <a href="<?= e(mailto()) ?>" data-track="email"><?= e(s('contact_email')) ?></a></span></div></footer>
+<footer class="foot-bar"><div class="wrap foot"><span>© <?= date('Y') ?> <?= e(s('footer_text')) ?></span><span><a href="<?= e(u('conditions.php')) ?>">Conditions de location</a> · <a href="<?= e(u('mentions-legales.php')) ?>">Mentions légales</a> · <a href="<?= e(u('confidentialite.php')) ?>">Confidentialité</a> · <a href="<?= e(mailto()) ?>" data-track="email"><?= e(s('contact_email')) ?></a></span></div></footer>
 <?= $page !== '' ? tracking_script($page) : '' ?>
 </body></html>
 <?php

@@ -33,7 +33,7 @@ $jsonLd  = [
     'priceRange' => '€€',
     'hasMap' => s('maps_url'),
     'sameAs' => array_values(array_filter([s('facebook_url'), s('salles1001_url'), s('google_reviews_url')])),
-    'potentialAction' => ['@type' => 'ReserveAction', 'target' => $siteUrl . '/reservation.php'],
+    'potentialAction' => ['@type' => 'ReserveAction', 'target' => $siteUrl . '/' . u('reservation.php')],
     'description' => s('og_description'),
     'email' => 'mailto:' . s('contact_email'),
     'address' => [
@@ -435,9 +435,9 @@ $jsonLd  = [
       </a>
       <nav class="navlinks" aria-label="Navigation principale">
 <?php foreach ($navItems as $k => $it): if ($it['nav'] === null) continue; ?>
-        <a href="<?= e($it['href']) ?>"<?= $k === 'plan' ? ' data-track="plan"' : '' ?>><?= e($it['nav']) ?></a>
+        <a href="<?= e(u($it['href'])) ?>"<?= $k === 'plan' ? ' data-track="plan"' : '' ?>><?= e($it['nav']) ?></a>
 <?php endforeach; ?>
-        <a class="cta-small" href="reservation.php" data-track="reserver" style="background:linear-gradient(135deg,#273CF5,#1727b8);color:#fff;border-color:#5262ff;box-shadow:0 7px 20px rgba(39,60,245,.28)">Réserver en ligne</a>
+        <a class="cta-small" href="<?= e(u('reservation.php')) ?>" data-track="reserver" style="background:linear-gradient(135deg,#273CF5,#1727b8);color:#fff;border-color:#5262ff;box-shadow:0 7px 20px rgba(39,60,245,.28)">Réserver en ligne</a>
         <a class="cta-small cta-contact" href="<?= e($mailto) ?>" data-track="email">Nous contacter</a>
       </nav>
       <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="mobile-menu" aria-label="Ouvrir le menu"><span></span><span></span><span></span></button>
@@ -445,11 +445,11 @@ $jsonLd  = [
     <nav class="mobile-menu" id="mobile-menu" aria-label="Menu mobile" hidden>
       <ul>
 <?php foreach ($navItems as $k => $it): ?>
-        <li><a href="<?= e($it['href']) ?>"<?= $k === 'plan' ? ' data-track="plan"' : '' ?>><?= e($it['mobile']) ?></a></li>
+        <li><a href="<?= e(u($it['href'])) ?>"<?= $k === 'plan' ? ' data-track="plan"' : '' ?>><?= e($it['mobile']) ?></a></li>
 <?php endforeach; ?>
       </ul>
       <div class="mm-actions">
-        <a class="btn btn-primary" href="reservation.php" data-track="reserver">📅 Réserver en ligne</a>
+        <a class="btn btn-primary" href="<?= e(u('reservation.php')) ?>" data-track="reserver">📅 Réserver en ligne</a>
         <a class="btn btn-secondary" style="background:#fff;color:var(--navy)" href="<?= e($mailto) ?>" data-track="email">✉ Nous contacter</a>
       </div>
     </nav>
@@ -463,7 +463,7 @@ $jsonLd  = [
           <h1><span class="h1-blue"><?= e(s('hero_title_1')) ?></span> <span class="h1-red"><?= e(s('hero_title_2')) ?></span><span class="hero-tagline"><?= e(s('hero_tagline')) ?></span></h1>
           <p class="lead"><?= rich(s('hero_lead')) ?></p>
           <div class="actions">
-            <a class="btn btn-primary" href="reservation.php" data-track="reserver">📅 Réserver en ligne</a>
+            <a class="btn btn-primary" href="<?= e(u('reservation.php')) ?>" data-track="reserver">📅 Réserver en ligne</a>
             <a class="btn btn-primary" href="<?= e($mailto) ?>" data-track="email">✉ Demander une réservation</a>
           </div>
         </div>
@@ -544,7 +544,7 @@ $jsonLd  = [
             <h2 id="plan-cta-title"><?= e(s('plan_cta_title')) ?></h2>
             <p><?= rich(s('plan_cta_text')) ?></p>
           </div>
-          <a class="btn btn-gold" href="plan.php" data-track="plan">Voir le plan de la salle →</a>
+          <a class="btn btn-gold" href="<?= e(u('plan.php')) ?>" data-track="plan">Voir le plan de la salle →</a>
         </div>
       </div>
     </section>
@@ -566,7 +566,7 @@ $jsonLd  = [
           <div class="day-price"><strong><?= $jour ?></strong><span><?= money(ttc(bk_day_price($i + 1))) ?></span></div>
 <?php endforeach; ?>
         </div>
-        <p class="pricing-foot" style="margin-top:14px">Prix de la <strong>journée (24 h)</strong>, de <?= e(str_replace(':', 'h', s('bk_day_start'))) ?> à <?= e(str_replace(':', 'h', s('bk_day_start'))) ?>, selon le jour d’arrivée<?= bk_max_days() > 1 ? ' — possible aussi sur ' . (bk_max_days() >= 3 ? '48 h ou 72 h' : '48 h') : '' ?>. <strong>Location à l’heure</strong> de <?= e(str_replace(':', 'h', s('bk_hour_open'))) ?> à <?= e(str_replace(':', 'h', s('bk_hour_close'))) ?> : <?= money(bk_hour_price_ttc(bk_num('bk_min_hours', 2))) ?> les <?= e(fr_hours(bk_num('bk_min_hours', 2))) ?>, tarif dégressif au-delà. <a href="reservation.php" data-track="reserver">Voir les disponibilités et réserver</a>.</p>
+        <p class="pricing-foot" style="margin-top:14px">Prix de la <strong>journée (24 h)</strong>, de <?= e(str_replace(':', 'h', s('bk_day_start'))) ?> à <?= e(str_replace(':', 'h', s('bk_day_start'))) ?>, selon le jour d’arrivée<?= bk_max_days() > 1 ? ' — possible aussi sur ' . (bk_max_days() >= 3 ? '48 h ou 72 h' : '48 h') : '' ?>. <strong>Location à l’heure</strong> de <?= e(str_replace(':', 'h', s('bk_hour_open'))) ?> à <?= e(str_replace(':', 'h', s('bk_hour_close'))) ?> : <?= money(bk_hour_price_ttc(bk_num('bk_min_hours', 2))) ?> les <?= e(fr_hours(bk_num('bk_min_hours', 2))) ?>, tarif dégressif au-delà. <a href="<?= e(u('reservation.php')) ?>" data-track="reserver">Voir les disponibilités et réserver</a>.</p>
 <?php $specials = specials_upcoming(4); if ($specials): ?>
         <p class="pricing-foot" style="margin-top:6px">★ <strong>Tarifs spéciaux</strong> : <?= implode(' · ', array_map(fn($sp) => e($sp['label']) . ' (' . e(bk_dt($sp['date_from'])->format('d/m')) . ($sp['date_to'] !== $sp['date_from'] ? '–' . e(bk_dt($sp['date_to'])->format('d/m')) : '') . ') ' . e(special_label($sp)), $specials)) ?>.</p>
 <?php endif; ?>
@@ -596,7 +596,7 @@ $jsonLd  = [
 <?php endif; ?>
 
         <div class="pricing-actions">
-          <a class="btn btn-gold" href="reservation.php" data-track="reserver">📅 Réserver en ligne →</a>
+          <a class="btn btn-gold" href="<?= e(u('reservation.php')) ?>" data-track="reserver">📅 Réserver en ligne →</a>
           <a class="btn btn-gold" href="#contact">Prendre rendez-vous pour visiter la salle →</a>
           <a class="btn btn-primary" href="<?= e($mailto) ?>" data-track="email">✉ Demander une réservation</a>
         </div>
@@ -751,7 +751,7 @@ $jsonLd  = [
 
   <footer>
     <div class="wrap foot">
-      <span>© <?= date('Y') ?> <?= e(s('footer_text')) ?><br><small><a href="mentions-legales.php" style="color:inherit">Mentions légales</a> · <a href="confidentialite.php" style="color:inherit">Confidentialité</a> · <a href="conditions.php" style="color:inherit">Conditions de location</a></small></span>
+      <span>© <?= date('Y') ?> <?= e(s('footer_text')) ?><br><small><a href="<?= e(u('mentions-legales.php')) ?>" style="color:inherit">Mentions légales</a> · <a href="<?= e(u('confidentialite.php')) ?>" style="color:inherit">Confidentialité</a> · <a href="<?= e(u('conditions.php')) ?>" style="color:inherit">Conditions de location</a></small></span>
       <span><?= e(s('footer_tagline')) ?><br><small><?php if (s('salles1001_url') !== ''): ?><a href="<?= e(s('salles1001_url')) ?>" target="_blank" rel="noopener" data-track="1001" style="color:inherit;text-decoration:none">1001Salles</a> · <?php endif; ?><?php if (s('facebook_url') !== ''): ?><a href="<?= e(s('facebook_url')) ?>" target="_blank" rel="noopener" data-track="facebook" style="display:inline-flex;align-items:center;gap:7px;margin-left:6px;padding:7px 11px;border-radius:9px;background:#1464d8;color:#fff;text-decoration:none;font-weight:800;box-shadow:0 3px 10px rgba(0,0,0,.15)"><span aria-hidden="true" style="display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:#fff;color:#1877F2;font-family:Arial,sans-serif;font-size:18px;font-weight:900;line-height:1">f</span> Facebook</a><?php endif; ?></small></span>
     </div>
   </footer>

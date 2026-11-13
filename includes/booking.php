@@ -633,8 +633,36 @@ function bk_slot_label(array $b): string
         : 'Le ' . fr_date($s) . ', de ' . $s->format('H\hi') . ' à ' . $e->format('H\hi') . ' (' . fr_hours((float)$b['hours']) . ')';
 }
 
+/** Pages publiques accessibles sans « .php » (adresses propres, voir .htaccess). */
+const CLEAN_PAGES = 'plan|reservation|conditions|mentions-legales|confidentialite|ma-reservation|facture|desinscription';
+
+/**
+ * Les adresses sans .php sont actives si le serveur Apache réécrit les adresses (.htaccess, mod_rewrite).
+ * Détecté sur une vraie requête puis mémorisé, pour que les e-mails envoyés par la tâche planifiée aient aussi les bons liens.
+ */
+function clean_urls(): bool
+{
+    static $on = null;
+    if ($on === null) {
+        $env = (string)($_SERVER['RN6_CLEAN_URLS'] ?? $_SERVER['REDIRECT_RN6_CLEAN_URLS'] ?? getenv('RN6_CLEAN_URLS') ?: '');
+        if ($env === '1' && s('_clean_urls') !== '1' && PHP_SAPI !== 'cli') {
+            save_setting('_clean_urls', '1');
+            settings(true);
+        }
+        $on = $env === '1' || s('_clean_urls') === '1';
+    }
+    return $on;
+}
+
+/** « plan.php?x=1 » → « plan?x=1 » quand les adresses propres sont actives. */
+function u(string $path): string
+{
+    return clean_urls() ? preg_replace('#^(\./)?(' . CLEAN_PAGES . ')\.php(?=$|[?\#])#', '$2', $path) : $path;
+}
+
 function bk_url(string $path): string
 {
+    $path = u(ltrim($path, '/'));
     // Toujours l'adresse configurée dans l'admin : l'en-tête Host envoyé par le navigateur
     // peut être falsifié et ne doit jamais servir à fabriquer les liens des e-mails ou des paiements.
     $base = rtrim(s('site_url'), '/');
