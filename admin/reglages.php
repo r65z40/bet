@@ -47,7 +47,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($do === 'cronnow') {
         $r = run_scheduled_tasks(true);
         admin_log('Tâches automatiques lancées manuellement');
-        flash('Tâches exécutées : ' . (int)($r['rappels'] ?? 0) . ' rappel(s), ' . (int)($r['avis'] ?? 0) . ' demande(s) d’avis, ' . (int)($r['emails_groupes'] ?? 0) . ' e-mail(s) groupé(s).'
+        flash('Tâches exécutées : ' . (int)($r['rappels'] ?? 0) . ' rappel(s), ' . (int)($r['avis'] ?? 0) . ' demande(s) d’avis, ' . (int)($r['emails_groupes'] ?? 0) . ' e-mail(s) groupé(s), ' . (int)($r['cautions_demandees'] ?? 0) . ' demande(s) de caution, ' . (int)($r['cautions_liberees'] ?? 0) . ' caution(s) libérée(s).'
             . (!empty($r['erreurs']) ? ' Erreurs : ' . implode(' ; ', $r['erreurs']) : ''), empty($r['erreurs']) ? 'ok' : 'err');
     } elseif ($do === 'newtoken') {
         save_setting('bk_ics_token', bin2hex(random_bytes(16)));
@@ -101,6 +101,14 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
       Pour tester sans vrai paiement : clé <code>sk_test_…</code> chez Stripe, mode « Test (sandbox) » chez PayPal, puis carte de test Stripe <code>4242 4242 4242 4242</code>.
       <?php if (!payment_providers()): ?><br><strong style="color:#b42318">Aucun moyen de paiement actif : la réservation en ligne affiche un message invitant à vous contacter.</strong><?php endif; ?>
     </div>
+<?php elseif ($current === 'caution'): ?>
+    <div class="hint">
+      <strong>Comment fonctionne l’empreinte bancaire ?</strong> Le client enregistre sa carte sur la page sécurisée de Stripe : le montant est <strong>bloqué</strong> sur sa carte, mais <strong>pas débité</strong>.
+      Après l’état des lieux de sortie, depuis la fiche de la réservation, vous <strong>libérez</strong> l’empreinte ou vous <strong>encaissez</strong> tout ou partie du montant avec un motif ; sans action de votre part, elle est libérée automatiquement.
+      Une empreinte ne dure que <strong>7 jours</strong> : elle est donc demandée peu avant l’arrivée (e-mail automatique), et le client peut aussi la faire à l’état des lieux d’entrée, depuis son téléphone.
+      <?php if (s('bk_deposit_mode') === 'stripe' && !isset(payment_providers()['stripe'])): ?><br><strong style="color:#b42318">Stripe n’est pas activé (Réglages › Paiement) : l’empreinte bancaire ne peut pas fonctionner.</strong><?php endif; ?>
+      <?php if ((int)bk_num('bk_deposit_days_before', 2) + 3 + (int)bk_num('bk_deposit_release_days', 2) > 7): ?><br><strong style="color:#b42318">Attention : pour une location de 72 h, jours avant + 3 jours + jours après dépassent 7 jours : l’empreinte expirerait avant la libération prévue.</strong><?php endif; ?>
+    </div>
 <?php elseif ($current === 'emails'): ?>
     <div class="hint">Le texte et l’apparence des e-mails envoyés (confirmation, annulation, alertes…) se modifient dans <a href="modeles.php">Modèles d’e-mails</a>.</div>
     <?php if (s('_mail_last_error') !== ''): ?><div class="flash flash-err">Dernière erreur d’envoi : <?= e(s('_mail_last_error')) ?></div><?php endif; ?>
@@ -109,7 +117,7 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
       <h2>Tâche planifiée</h2>
       <p class="muted" style="margin-top:-6px">Les rappels et demandes d’avis partent automatiquement toutes les heures. Dernier passage :
         <strong><?= s('_cron_last') ? e(date('d/m/Y à H:i', (int)s('_cron_last'))) : 'jamais' ?></strong>
-        <?php if ($rep && empty($rep['skipped'])): ?>— <?= (int)($rep['rappels'] ?? 0) ?> rappel(s), <?= (int)($rep['avis'] ?? 0) ?> demande(s) d’avis<?= !empty($rep['erreurs']) ? ' — <span style="color:#b42318">' . e(implode(' ; ', $rep['erreurs'])) . '</span>' : '' ?><?php endif; ?></p>
+        <?php if ($rep && empty($rep['skipped'])): ?>— <?= (int)($rep['rappels'] ?? 0) ?> rappel(s), <?= (int)($rep['avis'] ?? 0) ?> demande(s) d’avis<?= !empty($rep['cautions_demandees']) || !empty($rep['cautions_liberees']) ? ', ' . (int)($rep['cautions_demandees'] ?? 0) . ' demande(s) de caution, ' . (int)($rep['cautions_liberees'] ?? 0) . ' caution(s) libérée(s)' : '' ?><?= !empty($rep['erreurs']) ? ' — <span style="color:#b42318">' . e(implode(' ; ', $rep['erreurs'])) . '</span>' : '' ?><?php endif; ?></p>
       <form method="post"><?= csrf_field() ?><button class="btn light sm" name="do" value="cronnow">▶ Lancer maintenant</button></form>
       <details style="margin-top:14px"><summary><strong>Activer la tâche planifiée chez OVH (recommandé, 2 minutes)</strong></summary>
         <ol style="line-height:1.7">

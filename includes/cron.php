@@ -25,7 +25,7 @@ function run_scheduled_tasks(bool $force = false): array
         fclose($lock);
         return ['skipped' => true];
     }
-    $report = ['rappels' => 0, 'avis' => 0, 'expires' => 0, 'emails_groupes' => 0, 'purges' => 0, 'erreurs' => []];
+    $report = ['rappels' => 0, 'avis' => 0, 'expires' => 0, 'emails_groupes' => 0, 'purges' => 0, 'cautions_demandees' => 0, 'cautions_liberees' => 0, 'erreurs' => []];
     try {
         save_setting('_cron_last', (string)time());
         settings(true);
@@ -68,6 +68,9 @@ function run_scheduled_tasks(bool $force = false): array
                 db()->prepare('UPDATE bookings SET review_sent_at = ? WHERE id = ?')->execute([$now->format(BK_FMT), $b['id']]);
             }
         }
+
+        // 3 bis. Cautions par empreinte bancaire : demandes, libérations automatiques, expirations
+        [$report['cautions_demandees'], $report['cautions_liberees']] = deposit_cron($report['erreurs']);
 
         // 4. Envois groupés encore en attente (continuent même si la page de suivi a été fermée)
         foreach (db()->query("SELECT id FROM mail_campaigns WHERE status = 'sending'")->fetchAll(PDO::FETCH_COLUMN) as $cid) {

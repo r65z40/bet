@@ -278,5 +278,12 @@ function bk_cancel_locked(array $b, float $amount, bool $notify, bool $restoreGi
         bk_mail_cancelled(bk_get((int)$b['id']), $amount);
     }
     gcal_sync_booking(bk_get((int)$b['id'])); // retirée de Google Agenda
+    if ($b['deposit_status'] === 'empreinte') {
+        try {
+            deposit_release($b, false, 'réservation annulée');
+        } catch (Throwable $e) {
+            bk_log((int)$b['id'], 'Empreinte de caution non libérée : ' . $e->getMessage());
+        }
+    }
     return $amount;
 }

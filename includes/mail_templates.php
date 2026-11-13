@@ -31,6 +31,30 @@ const MAIL_TEMPLATES = [
         'vars' => ['prenom', 'nom', 'date', 'reservation', 'ancienne_date', 'reference', 'evenement', 'personnes', 'total', 'lien'],
         'blocks' => ['changement', 'recapitulatif', 'boutons', 'caution'],
     ],
+    'caution_demande' => [
+        'label' => 'Caution : demande d’empreinte bancaire (client)',
+        'title' => 'Votre caution',
+        'subject' => 'Votre événement approche : déposez la caution — {site}',
+        'body' => "Bonjour {prenom},\n\nVotre location à {site} approche ({reservation}).\n\nComme prévu dans les conditions de location, une caution de **{montant_caution}** est demandée sous forme d’**empreinte bancaire** : la somme est seulement bloquée sur votre carte, **rien n’est débité**. Elle est libérée automatiquement après l’état des lieux de sortie, sauf dégradation constatée.\n\nCela prend une minute, par carte bancaire, sur une page sécurisée :\n\n{bouton}\n\nVous pouvez aussi le faire sur place, à votre arrivée, depuis votre téléphone.",
+        'vars' => ['prenom', 'nom', 'reservation', 'reference', 'montant_caution', 'lien'],
+        'blocks' => ['bouton'],
+    ],
+    'caution_liberee' => [
+        'label' => 'Caution : empreinte libérée (client)',
+        'title' => 'Caution libérée',
+        'subject' => 'Votre caution a été libérée — {site}',
+        'body' => "Bonjour {prenom},\n\nMerci pour votre location ! L’empreinte bancaire de caution de **{montant_caution}** a été **libérée** : rien n’a été débité. Selon votre banque, la somme peut encore apparaître quelques jours comme « en attente » avant de disparaître.\n\nÀ bientôt !",
+        'vars' => ['prenom', 'nom', 'reservation', 'reference', 'montant_caution'],
+        'blocks' => [],
+    ],
+    'caution_retenue' => [
+        'label' => 'Caution : retenue après l’état des lieux (client)',
+        'title' => 'Retenue sur caution',
+        'subject' => 'Retenue sur votre caution — {site}',
+        'body' => "Bonjour {prenom},\n\nSuite à l’état des lieux de sortie de votre location ({reservation}), une somme de **{montant_retenu}** a été retenue sur votre caution de {montant_caution}.\n\n**Motif :** {motif}\n\nLe reste de l’empreinte bancaire est libéré, sans aucun débit. Pour toute question, répondez simplement à cet e-mail.",
+        'vars' => ['prenom', 'nom', 'reservation', 'reference', 'montant_caution', 'montant_retenu', 'motif'],
+        'blocks' => [],
+    ],
     'alerte' => [
         'label' => 'Alerte « nouvelle réservation » (vous)',
         'title' => 'Nouvelle réservation payée',
@@ -81,7 +105,7 @@ const MAIL_VAR_HELP = [
     'lien' => 'lien principal (espace client ou activation)', 'identifiant' => 'identifiant du compte', 'site' => 'nom de la salle',
     'recapitulatif' => 'tableau du détail et du total', 'boutons' => 'boutons espace client + ajout à l’agenda', 'caution' => 'encadré caution',
     'bouton' => 'bouton principal', 'arrivee' => 'date et heure d’arrivée', 'depart' => 'date et heure de départ', 'jours' => 'nombre de jours avant l’événement',
-    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
+    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'montant_caution' => 'montant de la caution', 'montant_retenu' => 'montant retenu sur la caution', 'motif' => 'motif de la retenue', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
 ];
 
 const MAIL_STYLE_DEFAULTS = [

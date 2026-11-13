@@ -14,10 +14,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
     $do = (string)($_POST['do'] ?? '');
     if ($do === 'notes') {
-        $dep = (string)($_POST['deposit_status'] ?? '');
+        $dep = (string)($_POST['deposit_status'] ?? $b['deposit_status']);
+        if ($b['deposit_pi'] !== '' || !in_array($dep, ['', 'recue', 'restituee', 'retenue'], true)) {
+            $dep = $b['deposit_status']; // caution par empreinte : statut géré par Stripe, jamais à la main
+        }
         db()->prepare('UPDATE bookings SET admin_notes = ?, deposit_status = ? WHERE id = ?')
-            ->execute([mb_substr(trim((string)($_POST['admin_notes'] ?? '')), 0, 5000), in_array($dep, ['', 'recue', 'restituee', 'retenue'], true) ? $dep : '', $id]);
+            ->execute([mb_substr(trim((string)($_POST['admin_notes'] ?? '')), 0, 5000), $dep, $id]);
         flash('Notes enregistrées.');
+    } elseif ($do === 'deposit_amount' && in_array($b['deposit_status'], ['', 'expiree'], true)) {
+        $v = round((float)str_replace([',', ' '], ['.', ''], (string)($_POST['deposit_amount'] ?? '')), 2);
+        db()->prepare('UPDATE bookings SET deposit_amount = ? WHERE id = ?')->execute([$v > 0 ? min($v, 50000) : null, $id]);
+        bk_log($id, 'Montant de la caution ' . ($v > 0 ? 'fixé à ' . money2($v) : 'remis au calcul automatique') . ' par ' . current_admin()['username']);
+        flash('Montant de la caution enregistré.');
+    } elseif ($do === 'deposit_send' && $b['status'] === 'confirmed') {
+        $ok = deposit_mail($b, 'caution_demande');
+        flash($ok ? 'Demande de caution envoyée à ' . $b['email'] . '.' : 'Échec de l’envoi : ' . mail_last_error(), $ok ? 'ok' : 'err');
+    } elseif ($do === 'deposit_release' || $do === 'deposit_capture') {
+        if (!admin_can('remboursements')) {
+            flash('Votre compte n’a pas le droit de gérer les cautions.', 'err');
+            redirect('reservation.php?id=' . $id);
+        }
+        try {
+            if ($do === 'deposit_release') {
+                deposit_release($b, !empty($_POST['notify']), current_admin()['username']);
+                admin_log('Caution libérée — réservation ' . $b['ref']);
+                flash('Empreinte libérée : rien n’est débité au client.');
+            } else {
+                $got = deposit_capture($b, (float)str_replace([',', ' '], ['.', ''], (string)($_POST['capture_amount'] ?? '0')), (string)($_POST['capture_reason'] ?? ''), !empty($_POST['notify']));
+                bk_log($id, 'Action effectuée par ' . current_admin()['username']);
+                admin_log('Retenue sur caution de ' . money2($got) . ' — réservation ' . $b['ref']);
+                flash(money2($got) . ' encaissés sur la caution ; le reste de l’empreinte est libéré.');
+            }
+        } catch (Throwable $e) {
+            flash('Opération refusée : ' . $e->getMessage(), 'err');
+        }
     } elseif ($do === 'resend' && $b['status'] === 'confirmed') {
         $ok = bk_mail_confirmation($b);
         flash($ok ? 'E-mail de confirmation renvoyé à ' . $b['email'] . '.' : 'Échec de l’envoi : ' . mail_last_error(), $ok ? 'ok' : 'err');
@@ -121,7 +151,9 @@ admin_header('Réservation ' . $b['ref'], 'resa');
     <form method="post" class="card">
       <?= csrf_field() ?>
       <h2>Suivi</h2>
+      <?php if (!deposit_by_card() && $b['deposit_pi'] === ''): ?>
       <?= field('deposit_status', 'Caution (chèque à l’état des lieux)', $b['deposit_status'], 'select', '', ['' => '— Non reçue', 'recue' => 'Reçue', 'restituee' => 'Restituée', 'retenue' => 'Retenue (en partie ou totalité)']) ?>
+      <?php endif; ?>
       <?= field('admin_notes', 'Notes internes', $b['admin_notes'], 'textarea') ?>
       <button class="btn" name="do" value="notes">Enregistrer</button>
     </form>
@@ -152,6 +184,43 @@ admin_header('Réservation ' . $b['ref'], 'resa');
       <p class="muted">Le client n’a pas (encore) payé. <?= $b['status'] === 'pending' ? 'Le créneau lui est réservé jusqu’à ' . e(bk_dt($b['hold_until'])->format('H\hi')) . '.' : 'Le créneau est libre.' ?> Il peut reprendre le paiement depuis le lien « Page client ».</p>
       <button class="btn danger sm" name="do" value="release">Annuler cette demande</button>
     </form>
+    <?php endif; ?>
+
+    <?php if ((deposit_by_card() || $b['deposit_pi'] !== '') && ($b['status'] === 'confirmed' || $b['deposit_status'] === 'empreinte')):
+        [$dl, $dc] = DEPOSIT_STATUSES[$b['deposit_status']] ?? ['?', 'gray']; $exp = deposit_expires_at($b); ?>
+    <div class="card" id="caution">
+      <h2>Caution <span class="pill" style="vertical-align:middle;<?= $dc === 'green' ? 'background:#e7f6ec;color:#1d7a46' : ($dc === 'red' ? 'background:#fdecea;color:#b42318' : '') ?>"><?= e($dl) ?></span></h2>
+      <?php if ($b['deposit_status'] === 'empreinte'): ?>
+        <p><strong><?= money2((float)$b['deposit_held']) ?></strong> bloqués sur la carte du client depuis le <?= e(bk_dt($b['deposit_at'])->format('d/m/Y à H\hi')) ?>.
+          Valable jusqu’au <strong><?= e($exp->format('d/m/Y à H\hi')) ?></strong><?php if ((int)bk_num('bk_deposit_release_days', 2) > 0): ?> ; libération automatique le <?= e(bk_dt($b['end_at'])->modify('+' . (int)bk_num('bk_deposit_release_days', 2) . ' days')->format('d/m/Y')) ?> si vous ne faites rien<?php endif; ?>.</p>
+        <?php if (admin_can('remboursements')): ?>
+        <form method="post"><?= csrf_field() ?>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <label class="field" style="flex:1 1 130px"><span>Montant à retenir (€)</span><input type="text" name="capture_amount" inputmode="decimal" placeholder="max. <?= e(rating_label((string)$b['deposit_held'])) ?>"></label>
+            <label class="field" style="flex:3 1 240px"><span>Motif (envoyé au client)</span><input type="text" name="capture_reason" maxlength="500" placeholder="Ex. : chaise cassée, ménage non fait…"></label>
+          </div>
+          <label style="display:block;margin:4px 0 14px"><input type="checkbox" name="notify" value="1" checked> Prévenir le client par e-mail</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn" name="do" value="deposit_release" onclick="return confirm('Libérer l’empreinte ? Rien ne sera débité au client.')">✓ Tout s’est bien passé : libérer</button>
+            <button class="btn danger" name="do" value="deposit_capture" onclick="return confirm('Encaisser ce montant sur la carte du client ? Le reste sera libéré. Action définitive.')">Retenir ce montant</button>
+          </div>
+        </form>
+        <?php endif; ?>
+      <?php elseif ($b['deposit_status'] === 'retenue'): ?>
+        <p><strong><?= money2((float)$b['deposit_captured']) ?></strong> retenus sur <?= money2((float)$b['deposit_held']) ?> — motif : <?= e($b['deposit_reason']) ?></p>
+      <?php elseif ($b['deposit_status'] === 'restituee'): ?>
+        <p>Empreinte de <?= money2((float)$b['deposit_held']) ?> libérée, rien n’a été débité.</p>
+      <?php else: ?>
+        <p class="muted" style="margin-top:-6px">Montant demandé : <strong><?= money2(bk_deposit_amount($b)) ?></strong><?= ($b['deposit_amount'] ?? null) === null ? ' (calcul automatique)' : '' ?>.
+          Le client peut déposer l’empreinte à partir du <strong><?= e(deposit_opens_at($b)->format('d/m/Y')) ?></strong> depuis sa page « Ma réservation »<?= $b['deposit_requested_at'] ? ' — demande envoyée le ' . e(bk_dt($b['deposit_requested_at'])->format('d/m/Y')) : ' — e-mail automatique ce jour-là' ?>.
+          À l’état des lieux, il peut aussi le faire sur son téléphone (bouton « Page client » ci-contre).</p>
+        <form method="post" style="display:flex;gap:10px;align-items:end;flex-wrap:wrap"><?= csrf_field() ?>
+          <label class="field" style="flex:1 1 150px;margin:0"><span>Montant propre à cette réservation (€)</span><input type="text" name="deposit_amount" inputmode="decimal" value="<?= ($b['deposit_amount'] ?? null) !== null ? e(rating_label((string)$b['deposit_amount'])) : '' ?>" placeholder="auto : <?= e(rating_label((string)bk_deposit_amount($b))) ?>"></label>
+          <button class="btn light" name="do" value="deposit_amount">Enregistrer</button>
+          <?php if (deposit_can_hold($b)): ?><button class="btn light" name="do" value="deposit_send">✉ Envoyer la demande au client</button><?php endif; ?>
+        </form>
+      <?php endif; ?>
+    </div>
     <?php endif; ?>
 
     <?php if ($b['status'] === 'confirmed'): ?>

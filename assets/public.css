@@ -123,3 +123,5 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(242,212,123,.6);b
 
 .promo-row{margin:14px 0 4px;padding-top:12px;border-top:1px dashed var(--line)}
 .day small.sp{color:#b42318}
+
+.deposit{margin-top:22px;padding:18px 20px;border:1px solid #f0dca8;background:#fff8e8;border-radius:14px}.deposit h3{margin:0 0 8px;font-size:1.1rem;color:var(--navy,#071c35)}.deposit p{margin:0 0 12px}.deposit form{margin:0}

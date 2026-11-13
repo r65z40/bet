@@ -27,7 +27,10 @@ const ADMIN_MENU = [
         'contenus' => ['listes.php', 'Listes & cartes', 'contenu'],
         'sections' => ['sections.php', 'Ordre des sections', 'contenu'],
     ]],
-    'stats' => ['label' => 'Statistiques', 'icon' => '📊', 'pages' => ['stats' => ['stats.php', 'Statistiques', 'stats']]],
+    'stats' => ['label' => 'Statistiques', 'icon' => '📊', 'pages' => [
+        'stats'  => ['stats.php', 'Statistiques', 'stats'],
+        'compta' => ['compta.php', 'Comptabilité', 'stats'],
+    ]],
 ];
 
 /** Menu réduit aux pages autorisées pour le compte connecté. */

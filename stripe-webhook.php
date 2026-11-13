@@ -15,7 +15,16 @@ $type = $event['type'] ?? '';
 if (in_array($type, ['checkout.session.completed', 'checkout.session.async_payment_succeeded'], true)) {
     $sess = $event['data']['object'] ?? [];
     $b = bk_get((int)($sess['metadata']['booking_id'] ?? $sess['client_reference_id'] ?? 0));
-    if ($b && ($sess['payment_status'] ?? '') === 'paid') {
+    if ($b && ($sess['metadata']['kind'] ?? '') === 'deposit') {
+        // Empreinte de caution : non « payée » (capture manuelle), vérifiée chez Stripe
+        try {
+            deposit_check_session($b, (string)$sess['id']);
+        } catch (Throwable $e) {
+            bk_log((int)$b['id'], 'Webhook Stripe (caution) : ' . $e->getMessage());
+            http_response_code(500);
+            exit;
+        }
+    } elseif ($b && ($sess['payment_status'] ?? '') === 'paid') {
         try {
             // On relit la session chez Stripe plutôt que de se fier au contenu reçu
             stripe_check_session($b, (string)$sess['id']);

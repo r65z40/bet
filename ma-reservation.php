@@ -68,7 +68,30 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
       <a class="btn btn-light" href="<?= e(gcal_template_url($b)) ?>" target="_blank" rel="noopener">📅 Google Agenda</a>
       <a class="btn btn-light" href="<?= e(bk_client_url($b)) ?>&amp;ics=1">📅 Apple / Outlook (.ics)</a>
     </div>
+<?php if (deposit_by_card() && bk_dt($b['end_at']) > bk_now()): ?>
+    <div class="deposit" id="caution">
+      <h3>🔑 Caution — <?= money2($b['deposit_status'] === 'empreinte' ? (float)$b['deposit_held'] : bk_deposit_amount($b)) ?></h3>
+<?php if (isset($_GET['caution']) && $_GET['caution'] === 'ok'): ?>
+      <div class="alert alert-ok">Merci, votre empreinte bancaire est enregistrée. Rien n’a été débité.</div>
+<?php elseif (isset($_GET['caution'])): ?>
+      <div class="alert alert-err">L’empreinte n’a pas pu être enregistrée. Réessayez ou contactez-nous.</div>
+<?php endif; ?>
+<?php if ($b['deposit_status'] === 'empreinte'): ?>
+      <p>✅ Empreinte bancaire en place depuis le <?= e(bk_dt($b['deposit_at'])->format('d/m/Y')) ?>. Rien n’est débité ; elle sera libérée après l’état des lieux de sortie, sauf dégradation constatée.</p>
+<?php elseif (in_array($b['deposit_status'], ['restituee', 'retenue', 'recue'], true)): ?>
+      <p><?= e(DEPOSIT_STATUSES[$b['deposit_status']][0]) ?>.</p>
+<?php elseif (deposit_can_hold($b)): ?>
+      <p>La caution prend la forme d’une <strong>empreinte bancaire</strong> : la somme est bloquée sur votre carte, <strong>rien n’est débité</strong>. Elle est libérée après l’état des lieux de sortie, sauf dégradation constatée.</p>
+      <form method="post" action="caution.php"><input type="hidden" name="ref" value="<?= e($b['ref']) ?>"><input type="hidden" name="t" value="<?= e($b['token']) ?>">
+        <button class="btn btn-blue">🔒 Déposer la caution par carte</button></form>
+<?php else: ?>
+      <p><?= e(s('bk_deposit_text')) ?></p>
+      <p class="muted">Vous pourrez déposer l’empreinte bancaire à partir du <strong><?= e(fr_date(deposit_opens_at($b))) ?></strong> (un e-mail vous le rappellera), ou sur place à votre arrivée. Une empreinte n’est valable que quelques jours, c’est pourquoi elle n’est pas demandée plus tôt.</p>
+<?php endif; ?>
+    </div>
+<?php else: ?>
     <p class="notice" style="margin-top:20px"><span>🔑</span><span><?= e(s('bk_deposit_text')) ?></span></p>
+<?php endif; ?>
     <p class="muted" style="font-size:.92rem">Adresse : <?= e(s('address')) ?><?php if (s('maps_url')): ?> — <a href="<?= e(s('maps_url')) ?>" target="_blank" rel="noopener">itinéraire</a><?php endif; ?>.
       Pour modifier ou annuler, écrivez-nous à <a href="<?= e(mailto()) ?>"><?= e(s('contact_email')) ?></a> (voir les <a href="conditions.php">conditions d’annulation</a>).</p>
 <?php elseif ($b['status'] === 'cancelled' && $b['credit_number'] !== ''): ?>

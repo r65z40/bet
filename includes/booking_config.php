@@ -70,7 +70,6 @@ const BOOKING_SETTINGS = [
             'bk_hour_cap'      => ['label' => 'Plafond de la location à l’heure', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Jamais plus cher que la journée (24 h) du même jour', '0' => 'Pas de plafond']],
             'bk_vat_rate'      => ['label' => 'Taux de TVA (%)', 'default' => '20', 'type' => 'number'],
             'bk_asso_discount' => ['label' => 'Remise association à but non lucratif (%)', 'default' => '15', 'type' => 'number'],
-            'bk_deposit_text'  => ['label' => 'Caution (texte affiché au client)', 'type' => 'textarea', 'default' => 'Une caution de 2 × le montant du loyer HT est demandée par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie.'],
         ],
     ],
     'annulation' => [
@@ -92,6 +91,23 @@ const BOOKING_SETTINGS = [
             'bk_paypal_mode'     => ['label' => 'PayPal — mode', 'type' => 'select', 'default' => 'sandbox', 'options' => ['sandbox' => 'Test (sandbox)', 'live' => 'Production (vrais paiements)']],
             'bk_paypal_client'   => ['label' => 'PayPal — Client ID', 'type' => 'text', 'default' => '', 'help' => 'developer.paypal.com › Apps & Credentials › votre application (Live ou Sandbox selon le mode).'],
             'bk_paypal_secret'   => ['label' => 'PayPal — Secret', 'type' => 'secret', 'default' => ''],
+        ],
+    ],
+    'caution' => [
+        'title' => 'Caution',
+        'fields' => [
+            'bk_deposit_mode' => ['label' => 'Mode de caution', 'type' => 'select', 'default' => 'cheque', 'options' => [
+                'cheque' => 'Chèque remis à l’état des lieux (suivi manuel dans la fiche)',
+                'stripe' => 'Empreinte bancaire par carte (Stripe) : rien n’est débité, sauf en cas de dégâts',
+            ], 'help' => 'L’empreinte bancaire nécessite Stripe activé (Réglages › Paiement).'],
+            'bk_deposit_factor' => ['label' => 'Montant : multiple du prix de la location HT', 'default' => '2', 'type' => 'number',
+                'help' => 'Ex. 2 = deux fois le prix de la location (hors options). Ignoré si un montant fixe est indiqué ci-dessous. Modifiable au cas par cas dans la fiche.'],
+            'bk_deposit_fixed' => ['label' => 'Ou montant fixe (€, 0 = utiliser le multiple)', 'default' => '0', 'type' => 'number'],
+            'bk_deposit_days_before' => ['label' => 'Empreinte : demandée combien de jours avant l’arrivée', 'default' => '2', 'type' => 'number',
+                'help' => 'Une empreinte bancaire n’est valable que 7 jours chez les banques : elle ne peut donc pas être prise plus tôt. Le client reçoit un e-mail avec le lien ce jour-là ; il peut aussi la faire sur place, à l’état des lieux, depuis son téléphone.'],
+            'bk_deposit_release_days' => ['label' => 'Empreinte : libérée automatiquement combien de jours après le départ', 'default' => '2', 'type' => 'number',
+                'help' => 'Si vous n’avez rien retenu d’ici là, l’empreinte est annulée et le client prévenu. Respectez : jours avant + durée de location + jours après ≤ 7.'],
+            'bk_deposit_text'  => ['label' => 'Caution (texte affiché au client)', 'type' => 'textarea', 'default' => 'Une caution de 2 × le montant du loyer HT est demandée par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie.', 'help' => 'Affiché dans les e-mails et sur la page client. Avec l’empreinte bancaire, par exemple : « Une empreinte bancaire de caution vous sera demandée 2 jours avant votre arrivée. Rien n’est débité, sauf en cas de dégradation constatée à l’état des lieux de sortie. »'],
         ],
     ],
     'emails' => [
