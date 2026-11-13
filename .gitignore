@@ -15,6 +15,9 @@ data/.mailing.lock
 # Captures de tests locaux
 *.png
 !logo-rn6.png
+!icon-rn6.png
+!apple-touch-icon.png
+!logo-mail.png
 !photos/**
 data/.cron.lock
 !admin/icons/*.png
