@@ -25,6 +25,7 @@
     $('#step2').classList.remove('locked');
     $('#legendPartial').hidden = st.mode !== 'hour';
     $('#daysPick').hidden = st.mode !== 'day' || C.maxDays < 2;
+    $('#slots').hidden = true; // heures d'arrivée : seulement en location à l'heure, après le choix du jour
     renderCal();
     updateSteps();
     quote();
