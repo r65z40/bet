@@ -12,11 +12,27 @@ function db(): PDO
             mkdir($dir, 0775, true);
         }
     }
-    $pdo = new PDO('sqlite:' . db_file());
+    $pdo = new PDO('sqlite:' . db_file(), null, null, [PDO::ATTR_TIMEOUT => 8]);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
     $pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-    $pdo->exec('PRAGMA journal_mode = WAL');
-    install_schema($pdo);
+    $pdo->exec('PRAGMA busy_timeout = 8000'); // une écriture concurrente attend au plus 8 s (au lieu de 60)
+    // WAL est le plus rapide, mais ne fonctionne pas sur un stockage réseau (cas des hébergements mutualisés
+    // comme OVH, dont les fichiers sont sur un serveur NFS) : on reste alors en mode classique.
+    try {
+        $pdo->exec('PRAGMA journal_mode = ' . (db_on_network_storage() ? 'DELETE' : 'WAL'));
+        $pdo->exec('PRAGMA synchronous = NORMAL');
+    } catch (Throwable) {
+        // base occupée à cet instant : le changement de mode se fera à la requête suivante
+    }
+    // Structure de la base vérifiée seulement à l'installation ou après une mise à jour du site
+    try {
+        $ok = (int)setting_raw($pdo, '_schema_version') === SCHEMA_VERSION;
+    } catch (Throwable) {
+        $ok = false;
+    }
+    if (!$ok) {
+        install_schema($pdo);
+    }
     return $pdo;
 }
 
@@ -51,6 +67,34 @@ function db_file(): string
         fclose($lock);
     }
     return DATA_DIR . '/' . basename($cfg['db']);
+}
+
+/** Le dossier des données est-il sur un disque réseau (NFS…) ? Détecté une fois, mémorisé dans un petit fichier. */
+function db_on_network_storage(): bool
+{
+    static $net = null;
+    if ($net !== null) {
+        return $net;
+    }
+    $cache = DATA_DIR . '/.storage';
+    if (is_file($cache)) {
+        return $net = trim((string)@file_get_contents($cache)) === 'network';
+    }
+    $dir = realpath(DATA_DIR) ?: DATA_DIR;
+    $net = (bool)preg_match('#^/homez?\.\d+/#', $dir); // hébergements mutualisés OVH
+    $mounts = @file_get_contents('/proc/mounts');
+    if (!$net && $mounts) {
+        $best = '';
+        foreach (explode("\n", $mounts) as $line) {
+            $f = preg_split('/\s+/', $line);
+            if (count($f) > 2 && str_starts_with($dir . '/', rtrim($f[1], '/') . '/') && strlen($f[1]) >= strlen($best)) {
+                $best = $f[1];
+                $net = (bool)preg_match('/^(nfs\d?|cifs|smb\d?|fuse\.sshfs|glusterfs|ceph)$/', $f[2]);
+            }
+        }
+    }
+    @file_put_contents($cache, $net ? 'network' : 'local');
+    return $net;
 }
 
 function install_schema(PDO $pdo): void

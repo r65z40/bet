@@ -28,6 +28,13 @@ function gcal_sync_if_needed(bool $force = false): void
     if (!$force && time() - $last < GCAL_SYNC_EVERY) {
         return;
     }
+    if (!$force && PHP_SAPI !== 'cli' && empty($GLOBALS['_after_response_running'])) {
+        // Données un peu anciennes : on affiche celles qu'on a, et on relit l'agenda après l'envoi de la page.
+        // (Avant chaque réservation, la relecture est forcée : un créneau bloqué depuis l'iPhone n'est jamais vendu.)
+        save_setting('_gcal_last_try', (string)time());
+        after_response(fn() => gcal_sync_if_needed(true));
+        return;
+    }
     save_setting('_gcal_last_try', (string)time()); // évite que plusieurs visiteurs déclenchent la lecture en même temps
     try {
         $ics = http_get_text(preg_replace('#^webcal://#i', 'https://', $url));
@@ -72,7 +79,7 @@ function http_get_text(string $url): string
     if (function_exists('curl_init')) {
         $ch = curl_init($url);
         curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_TIMEOUT => 10, CURLOPT_CONNECTTIMEOUT => 5, CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_MAXFILESIZE => 5_000_000]);
+            CURLOPT_TIMEOUT => 8, CURLOPT_CONNECTTIMEOUT => 4, CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS, CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS, CURLOPT_MAXFILESIZE => 5_000_000]);
         $body = curl_exec($ch);
         $code = curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
         $err = curl_error($ch);

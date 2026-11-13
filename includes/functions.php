@@ -560,3 +560,44 @@ function documents_list_html(array $docs): string
     }
     return $h . '</ul>';
 }
+
+/* ---------- Tâches lancées après l'envoi de la page ---------- */
+
+/**
+ * Exécute une tâche lente (e-mails d'alerte, notifications, Google Agenda, tâches planifiées)
+ * une fois la page envoyée au navigateur : le visiteur ou l'administrateur n'attend pas.
+ * La session est refermée avant, pour ne pas bloquer les autres onglets du même navigateur.
+ * En ligne de commande (tâche planifiée OVH), la tâche s'exécute tout de suite.
+ */
+function after_response(callable $task): void
+{
+    static $queue = null;
+    if (PHP_SAPI === 'cli' || !empty($GLOBALS['_after_response_running'])) {
+        try {
+            $task();
+        } catch (Throwable) {
+        }
+        return;
+    }
+    if ($queue === null) {
+        $queue = new ArrayObject();
+        register_shutdown_function(function () use ($queue) {
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close(); // libère les autres pages de l'admin immédiatement
+            }
+            if (function_exists('fastcgi_finish_request')) {
+                fastcgi_finish_request(); // la page est envoyée et le navigateur la considère terminée
+            }
+            ignore_user_abort(true);
+            @set_time_limit(300);
+            $GLOBALS['_after_response_running'] = true;
+            foreach ($queue as $t) {
+                try {
+                    $t();
+                } catch (Throwable) {
+                }
+            }
+        });
+    }
+    $queue->append($task);
+}

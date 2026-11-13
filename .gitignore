@@ -21,3 +21,4 @@ data/.mailing.lock
 !photos/**
 data/.cron.lock
 !admin/icons/*.png
+data/.storage

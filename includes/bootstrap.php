@@ -51,7 +51,9 @@ if (session_status() === PHP_SESSION_NONE
         'samesite' => 'Lax',
         'secure'   => is_https(),
     ]);
-    session_start();
+    // Pages publiques : simple lecture (savoir si c'est un administrateur, pour les statistiques) sans garder
+    // le verrou de session, qui ferait attendre la page tant qu'un onglet de l'admin travaille.
+    defined('ADMIN_AREA') ? session_start() : session_start(['read_and_close' => true]);
 }
 
 require_once __DIR__ . '/content.php';

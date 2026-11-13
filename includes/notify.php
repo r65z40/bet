@@ -63,6 +63,14 @@ function notify_emails(): array
  */
 function admin_notify(string $event, string $title, array $lines, string $url = 'index.php', string $tag = ''): void
 {
+    if (!notif_on($event, 'admin') && !notif_on($event, 'push')) {
+        return;
+    }
+    after_response(fn() => admin_notify_now($event, $title, $lines, $url, $tag));
+}
+
+function admin_notify_now(string $event, string $title, array $lines, string $url, string $tag): void
+{
     if (notif_on($event, 'admin') && ($to = notify_emails())) {
         $html = '';
         foreach ($lines as $l) {

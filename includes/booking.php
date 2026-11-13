@@ -472,20 +472,23 @@ function bk_confirm_paid(int $id, string $provider, string $paymentRef, int $amo
         bk_log($id, 'ATTENTION : ' . $err);
     }
     $b = bk_get($id);
-    if (notif_on('new_booking', 'client')) {
-        bk_mail_confirmation($b);
-    } else {
-        bk_log($id, 'E-mail de confirmation non envoyé (désactivé dans Réglages › Notifications)');
-    }
-    if (notif_on('new_booking', 'admin') || ($err && notif_on('conflict', 'admin'))) {
-        bk_mail_admin_new($b, $err);
-    }
-    gcal_sync_booking($b);
-    $s = bk_dt($b['start_at']);
-    if (notif_on('new_booking', 'push') || ($err && notif_on('conflict', 'push'))) push_notify('reservations', ($err ? '⚠ ' : '💶 ') . 'Nouvelle réservation — ' . money2((float)$b['total_ttc']),
-        $b['first_name'] . ' ' . $b['last_name'] . ' · ' . $b['event_type'] . ', ' . (int)$b['guests'] . ' pers. · ' . fr_date($s) . ' ' . $s->format('H\hi')
-        . ($b['mode'] === 'day' ? ' (' . (int)$b['hours'] . ' h)' : ' (' . fr_hours((float)$b['hours']) . ')') . ($err ? ' ⚠ conflit d’agenda' : ''),
-        'reservation.php?id=' . (int)$b['id'], 'resa-' . $b['id'], $err && !notif_on('new_booking', 'push') ? 'conflict' : 'new_booking');
+    // E-mails, Google Agenda et notifications : après l'envoi de la page (le client voit tout de suite sa confirmation)
+    after_response(function () use ($b, $id, $err) {
+        if (notif_on('new_booking', 'client')) {
+            bk_mail_confirmation($b);
+        } else {
+            bk_log($id, 'E-mail de confirmation non envoyé (désactivé dans Réglages › Notifications)');
+        }
+        if (notif_on('new_booking', 'admin') || ($err && notif_on('conflict', 'admin'))) {
+            bk_mail_admin_new($b, $err);
+        }
+        gcal_sync_booking($b);
+        $s = bk_dt($b['start_at']);
+        if (notif_on('new_booking', 'push') || ($err && notif_on('conflict', 'push'))) push_notify('reservations', ($err ? '⚠ ' : '💶 ') . 'Nouvelle réservation — ' . money2((float)$b['total_ttc']),
+            $b['first_name'] . ' ' . $b['last_name'] . ' · ' . $b['event_type'] . ', ' . (int)$b['guests'] . ' pers. · ' . fr_date($s) . ' ' . $s->format('H\hi')
+            . ($b['mode'] === 'day' ? ' (' . (int)$b['hours'] . ' h)' : ' (' . fr_hours((float)$b['hours']) . ')') . ($err ? ' ⚠ conflit d’agenda' : ''),
+            'reservation.php?id=' . (int)$b['id'], 'resa-' . $b['id'], $err && !notif_on('new_booking', 'push') ? 'conflict' : 'new_booking');
+    });
     return true;
 }
 
@@ -568,16 +571,18 @@ function bk_move(array $b, DateTimeImmutable $newStart): array
     bk_log((int)$b['id'], 'Déplacée : ' . bk_slot_label($b) . ' → ' . bk_slot_label($nb));
     // Google Agenda : mêmes identifiants d'événements (mis à jour) ; segments en trop supprimés
     if (gcal_write_enabled()) {
-        $old = count(cal_segments($b['start_at'], $b['end_at']));
-        $new = count(cal_segments($nb['start_at'], $nb['end_at']));
-        try {
-            for ($i = $new; $i < $old; $i++) {
-                gcal_delete_event(gcal_event_id('booking', $b['ref'], $i));
+        after_response(function () use ($b, $nb) { // après l'envoi de la page : l'administrateur n'attend pas Google
+            $old = count(cal_segments($b['start_at'], $b['end_at']));
+            $new = count(cal_segments($nb['start_at'], $nb['end_at']));
+            try {
+                for ($i = $new; $i < $old; $i++) {
+                    gcal_delete_event(gcal_event_id('booking', $b['ref'], $i));
+                }
+            } catch (Throwable $e) {
+                bk_log((int)$b['id'], 'Google Agenda : ancien événement non supprimé (' . $e->getMessage() . ')');
             }
-        } catch (Throwable $e) {
-            bk_log((int)$b['id'], 'Google Agenda : ancien événement non supprimé (' . $e->getMessage() . ')');
-        }
-        gcal_sync_booking($nb);
+            gcal_sync_booking($nb);
+        });
     }
     return $nb;
 }
@@ -590,8 +595,14 @@ function bk_log(int $id, string $msg): void
 /** Libère les créneaux des paiements abandonnés. */
 function bk_expire_pending(): void
 {
-    db()->prepare("UPDATE bookings SET status = 'expired' WHERE status = 'pending' AND hold_until < ?")
-        ->execute([bk_now()->modify('-1 hour')->format(BK_FMT)]);
+    // Lecture d'abord : aucune écriture (ni verrou) sur la base quand il n'y a rien à faire, ce qui est le cas courant
+    $limit = bk_now()->modify('-1 hour')->format(BK_FMT);
+    $st = db()->prepare("SELECT 1 FROM bookings WHERE (status = 'pending' AND hold_until < ?) OR (status = 'expired' AND abandon_notified = 0) LIMIT 1");
+    $st->execute([$limit]);
+    if (!$st->fetchColumn()) {
+        return;
+    }
+    db()->prepare("UPDATE bookings SET status = 'expired' WHERE status = 'pending' AND hold_until < ?")->execute([$limit]);
     if (notif_on('abandoned', 'admin') || notif_on('abandoned', 'push')) {
         $st = db()->query("SELECT * FROM bookings WHERE status = 'expired' AND abandon_notified = 0 AND paid_at IS NULL");
         foreach ($st->fetchAll() as $b) {

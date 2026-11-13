@@ -108,16 +108,7 @@ function cron_on_shutdown(): void
     if (!cron_due() || PHP_SAPI === 'cli') {
         return;
     }
-    register_shutdown_function(function () {
-        if (function_exists('fastcgi_finish_request')) {
-            fastcgi_finish_request(); // la page est déjà affichée : le visiteur n'attend pas
-        }
-        ignore_user_abort(true);
-        try {
-            run_scheduled_tasks();
-        } catch (Throwable) {
-        }
-    });
+    after_response(fn() => run_scheduled_tasks()); // après l'envoi de la page : personne n'attend
 }
 
 /* ---------- E-mails automatiques ---------- */

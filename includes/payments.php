@@ -275,14 +275,16 @@ function bk_cancel_locked(array $b, float $amount, bool $notify, bool $restoreGi
         ->execute([bk_now()->format(BK_FMT), $amount, $credit, $b['id']]);
     bk_log((int)$b['id'], 'Réservation annulée' . ($amount > 0 ? ' — remboursement ' . money2($amount) . ' (' . $b['provider'] . ' ' . $refundId . '), avoir ' . $credit : ' sans remboursement'));
     if ($notify && $b['status'] === 'confirmed') {
-        bk_mail_cancelled(bk_get((int)$b['id']), $amount);
+        $nb = bk_get((int)$b['id']);
+        after_response(fn() => bk_mail_cancelled($nb, $amount));
     }
     if ($b['status'] === 'confirmed' || $amount > 0) {
         admin_notify('cancelled', ($b['status'] === 'confirmed' ? 'Réservation annulée' : 'Remboursement') . ' : ' . $b['first_name'] . ' ' . $b['last_name'], [
             notif_booking_line($b), $amount > 0 ? 'Remboursé : ' . money2($amount) . ' (avoir ' . $credit . ')' : 'Sans remboursement',
         ], 'reservation.php?id=' . (int)$b['id']);
     }
-    gcal_sync_booking(bk_get((int)$b['id'])); // retirée de Google Agenda
+    $after = bk_get((int)$b['id']);
+    after_response(fn() => gcal_sync_booking($after)); // retirée de Google Agenda, après l'envoi de la page
     if ($b['deposit_status'] === 'empreinte') {
         try {
             deposit_release($b, false, 'réservation annulée');
