@@ -477,6 +477,10 @@ function migrate(PDO $pdo): void
         }
         $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'bk_deposit_text' AND value = ?")->execute(['Une caution de 2 × le montant du loyer HT est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité, elle est libérée après l’état des lieux de sortie) ou par chèque remis lors de l’état des lieux d’entrée.', 'Une caution de 2 × le montant du loyer HT est demandée par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie.']);
     }
+    // v18 : la nouvelle page d'accueil devient la page principale (retour possible dans Ordre des sections)
+    if ((int)setting_raw($pdo, '_schema_version') < 18) {
+        $pdo->exec("INSERT INTO settings(key, value) VALUES('home_design', 'nouveau') ON CONFLICT(key) DO UPDATE SET value = 'nouveau'");
+    }
     // v17 : listes de la nouvelle page d'accueil (chiffres clés, cartes événements, FAQ)
     if ((int)setting_raw($pdo, '_schema_version') < 17 && setting_raw($pdo, '_seeded') !== null) {
         $ins = $pdo->prepare('INSERT INTO items(grp, icon, title, text, value, position) VALUES(?,?,?,?,?,?)');

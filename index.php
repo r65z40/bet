@@ -544,7 +544,8 @@ $jsonLd  = [
     .v2 .reviews-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:24px}
     .v2 .reviews-head .section-title{margin-bottom:0}
     .v2 .review-badges{margin:0}
-    .v2 .reviews{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:16px;padding:4px 2px 16px;scrollbar-width:thin}
+    .v2 .reviews{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:16px;padding:4px 2px 16px;scrollbar-width:none;-ms-overflow-style:none}
+    .v2 .reviews::-webkit-scrollbar{display:none}
     .v2 .review{flex:0 0 min(380px,86%);scroll-snap-align:start}
     .v2 .review.is-more{display:flex}
     .v2 .reviews-more{display:none}
@@ -552,7 +553,8 @@ $jsonLd  = [
     .rv-nav button{width:42px;height:42px;border-radius:50%;border:1px solid var(--line);background:#fff;color:var(--navy);font-size:1.3rem;cursor:pointer}
 
     /* FAQ */
-    .faq-list{max-width:860px;display:grid;gap:12px}
+    .faq-list{max-width:860px;margin:0 auto;display:grid;gap:12px}
+    .v2 #faq .section-title{margin-left:auto;margin-right:auto;text-align:center}
     .faq-item{background:#fff;border:1px solid rgba(199,154,56,.22);border-radius:16px;box-shadow:0 6px 20px rgba(120,84,10,.05)}
     .faq-q{list-style:none;cursor:pointer;padding:18px 54px 18px 22px;font-size:1.15rem;font-weight:600;color:var(--navy);position:relative}
     .faq-q::-webkit-details-marker{display:none}

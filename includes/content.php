@@ -128,7 +128,7 @@ const SETTINGS_SCHEMA = [
     'accueil2' => [
         'title' => 'Nouvelle page d’accueil',
         'fields' => [
-            'home_design'     => ['label' => 'Version de la page d’accueil', 'type' => 'select', 'default' => 'classique', 'options' => [
+            'home_design'     => ['label' => 'Version de la page d’accueil', 'type' => 'select', 'default' => 'nouveau', 'options' => [
                 'classique' => 'Version actuelle',
                 'nouveau'   => 'Nouvelle version (bandeaux photo, événements, FAQ…) — aperçu : adresse du site suivie de /?apercu=1',
             ]],
@@ -303,7 +303,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 17;
+const SCHEMA_VERSION = 18;
 
 /** Documents remis aux clients à l'installation : [titre, description, fichier dans /documents]. */
 const DEFAULT_DOCUMENTS = [
