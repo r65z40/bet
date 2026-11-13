@@ -30,6 +30,8 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
 <section><div class="wrap" style="max-width:820px">
 <?php if (isset($_GET['merci']) && $b['status'] === 'confirmed'): ?>
   <div class="alert alert-ok">Votre paiement a bien été reçu. Un e-mail de confirmation vient de vous être envoyé à <?= e($b['email']) ?>.</div>
+<?php elseif ($b['status'] === 'cancelled' && empty($b['paid_at']) && $b['payment_ref'] !== ''): ?>
+  <div class="alert alert-err">Cette demande avait été annulée avant la fin de votre paiement : <strong>votre paiement vous a été remboursé automatiquement</strong> (sous 5 à 10 jours selon votre banque). Contactez-nous pour choisir une autre date.</div>
 <?php elseif (isset($_GET['erreur'])): ?>
   <div class="alert alert-err">Le paiement n’a pas pu être confirmé. Si votre compte a été débité, ne réessayez pas : contactez-nous à <?= e(s('contact_email')) ?>.</div>
 <?php elseif (isset($_GET['indispo'])): ?>

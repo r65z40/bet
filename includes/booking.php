@@ -498,7 +498,27 @@ function bk_confirm_paid(int $id, string $provider, string $paymentRef, int $amo
         throw $e;
     }
     if ($invoice === null) {
-        return (bool)bk_get($id);
+        $b = bk_get($id);
+        // Paiement arrivé alors que la demande avait été annulée entre-temps (par l'administrateur) :
+        // l'argent ne doit jamais rester encaissé sans réservation → remboursement automatique, une seule fois.
+        if ($b && $b['status'] === 'cancelled' && empty($b['paid_at']) && $paymentRef !== '' && $amountCents > 0) {
+            $lock = db()->prepare("UPDATE bookings SET payment_ref = ? WHERE id = ? AND payment_ref = ''");
+            $lock->execute([$paymentRef, $id]);
+            if ($lock->rowCount()) {
+                try {
+                    $r = ['id' => $id, 'ref' => $b['ref'], 'payment_ref' => $paymentRef, 'refunded_amount' => 0];
+                    $refundId = $provider === 'paypal' ? paypal_refund($r, $amountCents) : stripe_refund($r, $amountCents);
+                    bk_log($id, 'Paiement reçu après l’annulation de la demande : remboursé automatiquement (' . money2($amountCents / 100) . ', ' . $provider . ' ' . $refundId . ')');
+                    $msg = 'remboursé automatiquement';
+                } catch (Throwable $e) {
+                    bk_log($id, 'ATTENTION : paiement reçu après l’annulation, remboursement automatique impossible (' . $e->getMessage() . ') : à rembourser depuis ' . $provider);
+                    $msg = 'REMBOURSEMENT AUTOMATIQUE IMPOSSIBLE, à faire depuis ' . $provider;
+                }
+                admin_notify('conflict', '⚠ Paiement reçu sur une demande annulée : ' . $b['first_name'] . ' ' . $b['last_name'], [
+                    money2($amountCents / 100) . ' — ' . $msg, notif_booking_line($b)], 'reservation.php?id=' . $id);
+            }
+        }
+        return $b && $b['status'] === 'confirmed';
     }
     if ($invoice === '') {
         bk_log($id, 'ALERTE : montant payé (' . money2($amountCents / 100) . ' ' . strtoupper($currency) . ') différent du total. Réservation non confirmée.');
@@ -598,7 +618,7 @@ function bk_move(array $b, DateTimeImmutable $newStart): array
         if ($err) {
             throw new DomainException($err);
         }
-        $pdo->prepare('UPDATE bookings SET start_at = ?, end_at = ?, reminder_sent_at = NULL, review_sent_at = NULL,
+        $pdo->prepare('UPDATE bookings SET start_at = ?, end_at = ?, reminder_sent_at = NULL, review_sent_at = NULL, eve_notified_at = NULL, deposit_requested_at = NULL,
                 moved_at = ?, moved_from = CASE WHEN moved_from IS NULL OR moved_from = \'\' THEN ? ELSE moved_from END WHERE id = ?')
             ->execute([$newStart->format(BK_FMT), $newEnd->format(BK_FMT), bk_now()->format(BK_FMT), bk_slot_label($b), $b['id']]);
         $pdo->exec('COMMIT');
@@ -608,6 +628,19 @@ function bk_move(array $b, DateTimeImmutable $newStart): array
     }
     $nb = bk_get((int)$b['id']);
     bk_log((int)$b['id'], 'Déplacée : ' . bk_slot_label($b) . ' → ' . bk_slot_label($nb));
+    // Une empreinte de caution ne vaut que 7 jours : si la nouvelle date est trop loin, elle est libérée
+    // et sera redemandée automatiquement avant la nouvelle date.
+    if ($nb['deposit_status'] === 'empreinte' && $nb['deposit_at'] && bk_dt($nb['end_at']) > bk_dt($nb['deposit_at'])->modify('+' . (DEPOSIT_VALIDITY_DAYS - 1) . ' days')) {
+        try {
+            deposit_release($nb, false, 'nouvelle date trop éloignée, sera redemandée');
+            db()->prepare("UPDATE bookings SET deposit_status = '', deposit_pi = '', deposit_held = 0, deposit_at = NULL WHERE id = ?")->execute([$nb['id']]);
+            $nb = bk_get((int)$b['id']);
+        } catch (Throwable $e) {
+            bk_log((int)$b['id'], 'Empreinte non libérée après déplacement : ' . $e->getMessage());
+        }
+    } elseif ($nb['deposit_status'] === 'expiree') {
+        db()->prepare("UPDATE bookings SET deposit_status = '' WHERE id = ?")->execute([$nb['id']]);
+    }
     // Google Agenda : mêmes identifiants d'événements (mis à jour) ; segments en trop supprimés
     if (gcal_write_enabled()) {
         after_response(function () use ($b, $nb) { // après l'envoi de la page : l'administrateur n'attend pas Google

@@ -17,15 +17,23 @@ if (!in_array($b['status'], ['pending', 'expired'], true)) {
     exit;
 }
 // Le créneau n'est plus réservé pour ce client : on vérifie qu'il est toujours libre et on le bloque à nouveau
+$expired = $b['status'] === 'expired' || $b['hold_until'] === null || $b['hold_until'] < bk_now()->format(BK_FMT);
+if ($expired) {
+    gcal_sync_if_needed(true); // un événement ajouté à l'instant dans l'agenda Google compte
+}
 $pdo = db();
 $pdo->exec('BEGIN IMMEDIATE');
-$expired = $b['status'] === 'expired' || $b['hold_until'] === null || $b['hold_until'] < bk_now()->format(BK_FMT);
-$err = $expired ? bk_slot_error($b['mode'], bk_dt($b['start_at']), bk_dt($b['end_at']), (int)$b['id']) : null;
-if (!$err) {
-    $pdo->prepare("UPDATE bookings SET status = 'pending', hold_until = ? WHERE id = ?")
-        ->execute([bk_now()->modify('+35 minutes')->format(BK_FMT), $b['id']]);
+try {
+    $err = $expired ? bk_slot_error($b['mode'], bk_dt($b['start_at']), bk_dt($b['end_at']), (int)$b['id']) : null;
+    if (!$err) {
+        $pdo->prepare("UPDATE bookings SET status = 'pending', hold_until = ? WHERE id = ?")
+            ->execute([bk_now()->modify('+35 minutes')->format(BK_FMT), $b['id']]);
+    }
+    $pdo->exec('COMMIT');
+} catch (Throwable $e) {
+    try { $pdo->exec('ROLLBACK'); } catch (Throwable) {}
+    $err = 'indisponible';
 }
-$pdo->exec('COMMIT');
 if ($err) {
     header('Location: ' . bk_client_url($b) . '&indispo=1');
     exit;
