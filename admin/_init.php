@@ -204,6 +204,9 @@ function save_settings_fields(array $fields): array
         if (isset($f['perm']) && !admin_can($f['perm'])) {
             continue; // champ réservé à un autre droit : ignoré même si envoyé
         }
+        if (!empty($f['photo'])) {
+            continue; // photos de l'accueil : choisies avec le sélecteur de la page Photos
+        }
         $type = $f['type'] ?? 'text';
         $v = trim(str_replace("\r\n", "\n", (string)($_POST[$key] ?? '')));
         if ($type === 'secret') {

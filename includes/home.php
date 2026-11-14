@@ -10,6 +10,69 @@ function home_photo(int $n): ?array
     return $p && (int)$p['visible'] ? $p : null;
 }
 
+/**
+ * Photo désignée dans les réglages : « p12 » = photo d'identifiant 12 (choisie avec le sélecteur de l'admin,
+ * ne bouge pas si l'ordre de la galerie change), ou ancien format « 12 » = 12e photo de la galerie.
+ */
+function home_photo_ref(string $ref): ?array
+{
+    static $byId = null;
+    $ref = trim($ref);
+    if (preg_match('/^p(\d+)$/', $ref, $m)) {
+        $byId ??= array_column(photos(true), null, 'id');
+        $p = $byId[(int)$m[1]] ?? null;
+        return $p && (int)$p['visible'] ? $p : null;
+    }
+    return ctype_digit($ref) ? home_photo((int)$ref) : null;
+}
+
+/** Liste de photos (« p12,p15 ») sans doublon. */
+function home_photo_refs(string $csv): array
+{
+    $out = [];
+    foreach (explode(',', $csv) as $r) {
+        if (($p = home_photo_ref($r)) && !isset($out[$p['id']])) {
+            $out[$p['id']] = $p;
+        }
+    }
+    return array_values($out);
+}
+
+/**
+ * Emplacements photo de la page d'accueil, réglables avec le sélecteur de l'admin (page Photos) :
+ * clé => [libellé, plusieurs photos ?, maximum, valeur actuelle, aide].
+ */
+function home_photo_slots(): array
+{
+    $slots = [
+        'carousel' => ['Carrousel « La salle » (à côté du titre)', true, 12, s('salle_carousel_photos'), 'Si aucune n’est choisie : les 8 premières photos de la galerie.'],
+        'band1' => ['Bandeau photo 1', false, 1, s('band1_photo'), s('band1_text')],
+        'band2' => ['Bandeau photo 2', false, 1, s('band2_photo'), s('band2_text')],
+    ];
+    foreach (items('evenements_cartes', true) as $it) {
+        $slots['ev' . $it['id']] = ['Carte « ' . $it['title'] . ' »', false, 1, (string)$it['value'], 'Section « Pour quel événement ? »'];
+    }
+    foreach (['salle' => 'salle', 'cuisine' => 'cuisine', 'bar' => 'bar', 'audio' => 'audiovisuel'] as $k => $cat) {
+        $slots['tab_' . $k] = ['Onglet « ' . s('eqtab_' . $k . '_title') . ' »', true, 6, s('eqtab_' . $k . '_photos'),
+            'Si aucune n’est choisie : les photos rangées dans l’espace « ' . (PHOTO_CATEGORIES[$cat] ?? $cat) . ' ».'];
+    }
+    return $slots;
+}
+
+/** Enregistre un emplacement (valeur « p12,p15 », déjà vérifiée). */
+function home_photo_slot_save(string $key, string $value): void
+{
+    if ($key === 'carousel') {
+        save_setting('salle_carousel_photos', $value);
+    } elseif ($key === 'band1' || $key === 'band2') {
+        save_setting($key . '_photo', $value);
+    } elseif (preg_match('/^ev(\d+)$/', $key, $m)) {
+        db()->prepare("UPDATE items SET value = ? WHERE id = ? AND grp = 'evenements_cartes'")->execute([$value, (int)$m[1]]);
+    } elseif (preg_match('/^tab_(salle|cuisine|bar|audio)$/', $key, $m)) {
+        save_setting('eqtab_' . $m[1] . '_photos', $value);
+    }
+}
+
 /** Balise <picture> d'une photo (WebP si disponible). $size : 'large' (1920 px) ou 'thumb' (800 px). */
 function home_picture(array $p, string $size = 'large', string $attrs = 'loading="lazy" decoding="async"'): string
 {

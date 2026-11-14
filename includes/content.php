@@ -132,25 +132,26 @@ const SETTINGS_SCHEMA = [
                 'classique' => 'Version actuelle',
                 'nouveau'   => 'Nouvelle version (bandeaux photo, événements, FAQ…) — aperçu : adresse du site suivie de /?apercu=1',
             ]],
-            'band1_photo'     => ['label' => 'Bandeau photo 1 — n° de la photo (#, page Photos)', 'default' => '4', 'type' => 'number'],
+            'band1_photo'     => ['photo' => true, 'label' => 'Bandeau photo 1 — photo', 'default' => '4'],
             'band1_text'      => ['label' => 'Bandeau photo 1 — phrase', 'default' => 'Un grand espace lumineux, prêt à accueillir jusqu’à 120 invités.'],
-            'band2_photo'     => ['label' => 'Bandeau photo 2 — n° de la photo', 'default' => '7', 'type' => 'number'],
+            'band2_photo'     => ['photo' => true, 'label' => 'Bandeau photo 2 — photo', 'default' => '7'],
             'band2_text'      => ['label' => 'Bandeau photo 2 — phrase', 'default' => 'Un bar dédié pour vos vins d’honneur, cocktails et pauses café.'],
             'events_title'    => ['label' => 'Événements — titre', 'default' => 'Pour quel événement ?'],
             'events_subtitle' => ['label' => 'Événements — sous-titre', 'type' => 'textarea', 'default' => 'Une salle modulable qui s’adapte à vos invités, que vous receviez 20 ou 120 personnes.'],
-            'equip2_photo'    => ['label' => 'Équipements — n° de la photo affichée à côté', 'default' => '9', 'type' => 'number'],
+            'equip2_photo'    => ['photo' => true, 'label' => 'Équipements — n° de la photo affichée à côté', 'default' => '9', 'type' => 'number'],
             'eqtab_salle_title'  => ['label' => 'Équipements, onglet « Salle & mobilier » — titre', 'default' => 'Salle & mobilier'],
             'eqtab_salle_intro'  => ['label' => 'Équipements, onglet « Salle & mobilier » — phrase', 'default' => 'Tout le mobilier est compris : il ne reste qu’à décorer.'],
-            'eqtab_salle_photos' => ['label' => 'Équipements, onglet « Salle & mobilier » — n° des photos (ex. 6,7), en plus des photos de l’espace correspondant', 'default' => '10,15'],
+            'eqtab_salle_photos' => ['photo' => true, 'label' => 'Onglet salle — photos', 'default' => ''],
             'eqtab_cuisine_title'  => ['label' => 'Équipements, onglet « Cuisine traiteur » — titre', 'default' => 'Cuisine traiteur'],
             'eqtab_cuisine_intro'  => ['label' => 'Équipements, onglet « Cuisine traiteur » — phrase', 'default' => 'Un office équipé pour que votre traiteur travaille dans de bonnes conditions.'],
-            'eqtab_cuisine_photos' => ['label' => 'Équipements, onglet « Cuisine traiteur » — n° des photos (ex. 6,7), en plus des photos de l’espace correspondant', 'default' => '20'],
+            'eqtab_cuisine_photos' => ['photo' => true, 'label' => 'Onglet cuisine — photos', 'default' => ''],
             'eqtab_bar_title'  => ['label' => 'Équipements, onglet « Bar » — titre', 'default' => 'Bar'],
             'eqtab_bar_intro'  => ['label' => 'Équipements, onglet « Bar » — phrase', 'default' => 'Un vrai bar, prêt pour le vin d’honneur comme pour la soirée.'],
-            'eqtab_bar_photos' => ['label' => 'Équipements, onglet « Bar » — n° des photos (ex. 6,7), en plus des photos de l’espace correspondant', 'default' => '6,7'],
+            'eqtab_bar_photos' => ['photo' => true, 'label' => 'Onglet bar — photos', 'default' => ''],
             'eqtab_audio_title'  => ['label' => 'Équipements, onglet « Audiovisuel » — titre', 'default' => 'Audiovisuel'],
             'eqtab_audio_intro'  => ['label' => 'Équipements, onglet « Audiovisuel » — phrase', 'default' => 'Pour vos discours, diaporamas, films et présentations.'],
-            'eqtab_audio_photos' => ['label' => 'Équipements, onglet « Audiovisuel » — n° des photos (ex. 6,7), en plus des photos de l’espace correspondant', 'default' => '9'],
+            'eqtab_audio_photos' => ['photo' => true, 'label' => 'Onglet audio — photos', 'default' => ''],
+            'salle_carousel_photos' => ['photo' => true, 'label' => 'Carrousel « La salle » — photos', 'default' => ''],
             'dates_title'     => ['label' => 'Tarifs — titre des prochaines dates libres', 'default' => 'Prochains samedis libres'],
             'dates_weekdays'  => ['label' => 'Prochaines dates libres — jours affichés', 'type' => 'select', 'default' => '6', 'options' => [
                 '6'     => 'Samedis',
@@ -205,7 +206,7 @@ const ITEM_GROUPS = [
     'tarif_infos'   => ['label' => 'Infos tarifaires (caution…)', 'menu' => 'tarifs', 'fields' => ['title' => 'Titre', 'text' => 'Texte']],
     'tarif_options' => ['label' => 'Lignes ajoutées aux options (remise, parking…)', 'menu' => 'tarifs', 'fields' => ['text' => 'Libellé', 'value' => 'Valeur']],
     'chiffres'      => ['label' => 'Nouvelle page — chiffres clés (bande bleue)', 'menu' => 'contenus', 'fields' => ['title' => 'Chiffre', 'text' => 'Libellé']],
-    'evenements_cartes' => ['label' => 'Nouvelle page — cartes « Pour quel événement ? »', 'menu' => 'contenus', 'fields' => ['icon' => 'Icône', 'title' => 'Titre', 'text' => 'Texte', 'value' => 'N° de photo (#, page Photos)']],
+    'evenements_cartes' => ['label' => 'Nouvelle page — cartes « Pour quel événement ? » (photos : page Photos)', 'menu' => 'contenus', 'fields' => ['icon' => 'Icône', 'title' => 'Titre', 'text' => 'Texte']],
     'eq_salle' => ['label' => 'Nouvelle page — onglet « Salle & mobilier »', 'menu' => 'contenus', 'fields' => ['text' => 'Élément']],
     'eq_cuisine' => ['label' => 'Nouvelle page — onglet « Cuisine traiteur »', 'menu' => 'contenus', 'fields' => ['text' => 'Élément']],
     'eq_bar' => ['label' => 'Nouvelle page — onglet « Bar »', 'menu' => 'contenus', 'fields' => ['text' => 'Élément']],
@@ -354,7 +355,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 22;
+const SCHEMA_VERSION = 23;
 
 /** Documents remis aux clients à l'installation : [titre, description, fichier dans /documents]. */
 const DEFAULT_DOCUMENTS = [

@@ -17,10 +17,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pdo->beginTransaction();
 
     // 1. Enregistre toujours les modifications en cours
-    $upd = $pdo->prepare('UPDATE items SET icon = ?, title = ?, text = ?, value = ?, visible = ? WHERE id = ? AND grp = ?');
+    // une colonne absente du formulaire (ex. photo des cartes, choisie dans Photos) garde sa valeur
+    $upd = $pdo->prepare('UPDATE items SET icon = ?, title = ?, text = ?, value = COALESCE(?, value), visible = ? WHERE id = ? AND grp = ?');
     foreach ((array)($_POST['items'] ?? []) as $id => $row) {
         $val = fn($k) => mb_substr(trim(str_replace("\r\n", "\n", (string)($row[$k] ?? ''))), 0, 2000);
-        $upd->execute([$val('icon'), $val('title'), $val('text'), $val('value'), empty($row['visible']) ? 0 : 1, (int)$id, $g]);
+        $upd->execute([$val('icon'), $val('title'), $val('text'), array_key_exists('value', $row) ? $val('value') : null, empty($row['visible']) ? 0 : 1, (int)$id, $g]);
     }
 
     // 2. Action demandée

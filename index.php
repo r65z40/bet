@@ -713,11 +713,12 @@ $jsonLd  = [
           <h2><?= e(s('salle_title')) ?></h2>
           <p><?= rich(s('salle_subtitle')) ?></p>
         </div>
-<?php if ($photos): $mini = array_slice($photos, 0, 8); ?>
+<?php $mini = s('salle_carousel_photos') !== '' ? array_slice(home_photo_refs(s('salle_carousel_photos')), 0, 12) : array_slice($photos, 0, 8);
+      $galIdx = array_flip(array_column($photos, 'id')); if ($mini): ?>
         <div class="mini-carousel" role="region" aria-roledescription="carrousel" aria-label="Aperçu de la salle en photos">
           <div class="mc-track" tabindex="0">
 <?php foreach ($mini as $i => $ph): $thumb = variant_src($ph['filename'], 'thumb'); ?>
-            <button type="button" class="mc-slide" data-photo="<?= $i ?>" aria-label="Agrandir la photo <?= $i + 1 ?> sur <?= count($mini) ?><?= $ph['alt'] !== '' ? ' : ' . e($ph['alt']) : '' ?>">
+            <button type="button" class="mc-slide" data-photo="<?= $galIdx[$ph['id']] ?? '' ?>" aria-label="Agrandir la photo <?= $i + 1 ?> sur <?= count($mini) ?><?= $ph['alt'] !== '' ? ' : ' . e($ph['alt']) : '' ?>">
               <picture><?php if ($thumb): ?><source type="image/webp" srcset="<?= e($thumb) ?>"><?php endif; ?><img src="<?= e(photo_src($ph['filename'])) ?>" alt="<?= e($ph['alt']) ?>" width="<?= (int)$ph['width'] ?>" height="<?= (int)$ph['height'] ?>" loading="<?= $i === 0 ? 'eager' : 'lazy' ?>" decoding="async"></picture>
             </button>
 <?php endforeach; ?>
@@ -784,11 +785,12 @@ foreach (['salle' => ['🪑', 'salle'], 'cuisine' => ['🍽️', 'cuisine'], 'ba
     $list = items('eq_' . $k);
     if (!$list) continue;
     $pics = [];
-    foreach (array_filter(array_map('intval', explode(',', s('eqtab_' . $k . '_photos')))) as $n) {
-        if (($ph = home_photo($n)) && !isset($pics[$ph['id']])) $pics[$ph['id']] = $ph;
-    }
-    foreach ($photos as $ph) {
-        if (($ph['category'] ?? '') === $cat && $k !== 'salle' && !isset($pics[$ph['id']])) $pics[$ph['id']] = $ph;
+    // Photos choisies dans l'admin ; à défaut, celles rangées dans l'espace correspondant (Salle, Cuisine, Bar, Audiovisuel)
+    foreach (home_photo_refs(s('eqtab_' . $k . '_photos')) as $ph) $pics[$ph['id']] = $ph;
+    if (!$pics) {
+        foreach ($photos as $ph) {
+            if (($ph['category'] ?? '') === $cat) $pics[$ph['id']] = $ph;
+        }
     }
     $eqTabs[$k] = ['icon' => $icon, 'title' => s('eqtab_' . $k . '_title'), 'intro' => s('eqtab_' . $k . '_intro'), 'list' => $list, 'pics' => array_slice(array_values($pics), 0, 6)];
 }
@@ -838,7 +840,7 @@ $photoIndex = array_flip(array_column($photos, 'id')); // pour ouvrir la visionn
       </div>
     </section>
 <?php $blocks['equipements'] = ob_get_clean(); ?>
-<?php foreach ([1, 2] as $n): $bp = home_photo((int)s('band' . $n . '_photo')); if ($bp): ob_start(); ?>
+<?php foreach ([1, 2] as $n): $bp = home_photo_ref(s('band' . $n . '_photo')); if ($bp): ob_start(); ?>
     <section class="band" style="--bg:url('<?= e(home_photo_url($bp)) ?>')" aria-label="<?= e($bp['alt'] ?: s('site_name')) ?>">
       <div class="wrap"><p><?= e(s('band' . $n . '_text')) ?></p></div>
     </section>
@@ -860,7 +862,7 @@ $photoIndex = array_flip(array_column($photos, 'id')); // pour ouvrir la visionn
           <p><?= rich(s('events_subtitle')) ?></p>
         </div>
         <div class="ev-grid">
-<?php foreach ($evs as $it): $ep = home_photo((int)$it['value']); ?>
+<?php foreach ($evs as $it): $ep = home_photo_ref((string)$it['value']); ?>
           <a class="ev-card" href="<?= e(u('reservation.php')) ?>" data-track="reserver">
 <?php if ($ep): ?>            <?= home_picture($ep, 'thumb') ?>
 <?php endif; ?>
@@ -1399,7 +1401,7 @@ $photoIndex = array_flip(array_column($photos, 'id')); // pour ouvrir la visionn
       box.querySelector('.mc-next').addEventListener('click', () => go(current() + 1));
       track.addEventListener('keydown', e => { if (e.key === 'ArrowRight') { e.preventDefault(); go(current() + 1); } if (e.key === 'ArrowLeft') { e.preventDefault(); go(current() - 1); } });
       slides.forEach(s => s.addEventListener('click', () => {
-        if (typeof window.rn6OpenPhoto === 'function' && document.querySelector('.gallery-item')) window.rn6OpenPhoto(+s.dataset.photo);
+        if (s.dataset.photo !== '' && typeof window.rn6OpenPhoto === 'function' && document.querySelector('.gallery-item')) window.rn6OpenPhoto(+s.dataset.photo);
         else location.hash = 'photos';
       }));
       ['mouseenter', 'focusin', 'touchstart'].forEach(ev => box.addEventListener(ev, () => { paused = true; }, { passive: true }));

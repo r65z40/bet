@@ -36,7 +36,10 @@ admin_header('Textes', 'textes');
   <form method="post" class="card">
     <?= csrf_field() ?>
     <h2><?= e($sections[$current]['title']) ?></h2>
-    <?php foreach ($fields as $key => $f): ?>
+    <?php if (array_filter($fields, fn($f) => !empty($f['photo']))): ?>
+      <p class="hint" style="margin:-4px 0 16px">📷 Les photos de la page d’accueil (carrousel, bandeaux, cartes événements, onglets d’équipements) se choisissent en cliquant dessus dans <a href="photos.php#accueil">Photos › Photos de la page d’accueil</a>.</p>
+    <?php endif; ?>
+    <?php foreach ($fields as $key => $f): if (!empty($f['photo'])) continue; ?>
       <?php if (isset($f['perm']) && !admin_can($f['perm'])): ?>
         <?= field($key, $f['label'], (string)($f['options'][s($key)] ?? s($key)), 'readonly', 'Modifiable uniquement avec le droit « ' . ADMIN_PERMS[$f['perm']][0] . ' ».') ?>
       <?php else: ?>

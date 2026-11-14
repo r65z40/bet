@@ -590,6 +590,13 @@ function migrate(PDO $pdo): void
             'Écran 98 pouces, vidéoprojecteur + sonorisation', 'Écran 98 pouces, vidéoprojecteur avec écran de projection de 3 × 2,30 m, sono et micros sans fil.',
             'Écran 98 pouces + sonorisation', 'Écran grand format, sono et micros sans fil.']);
     }
+    // v23 : photos des onglets d'équipements — les numéros par défaut (qui ne correspondaient pas aux photos du site)
+    //       sont retirés : chaque onglet montre les photos de son espace, ou celles choisies dans Photos
+    if ((int)setting_raw($pdo, '_schema_version') < 23 && setting_raw($pdo, '_seeded') !== null) {
+        foreach (['salle' => '10,15', 'cuisine' => '20', 'bar' => '6,7', 'audio' => '9'] as $k => $old) {
+            $pdo->prepare('UPDATE settings SET value = ? WHERE key = ? AND value = ?')->execute(['', 'eqtab_' . $k . '_photos', $old]);
+        }
+    }
     // v18 : la nouvelle page d'accueil devient la page principale (retour possible dans Ordre des sections)
     if ((int)setting_raw($pdo, '_schema_version') < 18) {
         $pdo->exec("INSERT INTO settings(key, value) VALUES('home_design', 'nouveau') ON CONFLICT(key) DO UPDATE SET value = 'nouveau'");
