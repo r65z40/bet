@@ -559,6 +559,37 @@ function migrate(PDO $pdo): void
         $add('vaisselle', '', '**Lave-verres industriels**');
         $add('vaisselle', '', '**Machines à boissons chaudes** (café, thé)');
     }
+    // v22 : onglets d'équipements (listes créées si absentes), tireuse à bière, vidéoprojecteur compris dans l'option écran
+    if ((int)setting_raw($pdo, '_schema_version') < 22 && setting_raw($pdo, '_seeded') !== null) {
+        $ins = $pdo->prepare('INSERT INTO items(grp, icon, title, text, value, position) VALUES(?,?,?,?,?,?)');
+        $has = $pdo->prepare('SELECT COUNT(*) FROM items WHERE grp = ?');
+        foreach (['eq_salle', 'eq_cuisine', 'eq_bar', 'eq_audio'] as $grp) {
+            $has->execute([$grp]);
+            if ((int)$has->fetchColumn() === 0) {
+                foreach (DEFAULT_ITEMS[$grp] as $i => $r) {
+                    $ins->execute([$grp, '', '', $r['text'], '', $i + 1]);
+                }
+            }
+        }
+        $up = $pdo->prepare('UPDATE items SET text = ? WHERE text = ?');
+        foreach ([
+            ['Grand écran de projection de 3 × 2,30 m, **compris dans l’option écran + sonorisation**.', 'Avec grand écran de projection, pour vos films, diaporamas et présentations.'],
+            ['Wi-Fi haut débit ; en option : écran 98 pouces, vidéoprojecteur avec écran de 3 × 2,30 m, sono et micros.', 'Vidéoprojecteur et grand écran de projection, Wi-Fi haut débit ; écran 98 pouces et sono en option.'],
+            ['Un bar équipé (tireuse à bière, glaçons, boissons chaudes, lave-verres) et 20 mange-debout.', 'Un bar équipé (glaçons, boissons chaudes, lave-verres) et 20 mange-debout.'],
+        ] as [$new, $old]) {
+            $up->execute([$new, $old]);
+        }
+        $pdo->prepare('UPDATE items SET text = replace(text, ?, ?) WHERE grp = ?')->execute(['le bar (machines à glaçons et à boissons chaudes, lave-verres)', 'le bar (tireuse à bière professionnelle, machines à glaçons et à boissons chaudes, lave-verres)', 'faq']);
+        $has = $pdo->prepare("SELECT COUNT(*) FROM items WHERE grp = 'vaisselle' AND text LIKE ?");
+        $has->execute(['%ireuse%']);
+        if ((int)$has->fetchColumn() === 0) {
+            $pos = (int)$pdo->query("SELECT COALESCE(MAX(position), 0) FROM items WHERE grp = 'vaisselle'")->fetchColumn() + 1;
+            $ins->execute(['vaisselle', '', '', '**Tireuse à bière professionnelle**', '', $pos]);
+        }
+        $pdo->prepare('UPDATE booking_options SET label = ?, description = ? WHERE label = ? AND description = ?')->execute([
+            'Écran 98 pouces, vidéoprojecteur + sonorisation', 'Écran 98 pouces, vidéoprojecteur avec écran de projection de 3 × 2,30 m, sono et micros sans fil.',
+            'Écran 98 pouces + sonorisation', 'Écran grand format, sono et micros sans fil.']);
+    }
     // v18 : la nouvelle page d'accueil devient la page principale (retour possible dans Ordre des sections)
     if ((int)setting_raw($pdo, '_schema_version') < 18) {
         $pdo->exec("INSERT INTO settings(key, value) VALUES('home_design', 'nouveau') ON CONFLICT(key) DO UPDATE SET value = 'nouveau'");

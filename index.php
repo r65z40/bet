@@ -460,7 +460,7 @@ $jsonLd  = [
 <?php if ($v2): ?>
     /* ===== Nouvelle page d'accueil ===== */
     @font-face{font-family:"Fraunces";src:url("assets/fonts/fraunces.woff2") format("woff2");font-weight:500 700;font-style:normal;font-display:swap}
-    .v2 h1,.v2 h2,.v2 .details-panel h3,.v2 .pricing-card h3,.v2 .plan-cta-box h2,.v2 .faq-q,.v2 .ev-card h3,.v2 .band p,.v2 .kf b{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-optical-sizing:auto}
+    .v2 h1,.v2 h2,.v2 .details-panel h3,.v2 .pricing-card h3,.v2 .plan-cta-box h2,.v2 .faq-q,.v2 .ev-card h3,.v2 .eqt-text h3,.v2 .band p,.v2 .kf b{font-family:"Fraunces",Georgia,"Times New Roman",serif;font-optical-sizing:auto}
     .v2 h1{letter-spacing:-.03em;font-weight:700}
     .v2 h2{letter-spacing:-.02em;font-weight:600}
     .v2 #salle{background:var(--cream)}
@@ -504,6 +504,28 @@ $jsonLd  = [
     .ev-card p{margin:0 0 14px;color:#dde6ef;font-size:.95rem;line-height:1.45}
     .ev-cta{display:inline-flex;align-items:center;gap:6px;font-weight:800;color:var(--gold-2);font-size:.95rem}
     .ev-card:hover .ev-cta{gap:10px}
+
+    /* Équipements en onglets */
+    .eqt-tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 2px 14px;margin-bottom:4px}
+    .eqt-tabs::-webkit-scrollbar{display:none}
+    .eqt-tabs button{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:#fff;color:var(--navy);font:inherit;font-weight:800;font-size:.98rem;padding:11px 18px;border-radius:999px;cursor:pointer;transition:.2s}
+    .eqt-tabs button:hover{border-color:var(--gold)}
+    .eqt-tabs button[aria-selected="true"]{background:var(--navy);color:#fff;border-color:var(--navy);box-shadow:0 8px 22px rgba(7,28,53,.18)}
+    .eqt-panel{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:28px;align-items:start;background:#fff;border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:0 10px 34px rgba(7,28,53,.07)}
+    .eqt-panel.no-pic{grid-template-columns:1fr}
+    .eqt-panel[hidden]{display:none}
+    .eqt-main{display:block;width:100%;aspect-ratio:4/3;border:0;padding:0;border-radius:16px;overflow:hidden;cursor:zoom-in;background:#e9edf2}
+    .eqt-main picture,.eqt-main img{display:block;width:100%;height:100%}
+    .eqt-main img{object-fit:cover}
+    .eqt-thumbs{display:flex;gap:8px;margin-top:10px;overflow-x:auto;scrollbar-width:none}
+    .eqt-thumb{flex:0 0 76px;height:58px;border:2px solid transparent;border-radius:10px;overflow:hidden;padding:0;cursor:pointer;background:#e9edf2;opacity:.75}
+    .eqt-thumb.on{border-color:var(--gold);opacity:1}
+    .eqt-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .eqt-text{padding:8px 8px 8px 0}
+    .eqt-text h3{margin:0 0 6px;font-size:1.6rem;color:var(--navy);font-weight:600}
+    .eqt-intro{margin:0 0 16px;color:var(--muted)}
+    @media (max-width:900px){.eqt-panel{grid-template-columns:1fr;padding:12px}.eqt-text{padding:4px 6px 8px}}
+    @media (max-width:620px){.eqt-tabs{display:grid;grid-template-columns:1fr 1fr;overflow:visible;padding-bottom:12px}.eqt-tabs button{justify-content:center;padding:11px 8px;font-size:.9rem}}
 
     /* Équipements + mobilier regroupés */
     .eq-grid{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:34px;align-items:stretch}
@@ -755,37 +777,64 @@ $jsonLd  = [
     </section>
 <?php $blocks['mobilier'] = ob_get_clean(); ?>
 <?php if ($v2): ?>
-<?php ob_start(); $eqPhoto = home_photo((int)s('equip2_photo')); ?>
+<?php ob_start();
+// Onglets d'équipements : photos choisies par numéro + photos rangées dans l'espace correspondant
+$eqTabs = [];
+foreach (['salle' => ['🪑', 'salle'], 'cuisine' => ['🍽️', 'cuisine'], 'bar' => ['🍺', 'bar'], 'audio' => ['🎬', 'audiovisuel']] as $k => [$icon, $cat]) {
+    $list = items('eq_' . $k);
+    if (!$list) continue;
+    $pics = [];
+    foreach (array_filter(array_map('intval', explode(',', s('eqtab_' . $k . '_photos')))) as $n) {
+        if (($ph = home_photo($n)) && !isset($pics[$ph['id']])) $pics[$ph['id']] = $ph;
+    }
+    foreach ($photos as $ph) {
+        if (($ph['category'] ?? '') === $cat && $k !== 'salle' && !isset($pics[$ph['id']])) $pics[$ph['id']] = $ph;
+    }
+    $eqTabs[$k] = ['icon' => $icon, 'title' => s('eqtab_' . $k . '_title'), 'intro' => s('eqtab_' . $k . '_intro'), 'list' => $list, 'pics' => array_slice(array_values($pics), 0, 6)];
+}
+$photoIndex = array_flip(array_column($photos, 'id')); // pour ouvrir la visionneuse de la galerie
+?>
     <section id="equipements">
       <div class="wrap">
         <div class="section-title">
           <h2><?= e(s('mobilier_title')) ?></h2>
           <p><?= rich(s('equip_subtitle')) ?></p>
         </div>
-        <div class="eq-grid<?= $eqPhoto ? '' : ' no-photo' ?>"<?= $eqPhoto ? '' : ' style="grid-template-columns:1fr"' ?>>
-<?php if ($eqPhoto): ?>
-          <div class="eq-photo"><?= home_picture($eqPhoto) ?></div>
-<?php endif; ?>
-          <div class="eq-side">
-            <div class="stat-grid">
-<?php foreach (items('equipements') as $it): ?>
-              <div class="stat"><b><?= e($it['title']) ?></b><span><?= rich($it['text']) ?></span></div>
+<?php if ($eqTabs): ?>
+        <div class="eqt" data-eqt>
+          <div class="eqt-tabs" role="tablist" aria-label="Équipements">
+<?php $first = true; foreach ($eqTabs as $k => $tab): ?>
+            <button type="button" role="tab" id="eqt-t-<?= $k ?>" aria-controls="eqt-p-<?= $k ?>" aria-selected="<?= $first ? 'true' : 'false' ?>"<?= $first ? '' : ' tabindex="-1"' ?>><span aria-hidden="true"><?= $tab['icon'] ?></span> <?= e($tab['title']) ?></button>
+<?php $first = false; endforeach; ?>
+          </div>
+<?php $first = true; foreach ($eqTabs as $k => $tab): ?>
+          <div class="eqt-panel<?= $tab['pics'] ? '' : ' no-pic' ?>" role="tabpanel" id="eqt-p-<?= $k ?>" aria-labelledby="eqt-t-<?= $k ?>"<?= $first ? '' : ' hidden' ?>>
+<?php if ($tab['pics']): ?>
+            <div class="eqt-media">
+              <button type="button" class="eqt-main"<?= isset($photoIndex[$tab['pics'][0]['id']]) ? ' data-photo="' . $photoIndex[$tab['pics'][0]['id']] . '"' : '' ?> aria-label="Agrandir la photo"><?= home_picture($tab['pics'][0], 'large', $first ? 'decoding="async"' : 'loading="lazy" decoding="async"') ?></button>
+<?php if (count($tab['pics']) > 1): ?>
+              <div class="eqt-thumbs">
+<?php foreach ($tab['pics'] as $n => $ph): ?>
+                <button type="button" class="eqt-thumb<?= $n === 0 ? ' on' : '' ?>" data-full="<?= e(home_photo_url($ph)) ?>" data-alt="<?= e($ph['alt']) ?>"<?= isset($photoIndex[$ph['id']]) ? ' data-photo="' . $photoIndex[$ph['id']] . '"' : '' ?> aria-label="Photo <?= $n + 1 ?>"><?= home_picture($ph, 'thumb') ?></button>
 <?php endforeach; ?>
-            </div>
-            <div class="eq-lists">
-<?php foreach (['mobilier' => 'mobilier_panel1', 'vaisselle' => 'mobilier_panel2'] as $grp => $titleKey): ?>
-              <div class="details-panel">
-                <h3><?= e(s($titleKey)) ?></h3>
-                <ul class="checklist">
-<?php foreach (items($grp) as $it): ?>
-                  <li><span class="check">✓</span><span><?= rich($it['text']) ?></span></li>
-<?php endforeach; ?>
-                </ul>
               </div>
+<?php endif; ?>
+            </div>
+<?php endif; ?>
+            <div class="eqt-text">
+              <h3><span aria-hidden="true"><?= $tab['icon'] ?></span> <?= e($tab['title']) ?></h3>
+<?php if ($tab['intro'] !== ''): ?>              <p class="eqt-intro"><?= rich($tab['intro']) ?></p>
+<?php endif; ?>
+              <ul class="checklist">
+<?php foreach ($tab['list'] as $it): ?>
+                <li><span class="check">✓</span><span><?= rich($it['text']) ?></span></li>
 <?php endforeach; ?>
+              </ul>
             </div>
           </div>
+<?php $first = false; endforeach; ?>
         </div>
+<?php endif; ?>
       </div>
     </section>
 <?php $blocks['equipements'] = ob_get_clean(); ?>
@@ -1374,6 +1423,28 @@ $jsonLd  = [
         gal.querySelectorAll('.gallery-item').forEach(it => it.classList.toggle('out', c !== '' && it.dataset.cat !== c));
         if (c !== '' && more && more.isConnected) more.parentNode.hidden = true; else if (more && more.isConnected) more.parentNode.hidden = false;
       }));
+      // Équipements : onglets (clavier compris), vignettes, agrandissement
+      document.querySelectorAll('[data-eqt]').forEach(box => {
+        const tabs = [...box.querySelectorAll('[role=tab]')];
+        const show = tb => {
+          tabs.forEach(x => { const on = x === tb; x.setAttribute('aria-selected', on); x.tabIndex = on ? 0 : -1; document.getElementById(x.getAttribute('aria-controls')).hidden = !on; });
+          tb.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+        };
+        tabs.forEach((tb, i) => {
+          tb.addEventListener('click', () => show(tb));
+          tb.addEventListener('keydown', e => { const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0; if (d) { e.preventDefault(); const n = tabs[(i + d + tabs.length) % tabs.length]; show(n); n.focus(); } });
+        });
+        box.querySelectorAll('.eqt-thumb').forEach(th => th.addEventListener('click', () => {
+          const media = th.closest('.eqt-media'), main = media.querySelector('.eqt-main'), img = main.querySelector('img');
+          media.querySelectorAll('.eqt-thumb').forEach(x => x.classList.toggle('on', x === th));
+          main.querySelectorAll('source').forEach(s => s.remove());
+          img.src = th.dataset.full; img.alt = th.dataset.alt || '';
+          if (th.dataset.photo) main.dataset.photo = th.dataset.photo; else delete main.dataset.photo;
+        }));
+        box.querySelectorAll('.eqt-main').forEach(m => m.addEventListener('click', () => {
+          if (m.dataset.photo && typeof window.rn6OpenPhoto === 'function' && document.querySelector('.gallery-item')) window.rn6OpenPhoto(+m.dataset.photo);
+        }));
+      });
       // Avis : flèches
       const list = document.getElementById('reviews-list');
       document.querySelectorAll('.rv-nav button').forEach(b => b.addEventListener('click', () => {

@@ -195,7 +195,7 @@ const BOOKING_SETTINGS = [
 ];
 
 const BOOKING_DEFAULT_OPTIONS = [
-    ['label' => 'Écran 98 pouces + sonorisation', 'description' => 'Écran grand format, sono et micros sans fil.', 'price' => 150, 'unit' => 'forfait'],
+    ['label' => 'Écran 98 pouces, vidéoprojecteur + sonorisation', 'description' => 'Écran 98 pouces, vidéoprojecteur avec écran de projection de 3 × 2,30 m, sono et micros sans fil.', 'price' => 150, 'unit' => 'forfait'],
     ['label' => 'Vaisselle', 'description' => 'Assiettes, verres et couverts pour tous vos invités.', 'price' => 2, 'unit' => 'personne'],
     ['label' => 'Préparation & mise en place', 'description' => 'Installation des tables et chaises selon votre plan.', 'price' => 250, 'unit' => 'forfait'],
 ];

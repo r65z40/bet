@@ -139,6 +139,18 @@ const SETTINGS_SCHEMA = [
             'events_title'    => ['label' => 'Événements — titre', 'default' => 'Pour quel événement ?'],
             'events_subtitle' => ['label' => 'Événements — sous-titre', 'type' => 'textarea', 'default' => 'Une salle modulable qui s’adapte à vos invités, que vous receviez 20 ou 120 personnes.'],
             'equip2_photo'    => ['label' => 'Équipements — n° de la photo affichée à côté', 'default' => '9', 'type' => 'number'],
+            'eqtab_salle_title'  => ['label' => 'Équipements, onglet « Salle & mobilier » — titre', 'default' => 'Salle & mobilier'],
+            'eqtab_salle_intro'  => ['label' => 'Équipements, onglet « Salle & mobilier » — phrase', 'default' => 'Tout le mobilier est compris : il ne reste qu’à décorer.'],
+            'eqtab_salle_photos' => ['label' => 'Équipements, onglet « Salle & mobilier » — n° des photos (ex. 6,7), en plus des photos de l’espace correspondant', 'default' => '10,15'],
+            'eqtab_cuisine_title'  => ['label' => 'Équipements, onglet « Cuisine traiteur » — titre', 'default' => 'Cuisine traiteur'],
+            'eqtab_cuisine_intro'  => ['label' => 'Équipements, onglet « Cuisine traiteur » — phrase', 'default' => 'Un office équipé pour que votre traiteur travaille dans de bonnes conditions.'],
+            'eqtab_cuisine_photos' => ['label' => 'Équipements, onglet « Cuisine traiteur » — n° des photos (ex. 6,7), en plus des photos de l’espace correspondant', 'default' => '20'],
+            'eqtab_bar_title'  => ['label' => 'Équipements, onglet « Bar » — titre', 'default' => 'Bar'],
+            'eqtab_bar_intro'  => ['label' => 'Équipements, onglet « Bar » — phrase', 'default' => 'Un vrai bar, prêt pour le vin d’honneur comme pour la soirée.'],
+            'eqtab_bar_photos' => ['label' => 'Équipements, onglet « Bar » — n° des photos (ex. 6,7), en plus des photos de l’espace correspondant', 'default' => '6,7'],
+            'eqtab_audio_title'  => ['label' => 'Équipements, onglet « Audiovisuel » — titre', 'default' => 'Audiovisuel'],
+            'eqtab_audio_intro'  => ['label' => 'Équipements, onglet « Audiovisuel » — phrase', 'default' => 'Pour vos discours, diaporamas, films et présentations.'],
+            'eqtab_audio_photos' => ['label' => 'Équipements, onglet « Audiovisuel » — n° des photos (ex. 6,7), en plus des photos de l’espace correspondant', 'default' => '9'],
             'dates_title'     => ['label' => 'Tarifs — titre des prochaines dates libres', 'default' => 'Prochains samedis libres'],
             'dates_weekdays'  => ['label' => 'Prochaines dates libres — jours affichés', 'type' => 'select', 'default' => '6', 'options' => [
                 '6'     => 'Samedis',
@@ -194,6 +206,10 @@ const ITEM_GROUPS = [
     'tarif_options' => ['label' => 'Lignes ajoutées aux options (remise, parking…)', 'menu' => 'tarifs', 'fields' => ['text' => 'Libellé', 'value' => 'Valeur']],
     'chiffres'      => ['label' => 'Nouvelle page — chiffres clés (bande bleue)', 'menu' => 'contenus', 'fields' => ['title' => 'Chiffre', 'text' => 'Libellé']],
     'evenements_cartes' => ['label' => 'Nouvelle page — cartes « Pour quel événement ? »', 'menu' => 'contenus', 'fields' => ['icon' => 'Icône', 'title' => 'Titre', 'text' => 'Texte', 'value' => 'N° de photo (#, page Photos)']],
+    'eq_salle' => ['label' => 'Nouvelle page — onglet « Salle & mobilier »', 'menu' => 'contenus', 'fields' => ['text' => 'Élément']],
+    'eq_cuisine' => ['label' => 'Nouvelle page — onglet « Cuisine traiteur »', 'menu' => 'contenus', 'fields' => ['text' => 'Élément']],
+    'eq_bar' => ['label' => 'Nouvelle page — onglet « Bar »', 'menu' => 'contenus', 'fields' => ['text' => 'Élément']],
+    'eq_audio' => ['label' => 'Nouvelle page — onglet « Audiovisuel »', 'menu' => 'contenus', 'fields' => ['text' => 'Élément']],
     'faq'           => ['label' => 'Nouvelle page — questions fréquentes', 'menu' => 'contenus', 'fields' => ['title' => 'Question', 'text' => 'Réponse']],
 ];
 
@@ -217,7 +233,7 @@ const DEFAULT_ITEMS = [
         ['title' => 'Audio pro', 'text' => 'Sonorisation intégrée avec micros sans fil, **disponible en option**.'],
         ['title' => 'Wi‑Fi', 'text' => 'Connexion haut débit gratuite dans tout l’établissement.'],
         ['title' => 'Confort', 'text' => 'Climatisation réversible et chauffage par pompe à chaleur.'],
-        ['title' => 'Vidéoprojecteur', 'text' => 'Avec grand écran de projection, pour vos films, diaporamas et présentations.'],
+        ['title' => 'Vidéoprojecteur', 'text' => 'Grand écran de projection de 3 × 2,30 m, **compris dans l’option écran + sonorisation**.'],
         ['title' => 'Cuisine pro', 'text' => 'Étuve industrielle et réfrigérateurs : idéal pour votre traiteur.'],
     ],
     'mobilier' => [
@@ -232,6 +248,7 @@ const DEFAULT_ITEMS = [
         ['text' => '**Réfrigérateurs** pour les boissons et les préparations'],
         ['text' => '**Lave-vaisselle** à disposition'],
         ['text' => '**Lave-verres industriels**'],
+        ['text' => '**Tireuse à bière professionnelle**'],
         ['text' => '**Machines à glaçons industrielles**'],
         ['text' => '**Machines à boissons chaudes** (café, thé)'],
     ],
@@ -269,13 +286,41 @@ const DEFAULT_ITEMS = [
     'evenements_cartes' => [
         ['icon' => '💍', 'title' => 'Mariages', 'text' => 'Repas, vin d’honneur et soirée dansante, jusqu’à 120 invités assis.', 'value' => '2'],
         ['icon' => '🎂', 'title' => 'Anniversaires & fêtes', 'text' => 'Tables rondes ou rectangulaires, bar, et la sono en option : il ne manque que vos invités.', 'value' => '10'],
-        ['icon' => '🥂', 'title' => 'Vins d’honneur & cocktails', 'text' => 'Un bar équipé (glaçons, boissons chaudes, lave-verres) et 20 mange-debout.', 'value' => '6'],
-        ['icon' => '💼', 'title' => 'Séminaires & réunions', 'text' => 'Vidéoprojecteur et grand écran de projection, Wi-Fi haut débit ; écran 98 pouces et sono en option.', 'value' => '9'],
+        ['icon' => '🥂', 'title' => 'Vins d’honneur & cocktails', 'text' => 'Un bar équipé (tireuse à bière, glaçons, boissons chaudes, lave-verres) et 20 mange-debout.', 'value' => '6'],
+        ['icon' => '💼', 'title' => 'Séminaires & réunions', 'text' => 'Wi-Fi haut débit ; en option : écran 98 pouces, vidéoprojecteur avec écran de 3 × 2,30 m, sono et micros.', 'value' => '9'],
+    ],
+    'eq_salle' => [
+        ['text' => '**144 chaises**'],
+        ['text' => '**20 tables pliantes** de 180 cm'],
+        ['text' => '**Tables rondes**'],
+        ['text' => '**20 mange-debout**'],
+        ['text' => '**Climatisation réversible** et chauffage'],
+        ['text' => '**Accès PMR** et sanitaires adaptés'],
+    ],
+    'eq_cuisine' => [
+        ['text' => '**Étuve industrielle** pour garder les plats au chaud'],
+        ['text' => '**Réfrigérateurs** pour les boissons et les préparations'],
+        ['text' => '**Lave-vaisselle** à disposition'],
+        ['text' => '**Vaisselle disponible** : assiettes, verres et couverts (en option)'],
+    ],
+    'eq_bar' => [
+        ['text' => '**Tireuse à bière professionnelle**'],
+        ['text' => '**Machines à glaçons industrielles**'],
+        ['text' => '**Machines à boissons chaudes** (café, thé)'],
+        ['text' => '**Lave-verres industriels**'],
+        ['text' => '**20 mange-debout** pour recevoir debout'],
+    ],
+    'eq_audio' => [
+        ['text' => '**Écran 98 pouces**'],
+        ['text' => '**Vidéoprojecteur** avec grand écran de projection de **3 × 2,30 m**'],
+        ['text' => '**Sonorisation** et micros sans fil'],
+        ['text' => '**Wi-Fi haut débit** gratuit'],
+        ['text' => 'Écran, vidéoprojecteur et sonorisation : **disponibles en option**'],
     ],
     'faq' => [
         ['title' => 'Peut-on faire venir son traiteur ?', 'text' => 'Oui, le traiteur de votre choix. La cuisine sert d’office, avec **étuve industrielle** et **réfrigérateurs** : maintien au frais et réchauffage des plats (il n’est pas possible de cuisiner sur place).'],
         ['title' => 'Jusqu’à quelle heure peut-on faire la fête ?', 'text' => 'La musique et les animations s’arrêtent à **2 h**, par respect du voisinage. La location à la journée court de 10 h 30 au lendemain 10 h.'],
-        ['title' => 'Que comprend la location ?', 'text' => 'La salle, le mobilier (**144 chaises**, 20 tables de 180 cm, tables rondes, **20 mange-debout**), la cuisine équipée (étuve, réfrigérateurs), le bar (machines à glaçons et à boissons chaudes, lave-verres), l’eau et l’électricité. D’autres services sont proposés en option lors de la réservation.'],
+        ['title' => 'Que comprend la location ?', 'text' => 'La salle, le mobilier (**144 chaises**, 20 tables de 180 cm, tables rondes, **20 mange-debout**), la cuisine équipée (étuve, réfrigérateurs), le bar (tireuse à bière professionnelle, machines à glaçons et à boissons chaudes, lave-verres), l’eau et l’électricité. D’autres services sont proposés en option lors de la réservation.'],
         ['title' => 'Peut-on décorer la salle ?', 'text' => 'Oui, librement, à condition de ne rien fixer sur les murs et de ne pas utiliser de confettis ni de flammes (bougies, feux de Bengale…).'],
         ['title' => 'Comment fonctionne la caution ?', 'text' => 'Une caution de **2 × le loyer HT** est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité) ou par chèque remis à l’état des lieux. Elle est rendue après l’état des lieux de sortie.'],
         ['title' => 'Et si je dois annuler ?', 'text' => 'Vous pouvez annuler depuis votre espace client. Le montant remboursé dépend du délai avant l’événement, comme indiqué dans les conditions de location.'],
@@ -309,7 +354,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 21;
+const SCHEMA_VERSION = 22;
 
 /** Documents remis aux clients à l'installation : [titre, description, fichier dans /documents]. */
 const DEFAULT_DOCUMENTS = [
@@ -344,4 +389,4 @@ const HOME_SECTIONS = [
 /** Ordre d'origine de la nouvelle page d'accueil (le mobilier y est regroupé avec les équipements). */
 const HOME_V2_ORDER = ['avis', 'salle', 'bandeau1', 'evenements', 'chiffres', 'equipements', 'plan', 'bandeau2', 'tarifs', 'photos', 'faq', 'acces', 'contact'];
 
-const PHOTO_CATEGORIES = ['salle' => 'Salle', 'bar' => 'Bar', 'cuisine' => 'Cuisine', 'sanitaires' => 'Sanitaires', 'exterieur' => 'Extérieur'];
+const PHOTO_CATEGORIES = ['salle' => 'Salle', 'bar' => 'Bar', 'cuisine' => 'Cuisine', 'sanitaires' => 'Sanitaires', 'audiovisuel' => 'Audiovisuel', 'exterieur' => 'Extérieur'];
