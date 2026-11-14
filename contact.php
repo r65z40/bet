@@ -16,4 +16,4 @@ if ($json) {
     echo json_encode($err === null ? ['ok' => true] : ['error' => $err], JSON_UNESCAPED_UNICODE);
     exit;
 }
-header('Location: ./?' . ($err === null ? 'contact=ok' : 'contact=err&m=' . rawurlencode($err)) . '#contact', true, 303);
+header('Location: ./?' . ($err === null ? 'contact=ok' : 'contact=err') . '#contact', true, 303);

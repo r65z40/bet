@@ -647,6 +647,15 @@ function bk_move(array $b, DateTimeImmutable $newStart): array
     }
     $nb = bk_get((int)$b['id']);
     bk_log((int)$b['id'], 'Déplacée : ' . bk_slot_label($b) . ' → ' . bk_slot_label($nb));
+    // Acompte : l'échéance du solde suit la nouvelle date (au plus tôt demain), demandes et relances repartent de zéro
+    if (bk_is_acompte($nb) && empty($nb['balance_paid_at'])) {
+        $due = $newStart->modify('-' . acompte_days() . ' days')->setTime(23, 59);
+        $due = max($due, bk_now()->modify('+1 day')->setTime(23, 59));
+        db()->prepare('UPDATE bookings SET balance_due_at = ?, balance_requested_at = NULL, balance_reminded_at = NULL, balance_late_at = NULL WHERE id = ?')
+            ->execute([$due->format(BK_FMT), $nb['id']]);
+        bk_log((int)$b['id'], 'Échéance du solde reportée au ' . $due->format('d/m/Y'));
+        $nb = bk_get((int)$b['id']);
+    }
     // Une empreinte de caution ne vaut que 7 jours : si la nouvelle date est trop loin, elle est libérée
     // et sera redemandée automatiquement avant la nouvelle date.
     if ($nb['deposit_status'] === 'empreinte' && $nb['deposit_at'] && bk_dt($nb['end_at']) > bk_dt($nb['deposit_at'])->modify('+' . (DEPOSIT_VALIDITY_DAYS - 1) . ' days')) {

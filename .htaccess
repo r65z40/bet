@@ -42,7 +42,7 @@ RedirectMatch 301 ^(.*/)?reservation\.html$ $1reservation
 
 # Dossiers et fichiers internes jamais accessibles depuis le web
 RedirectMatch 404 ^(.*/)?(data|includes|\.git)(/.*)?$
-<FilesMatch "(\.(sqlite|sqlite-wal|sqlite-shm|md|ini|log|lock)$|^\.)">
+<FilesMatch "(\.(sqlite|sqlite-wal|sqlite-shm|md|ini|log|lock)$|^\.|^_)">
   Require all denied
 </FilesMatch>
 
@@ -67,6 +67,8 @@ RedirectMatch 404 ^(.*/)?(data|includes|\.git)(/.*)?$
   ExpiresByType text/css "access plus 1 year"
   ExpiresByType text/javascript "access plus 1 year"
   ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+  ExpiresByType application/font-woff2 "access plus 1 year"
 </IfModule>
 # Le service worker de l'admin doit toujours être relu (mises à jour de l'appli iPhone)
 <FilesMatch "^(sw\.js|manifest\.webmanifest)$">

@@ -1116,7 +1116,7 @@ $jsonLd  = [
 <?php if ($cst === 'ok'): ?>
             <p class="c-msg ok" role="status">Merci, votre message est bien parti : nous vous répondons rapidement.</p>
 <?php elseif ($cst === 'err'): ?>
-            <p class="c-msg err" role="alert"><?= e(mb_substr((string)($_GET['m'] ?? 'Envoi impossible.'), 0, 200)) ?></p>
+            <p class="c-msg err" role="alert">Le message n’a pas pu partir : vérifiez votre nom, votre e-mail et votre message, ou écrivez-nous à <?= e(s('contact_email')) ?>.</p>
 <?php endif; ?>
             <label>Nom<input name="name" autocomplete="name" required maxlength="80"></label>
             <label>E-mail<input name="email" type="email" autocomplete="email" required maxlength="160"></label>
