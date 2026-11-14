@@ -464,6 +464,9 @@ $jsonLd  = [
     .v2 h1{letter-spacing:-.03em;font-weight:700}
     .v2 h2{letter-spacing:-.02em;font-weight:600}
     .v2 #salle{background:var(--cream)}
+    .v2 .hero-facts-wrap{margin-bottom:-58px}
+    .v2 main > section:nth-of-type(2){padding-top:calc(72px + 58px)}
+    @media (max-width:620px){.v2 main > section:nth-of-type(2){padding-top:calc(54px + 58px)}}
     .v2 #evenements{background:#fff}
     .v2 #equipements{background:var(--cream);border:0}
     .v2 #equipements:before{display:none}
@@ -566,9 +569,11 @@ $jsonLd  = [
     .v2 .reviews-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:24px}
     .v2 .reviews-head .section-title{margin-bottom:0}
     .v2 .review-badges{margin:0}
-    .v2 .reviews{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:16px;padding:4px 2px 16px;scrollbar-width:none;-ms-overflow-style:none}
+    .v2 .reviews{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:16px;padding:4px 0 16px;scrollbar-width:none;-ms-overflow-style:none}
     .v2 .reviews::-webkit-scrollbar{display:none}
-    .v2 .review{flex:0 0 min(380px,86%);scroll-snap-align:start}
+    .v2 .review{flex:0 0 calc((100% - 32px) / 3);scroll-snap-align:start}
+    @media (max-width:900px){.v2 .review{flex-basis:calc((100% - 16px) / 2)}}
+    @media (max-width:620px){.v2 .review{flex-basis:86%}}
     .v2 .review.is-more{display:flex}
     .v2 .reviews-more{display:none}
     .rv-nav{display:flex;gap:8px;justify-content:flex-end;margin-top:6px}
@@ -1450,7 +1455,8 @@ $photoIndex = array_flip(array_column($photos, 'id')); // pour ouvrir la visionn
       // Avis : flèches
       const list = document.getElementById('reviews-list');
       document.querySelectorAll('.rv-nav button').forEach(b => b.addEventListener('click', () => {
-        if (list) list.scrollBy({ left: +b.dataset.dir * Math.min(list.clientWidth, 400), behavior: 'smooth' });
+        const card = list && list.querySelector('.review');
+        if (card) list.scrollBy({ left: +b.dataset.dir * (card.offsetWidth + 16), behavior: 'smooth' }); // une carte à la fois
       }));
       // Barre « Réserver » sur mobile : après le bandeau d'accueil, cachée sur le formulaire de contact
       const bar = document.querySelector('.mbar');
