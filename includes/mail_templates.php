@@ -79,6 +79,14 @@ const MAIL_TEMPLATES = [
         'vars' => ['prenom', 'nom', 'reservation', 'reference', 'montant_solde', 'lien'],
         'blocks' => ['bouton'],
     ],
+    'devis' => [
+        'label' => 'Devis demandé en ligne (client)',
+        'title' => 'Votre devis',
+        'subject' => 'Votre devis {numero} — {site}',
+        'body' => "Bonjour {prenom},\n\nMerci pour votre intérêt ! Voici votre devis **{numero}** pour la location de la salle ({reservation}), d’un montant de **{total} TTC**, valable jusqu’au {validite}.\n\n{bouton}\n\nAttention : la date n’est pas bloquée par le devis. Pour la réserver, cliquez sur « Réserver ce devis » : tout est déjà rempli, il ne reste qu’à payer.\n\nUne question ? Répondez simplement à cet e-mail.",
+        'vars' => ['prenom', 'nom', 'numero', 'reservation', 'total', 'validite', 'lien'],
+        'blocks' => ['bouton'],
+    ],
     'alerte' => [
         'label' => 'Alerte « nouvelle réservation » (vous)',
         'title' => 'Nouvelle réservation payée',
@@ -129,7 +137,7 @@ const MAIL_VAR_HELP = [
     'lien' => 'lien principal (espace client ou activation)', 'identifiant' => 'identifiant du compte', 'site' => 'nom de la salle',
     'recapitulatif' => 'tableau du détail et du total', 'boutons' => 'boutons espace client + ajout à l’agenda', 'caution' => 'encadré caution',
     'bouton' => 'bouton principal', 'arrivee' => 'date et heure d’arrivée', 'depart' => 'date et heure de départ', 'jours' => 'nombre de jours avant l’événement',
-    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'montant_caution' => 'montant de la caution', 'montant_retenu' => 'montant retenu sur la caution', 'motif' => 'motif de la retenue', 'documents' => 'liens vers les documents (règlement intérieur, contrat…)', 'option_cheque' => 'phrase « vous préférez le chèque ? » (caution au choix)', 'montant_solde' => 'montant du solde', 'montant_acompte' => 'montant de l’acompte', 'date_limite' => 'date limite', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
+    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'montant_caution' => 'montant de la caution', 'montant_retenu' => 'montant retenu sur la caution', 'motif' => 'motif de la retenue', 'documents' => 'liens vers les documents (règlement intérieur, contrat…)', 'option_cheque' => 'phrase « vous préférez le chèque ? » (caution au choix)', 'montant_solde' => 'montant du solde', 'montant_acompte' => 'montant de l’acompte', 'date_limite' => 'date limite', 'numero' => 'numéro du devis', 'validite' => 'date de fin de validité', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
 ];
 
 const MAIL_STYLE_DEFAULTS = [

@@ -29,7 +29,7 @@ RedirectMatch 301 ^(.*/)?reservation\.html$ $1reservation
   # /page.php → /page. On teste l'adresse tapée par le visiteur (THE_REQUEST), jamais l'adresse
   # réécrite en interne : sinon /page → page.php → /page… tourne en boucle (cas des hébergements OVH).
   # Visites directes uniquement (GET), jamais les envois de formulaires.
-  RewriteCond %{THE_REQUEST} ^(GET|HEAD)\s/+(plan|reservation|conditions|mentions-legales|confidentialite|ma-reservation|facture|desinscription)\.php[?\s]
+  RewriteCond %{THE_REQUEST} ^(GET|HEAD)\s/+(plan|reservation|conditions|mentions-legales|confidentialite|ma-reservation|facture|desinscription|devis)\.php[?\s]
   RewriteRule ^ /%2 [R=301,L]
   RewriteCond %{THE_REQUEST} ^(GET|HEAD)\s/+index\.php[?\s]
   RewriteRule ^ / [R=301,L]

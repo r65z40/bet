@@ -98,6 +98,7 @@ const BOOKING_SETTINGS = [
                 'choix'   => 'Au choix du client : totalité ou acompte',
             ], 'help' => 'Si l’événement est trop proche (moins que le délai du solde ci-dessous), la totalité est toujours demandée.'],
             'bk_acompte_percent' => ['label' => 'Acompte : pourcentage du montant (%)', 'default' => '30', 'type' => 'number', 'help' => 'Entre 10 et 90 %.'],
+            'bk_devis_days'      => ['label' => 'Devis en ligne : durée de validité (jours)', 'default' => '15', 'type' => 'number', 'help' => 'Le client peut créer lui-même un devis depuis la page de réservation (bouton « Recevoir un devis »).'],
             'bk_solde_days'      => ['label' => 'Solde : à régler combien de jours avant l’événement', 'default' => '30', 'type' => 'number',
                 'help' => 'Le client reçoit le lien de paiement du solde 7 jours avant cette date, puis une relance le jour même ; vous êtes prévenu s’il n’est toujours pas réglé. Il peut aussi le payer à tout moment depuis son espace client.'],
         ],

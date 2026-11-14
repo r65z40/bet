@@ -11,6 +11,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['do'] ?? '') === 'notifpref
     $off = array_values(array_filter(array_keys(NOTIF_EVENTS), fn($ev) => isset(NOTIF_EVENTS[$ev][2]['push'])
         && (notif_on($ev, 'push') ? !in_array($ev, $want, true) : in_array($ev, $prev, true))));
     db()->prepare('UPDATE admins SET notif_off = ? WHERE id = ?')->execute([implode(',', $off), $admin['id']]);
+    // « Ne pas déranger »
+    $hm = fn($v) => preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string)$v) ? (string)$v : '';
+    $from = !empty($_POST['quiet']) ? $hm($_POST['quiet_from'] ?? '') : '';
+    $to = $from !== '' ? $hm($_POST['quiet_to'] ?? '') : '';
+    db()->prepare('UPDATE admins SET quiet_from = ?, quiet_to = ?, quiet_urgent = ? WHERE id = ?')
+        ->execute([$to !== '' ? $from : '', $to, !empty($_POST['quiet_urgent']) ? 1 : 0, $admin['id']]);
     flash('Vos notifications sont enregistrées.');
     redirect('compte.php#mes-notifications');
 }
@@ -86,7 +92,8 @@ admin_header('Mon compte', 'compte');
   <p class="muted" style="font-size:.85rem;margin-bottom:0">Appareils abonnés sur votre compte : <?= (int)$nbDev->fetchColumn() ?>.<?= admin_can('reservations') ? '' : ' Les notifications de réservation nécessitent le droit « Réservations ».' ?></p>
 </div>
 
-<?php $myOff = admin_notif_off(db()->query('SELECT notif_off FROM admins WHERE id = ' . (int)$admin['id'])->fetch() ?: []); ?>
+<?php $myOff = admin_notif_off(db()->query('SELECT notif_off FROM admins WHERE id = ' . (int)$admin['id'])->fetch() ?: []);
+$q = db()->query('SELECT quiet_from, quiet_to, quiet_urgent FROM admins WHERE id = ' . (int)$admin['id'])->fetch(); $quietOn = $q['quiet_from'] !== ''; ?>
 <form method="post" class="card" id="mes-notifications" style="max-width:640px">
   <?= csrf_field() ?><input type="hidden" name="do" value="notifprefs">
   <h2>🔔 Mes notifications sur l’appli</h2>
@@ -97,6 +104,14 @@ admin_header('Mon compte', 'compte');
       <span><strong><?= e($label) ?></strong><?= $global ? '' : ' <em class="muted">(désactivée pour tout le monde)</em>' ?><br><span class="muted" style="font-size:.85rem"><?= e($help) ?></span></span>
     </label>
   <?php endforeach; ?>
+  <div style="border-top:1px solid var(--line);margin:16px 0 14px;padding-top:14px">
+    <label style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><input type="checkbox" name="quiet" value="1"<?= $quietOn ? ' checked' : '' ?>> <strong>🌙 Ne pas déranger</strong></label>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-left:28px">
+      de <input type="time" name="quiet_from" value="<?= e($quietOn ? $q['quiet_from'] : '20:00') ?>" style="width:auto"> à <input type="time" name="quiet_to" value="<?= e($quietOn ? $q['quiet_to'] : '08:00') ?>" style="width:auto">
+    </div>
+    <p class="muted" style="font-size:.85rem;margin:6px 0 8px 28px">Pendant cette plage, rien n’arrive sur vos appareils : les notifications sont gardées et vous parviennent en une fois à la fin (vers <?= e($quietOn ? $q['quiet_to'] : '08:00') ?>, au passage suivant de la tâche planifiée). Les e-mails ne sont pas concernés.</p>
+    <label style="display:flex;gap:10px;align-items:center;margin-left:28px"><input type="checkbox" name="quiet_urgent" value="1"<?= (int)$q['quiet_urgent'] ? ' checked' : '' ?>> Laisser passer les alertes urgentes (conflit avec l’agenda après un paiement)</label>
+  </div>
   <button class="btn">Enregistrer mes notifications</button>
 </form>
 <script>

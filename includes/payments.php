@@ -87,7 +87,7 @@ function stripe_checkout(array $b): string
         'expires_at' => time() + 31 * 60,
         'success_url' => $return . '&session_id={CHECKOUT_SESSION_ID}',
         'cancel_url' => bk_client_url($b) . '&annule=1',
-    ], 'checkout-' . $b['id'] . '-' . substr(md5($b['hold_until'] ?? ''), 0, 8));
+    ]); // pas de clé d'idempotence : une page de paiement en trop expire seule, sans rien débiter
     db()->prepare('UPDATE bookings SET provider = ?, provider_order = ? WHERE id = ?')->execute(['stripe', $session['id'], $b['id']]);
     return $session['url'];
 }

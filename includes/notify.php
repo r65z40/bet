@@ -24,6 +24,7 @@ const NOTIF_EVENTS = [
     'eve'              => ['Veille de l’événement', 'Récapitulatif pour préparer la salle : client, horaires, options, nombre de personnes.', ['admin' => 0, 'push' => 1]],
     'deposit_released' => ['Caution libérée', 'Rien n’a été débité.', ['client' => 1, 'admin' => 0, 'push' => 0]],
     'deposit_retained' => ['Retenue sur caution', 'Montant et motif de la retenue.', ['client' => 1, 'admin' => 0, 'push' => 0]],
+    'quote'            => ['Devis demandé en ligne', 'Un visiteur a créé un devis depuis la page de réservation (coordonnées, date, montant). Le client reçoit toujours son devis par e-mail.', ['admin' => 1, 'push' => 1]],
     'balance_request'  => ['Acompte : demande et relance du solde', 'Lien de paiement du solde 7 jours avant l’échéance, puis relance le jour de l’échéance (réglages : Réglages › Paiement).', ['client' => 1]],
     'balance_paid'     => ['Acompte : solde reçu', 'Confirmation au client ; alerte quand le solde est réglé.', ['client' => 1, 'admin' => 0, 'push' => 1]],
     'balance_late'     => ['Acompte : solde en retard', 'Le solde n’est pas réglé 2 jours après l’échéance.', ['admin' => 1, 'push' => 1]],

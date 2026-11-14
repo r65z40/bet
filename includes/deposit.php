@@ -100,7 +100,7 @@ function deposit_checkout(array $b): string
         'expires_at' => time() + 31 * 60,
         'success_url' => $return . '&session_id={CHECKOUT_SESSION_ID}',
         'cancel_url' => bk_client_url($b) . '#caution',
-    ], 'deposit-' . $b['id'] . '-' . (int)round($amount * 100) . '-' . bk_now()->format('YmdH') . '-' . substr(md5((string)$b['deposit_at']), 0, 6));
+    ]); // pas de clé d'idempotence : chaque clic ouvre une page neuve (une clé réutilisée avec une autre date d'expiration est refusée par Stripe)
     return $session['url'];
 }
 

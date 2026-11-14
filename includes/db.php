@@ -267,6 +267,31 @@ function install_schema(PDO $pdo): void
             ua TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS push_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL DEFAULT '',
+            url TEXT NOT NULL DEFAULT 'index.php',
+            tag TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS quotes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            number TEXT NOT NULL UNIQUE,
+            token TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            valid_until TEXT NOT NULL,
+            first_name TEXT NOT NULL, last_name TEXT NOT NULL, email TEXT NOT NULL,
+            phone TEXT NOT NULL DEFAULT '', company TEXT NOT NULL DEFAULT '', asso_name TEXT NOT NULL DEFAULT '',
+            address TEXT NOT NULL DEFAULT '', zip TEXT NOT NULL DEFAULT '', city TEXT NOT NULL DEFAULT '', message TEXT NOT NULL DEFAULT '',
+            event_type TEXT NOT NULL DEFAULT '', guests INTEGER NOT NULL DEFAULT 0,
+            mode TEXT NOT NULL, start_at TEXT NOT NULL, end_at TEXT NOT NULL, hours REAL NOT NULL DEFAULT 0,
+            req_json TEXT NOT NULL, lines_json TEXT NOT NULL,
+            discount_ht REAL NOT NULL DEFAULT 0, promo_code TEXT NOT NULL DEFAULT '', promo_ht REAL NOT NULL DEFAULT 0,
+            total_ht REAL NOT NULL, vat REAL NOT NULL, total_ttc REAL NOT NULL,
+            booking_id INTEGER, visitor TEXT NOT NULL DEFAULT ''
+        );
         CREATE TABLE IF NOT EXISTS password_resets (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             admin_id INTEGER NOT NULL,
@@ -374,6 +399,9 @@ function install_schema(PDO $pdo): void
         'pw_changed_at' => 'INTEGER NOT NULL DEFAULT 0',
         'last_login' => 'TEXT',
         'notif_off' => "TEXT NOT NULL DEFAULT ''",      // notifications de l'appli refusées par ce compte (liste)
+        'quiet_from' => "TEXT NOT NULL DEFAULT ''",     // « ne pas déranger » : début (HH:MM), vide = désactivé
+        'quiet_to' => "TEXT NOT NULL DEFAULT ''",       // fin (HH:MM)
+        'quiet_urgent' => 'INTEGER NOT NULL DEFAULT 1', // les alertes urgentes passent quand même
     ] as $col => $def) {
         if (!in_array($col, $cols, true)) {
             $pdo->exec("ALTER TABLE admins ADD COLUMN $col $def");
@@ -499,6 +527,37 @@ function migrate(PDO $pdo): void
         }
         $pdo->prepare('UPDATE items SET text = replace(text, ?, ?) WHERE grp = ?')
             ->execute(['La location à la journée court de 10 h à 10 h le lendemain.', 'La location à la journée court de 10 h 30 au lendemain 10 h.', 'faq']);
+    }
+    // v21 : équipements (20 mange-debout, étuve, réfrigérateurs, lave-verres, machines à glaçons et à boissons chaudes, vidéoprojecteur)
+    //       textes non personnalisés mis à jour, éléments ajoutés s'ils n'existent pas déjà
+    if ((int)setting_raw($pdo, '_schema_version') < 21 && setting_raw($pdo, '_seeded') !== null) {
+        $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'mobilier_panel2' AND value = ?")->execute(['Cuisine, bar & vaisselle', 'Vaisselle & matériel de cuisine']);
+        $up = $pdo->prepare('UPDATE items SET text = ? WHERE text = ?');
+        foreach ([
+            ['**8,56 m²**, avec étuve industrielle et réfrigérateurs pour votre traiteur.', '**8,56 m²**, équipée pour le maintien au frais et le réchauffage des plats.'],
+            ['**20 mange-debout**', '**Mange-debout**'],
+            ['**Machines à glaçons industrielles**', '**Machine à glaçons**'],
+            ['Un bar équipé (glaçons, boissons chaudes, lave-verres) et 20 mange-debout.', 'Un bar dédié et des mange-debout pour recevoir debout.'],
+            ['Vidéoprojecteur et grand écran de projection, Wi-Fi haut débit ; écran 98 pouces et sono en option.', 'Wi-Fi haut débit, et en option un écran 98 pouces avec sono et micros sans fil.'],
+            ['Oui, le traiteur de votre choix. La cuisine sert d’office, avec **étuve industrielle** et **réfrigérateurs** : maintien au frais et réchauffage des plats (il n’est pas possible de cuisiner sur place).', 'Oui, le traiteur de votre choix. La cuisine sert d’office : maintien au frais et réchauffage des plats (il n’est pas possible de cuisiner sur place).'],
+            ['La salle, le mobilier (**144 chaises**, 20 tables de 180 cm, tables rondes, **20 mange-debout**), la cuisine équipée (étuve, réfrigérateurs), le bar (machines à glaçons et à boissons chaudes, lave-verres), l’eau et l’électricité.', 'La salle, le bar, la cuisine, le mobilier (**144 chaises**, 20 tables de 180 cm, tables rondes, mange-debout), l’eau et l’électricité.'],
+        ] as [$new, $old]) {
+            $up->execute([$new, $old]);
+        }
+        $add = function (string $grp, string $title, string $text) use ($pdo) {
+            $st = $pdo->prepare('SELECT COUNT(*) FROM items WHERE grp = ? AND (text = ? OR (title <> \'\' AND title = ?))');
+            $st->execute([$grp, $text, $title]);
+            if ((int)$st->fetchColumn() === 0) {
+                $pos = (int)$pdo->query('SELECT COALESCE(MAX(position), 0) FROM items WHERE grp = ' . $pdo->quote($grp))->fetchColumn() + 1;
+                $pdo->prepare("INSERT INTO items(grp, icon, title, text, value, position) VALUES(?, '', ?, ?, '', ?)")->execute([$grp, $title, $text, $pos]);
+            }
+        };
+        $add('equipements', 'Vidéoprojecteur', 'Avec grand écran de projection, pour vos films, diaporamas et présentations.');
+        $add('equipements', 'Cuisine pro', 'Étuve industrielle et réfrigérateurs : idéal pour votre traiteur.');
+        $add('vaisselle', '', '**Étuve industrielle** pour garder les plats au chaud');
+        $add('vaisselle', '', '**Réfrigérateurs** pour les boissons et les préparations');
+        $add('vaisselle', '', '**Lave-verres industriels**');
+        $add('vaisselle', '', '**Machines à boissons chaudes** (café, thé)');
     }
     // v18 : la nouvelle page d'accueil devient la page principale (retour possible dans Ordre des sections)
     if ((int)setting_raw($pdo, '_schema_version') < 18) {

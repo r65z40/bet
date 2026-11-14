@@ -126,7 +126,7 @@ function stripe_checkout_balance(array $b): string
         'expires_at' => time() + 31 * 60,
         'success_url' => $return . '&session_id={CHECKOUT_SESSION_ID}',
         'cancel_url' => bk_client_url($b) . '#paiement',
-    ], 'balance-' . $b['id'] . '-' . intdiv(time(), 1800));
+    ]); // pas de clé d'idempotence (voir stripe_checkout)
     db()->prepare('UPDATE bookings SET balance_order = ? WHERE id = ?')->execute([$session['id'], $b['id']]);
     return $session['url'];
 }

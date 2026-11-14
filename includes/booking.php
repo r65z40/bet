@@ -808,7 +808,7 @@ function bk_slot_label(array $b): string
 }
 
 /** Pages publiques accessibles sans « .php » (adresses propres, voir .htaccess). */
-const CLEAN_PAGES = 'plan|reservation|conditions|mentions-legales|confidentialite|ma-reservation|facture|desinscription';
+const CLEAN_PAGES = 'plan|reservation|conditions|mentions-legales|confidentialite|ma-reservation|facture|desinscription|devis';
 
 /**
  * Les adresses sans .php sont actives si le serveur Apache réécrit les adresses (.htaccess, mod_rewrite).

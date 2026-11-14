@@ -16,6 +16,7 @@ const ADMIN_MENU = [
     'home'  => ['label' => 'Tableau de bord', 'icon' => '🏠', 'pages' => ['index' => ['index.php', 'Tableau de bord', null]]],
     'resa'  => ['label' => 'Réservations', 'icon' => '📅', 'pages' => [
         'resa'     => ['reservations.php', 'Réservations & planning', 'reservations'],
+        'devis'    => ['devis.php', 'Devis', 'reservations'],
         'tarifs'   => ['reglages.php?s=tarifs', 'Tarifs & options', 'tarifs'],
         'emails'   => ['emails.php', 'E-mails clients', 'emails'],
         'reglages' => ['reglages.php', 'Réglages', 'reglages'],

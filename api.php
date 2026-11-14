@@ -4,6 +4,7 @@
  *   GET  api.php?a=month&m=2026-12   disponibilités d'un mois
  *   POST api.php?a=quote             devis (prix calculé côté serveur)
  *   POST api.php?a=book              création de la réservation + lien de paiement
+ *   POST api.php?a=devis             devis établi par le client (envoyé par e-mail)
  */
 require __DIR__ . '/includes/bootstrap.php';
 
@@ -89,6 +90,37 @@ if ($a === 'quote') {
     ]);
 }
 
+if ($a === 'devis') {
+    if (!empty($in['website'])) {
+        out(['error' => 'Requête refusée.'], 400);
+    }
+    $t = fn($k, $max = 120) => mb_substr(trim(str_replace(["\r", "\0"], '', (string)($in[$k] ?? ''))), 0, $max);
+    $c = [
+        'first_name' => $t('first_name', 60), 'last_name' => $t('last_name', 60), 'email' => $t('email', 120), 'phone' => $t('phone', 30),
+        'company' => $t('company', 120), 'asso_name' => $t('asso_name', 120), 'address' => $t('address', 200), 'zip' => $t('zip', 12),
+        'city' => $t('city', 80), 'message' => $t('message', 2000), 'event_type' => $t('event_type', 80),
+    ];
+    $errors = [];
+    if ($c['first_name'] === '' || $c['last_name'] === '') $errors[] = 'Indiquez votre prénom et votre nom.';
+    if (!filter_var($c['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Indiquez votre adresse e-mail : le devis vous y est envoyé.';
+    if ($c['phone'] !== '' && !preg_match('/^[0-9 +().-]{6,30}$/', $c['phone'])) $errors[] = 'Numéro de téléphone invalide.';
+    if (!in_array($c['event_type'], bk_event_types(), true)) $errors[] = 'Choisissez le type d’événement.';
+    // Anti-abus : 5 devis par visiteur et par heure
+    $st = db()->prepare('SELECT COUNT(*) FROM quotes WHERE visitor = ? AND created_at > ?');
+    $st->execute([ip_fingerprint(), bk_now()->modify('-1 hour')->format(BK_FMT)]);
+    if ((int)$st->fetchColumn() >= 5) {
+        out(['errors' => ['Vous avez déjà demandé plusieurs devis : réessayez dans une heure ou contactez-nous.']], 429);
+    }
+    $q = bk_quote($req);
+    $errors = array_merge($q['errors'] ?? [], $errors);
+    if ($errors) {
+        out(['errors' => array_values(array_unique($errors))], 422);
+    }
+    $d = devis_create($q, $c, $req);
+    after_response(fn() => devis_notify($d), 'devis');
+    out(['redirect' => devis_url($d)]);
+}
+
 if ($a === 'book') {
     if (!empty($in['website'])) {
         out(['error' => 'Requête refusée.'], 400); // piège à robots
@@ -147,6 +179,11 @@ if ($a === 'book') {
         db()->prepare("UPDATE bookings SET pay_plan = 'acompte', acompte_amount = ?, balance_due_at = ? WHERE id = ?")
             ->execute([$ac['amount'], $ac['due_at']->format(BK_FMT), $b['id']]);
         $b = bk_get((int)$b['id']);
+    }
+    $dv = devis_find((string)($in['devis'] ?? ''), (string)($in['devis_t'] ?? ''));
+    if ($dv && (empty($dv['booking_id']) || (bk_get((int)$dv['booking_id'])['status'] ?? '') !== 'confirmed')) {
+        db()->prepare('UPDATE quotes SET booking_id = ? WHERE id = ?')->execute([$b['id'], $dv['id']]);
+        bk_log((int)$b['id'], 'Réservation faite à partir du devis ' . $dv['number']);
     }
     bk_log((int)$b['id'], 'Réservation créée (en attente de paiement ' . $provider . (bk_is_acompte($b) ? ', acompte de ' . money2((float)$b['acompte_amount']) . ', solde avant le ' . bk_dt($b['balance_due_at'])->format('d/m/Y') : '') . ')');
     if ($giftOnly) {

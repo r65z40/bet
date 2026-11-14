@@ -125,13 +125,71 @@ function push_send(array $sub, array $message): int
     return $code;
 }
 
+/** Alertes qui passent malgré « ne pas déranger » (si l'administrateur l'a choisi). */
+const PUSH_URGENT = ['conflict'];
+
+/** Le compte est-il dans sa plage « ne pas déranger » (ex. 20:00 → 08:00, à cheval sur minuit) ? */
+function push_quiet_now(array $a, ?DateTimeImmutable $now = null): bool
+{
+    if (!preg_match('/^\d{2}:\d{2}$/', (string)($a['quiet_from'] ?? '')) || !preg_match('/^\d{2}:\d{2}$/', (string)($a['quiet_to'] ?? '')) || $a['quiet_from'] === $a['quiet_to']) {
+        return false;
+    }
+    $t = ($now ?? bk_now())->format('H:i');
+    return $a['quiet_from'] < $a['quiet_to'] ? ($t >= $a['quiet_from'] && $t < $a['quiet_to']) : ($t >= $a['quiet_from'] || $t < $a['quiet_to']);
+}
+
+/** Fin de plage : envoie les notifications mises de côté (regroupées s'il y en a plusieurs). Retourne le nombre envoyé. */
+function push_queue_flush(): int
+{
+    $sent = 0;
+    try {
+        $admins = db()->query('SELECT DISTINCT a.* FROM push_queue q JOIN admins a ON a.id = q.admin_id')->fetchAll();
+        foreach ($admins as $a) {
+            if (push_quiet_now($a)) {
+                continue; // toujours la nuit pour ce compte
+            }
+            $st = db()->prepare('SELECT * FROM push_queue WHERE admin_id = ? ORDER BY id');
+            $st->execute([$a['id']]);
+            $items = $st->fetchAll();
+            db()->prepare('DELETE FROM push_queue WHERE admin_id = ? AND id <= ?')->execute([$a['id'], end($items)['id']]);
+            if (!(int)$a['active']) {
+                continue;
+            }
+            $msg = count($items) === 1
+                ? ['title' => $items[0]['title'], 'body' => $items[0]['body'], 'url' => $items[0]['url'], 'tag' => $items[0]['tag']]
+                : ['title' => '🌙 ' . count($items) . ' notifications pendant la nuit', 'body' => implode(' · ', array_map(fn($i) => $i['title'], array_slice($items, 0, 4))) . (count($items) > 4 ? '…' : ''), 'url' => 'index.php', 'tag' => 'nuit'];
+            $subs = db()->prepare('SELECT * FROM push_subs WHERE admin_id = ?');
+            $subs->execute([$a['id']]);
+            foreach ($subs->fetchAll() as $sub) {
+                try {
+                    $code = push_send($sub, $msg);
+                    $sent += $code >= 200 && $code < 300 ? 1 : 0;
+                } catch (Throwable) {
+                }
+            }
+        }
+    } catch (Throwable) {
+    }
+    return $sent;
+}
+
 /** Notifie tous les appareils des comptes actifs ayant le droit demandé. Ne bloque jamais. */
 function push_notify(string $perm, string $title, string $body, string $url = 'index.php', string $tag = '', string $event = ''): int
 {
     $sent = 0;
     try {
-        foreach (db()->query('SELECT s.*, a.perms, a.active, a.notif_off FROM push_subs s JOIN admins a ON a.id = s.admin_id')->fetchAll() as $sub) {
+        $queued = [];
+        foreach (db()->query('SELECT s.*, a.perms, a.active, a.notif_off, a.quiet_from, a.quiet_to, a.quiet_urgent FROM push_subs s JOIN admins a ON a.id = s.admin_id')->fetchAll() as $sub) {
             if (!(int)$sub['active'] || !in_array($perm, admin_perms($sub), true) || ($event !== '' && in_array($event, admin_notif_off($sub), true))) {
+                continue;
+            }
+            // « Ne pas déranger » : mise de côté, envoyée à la fin de la plage (une seule fois par compte)
+            if (push_quiet_now($sub) && !((int)$sub['quiet_urgent'] && in_array($event, PUSH_URGENT, true))) {
+                if (!isset($queued[$sub['admin_id']])) {
+                    $queued[$sub['admin_id']] = true;
+                    db()->prepare('INSERT INTO push_queue(admin_id, title, body, url, tag, created_at) VALUES(?,?,?,?,?,?)')
+                        ->execute([$sub['admin_id'], mb_substr($title, 0, 200), mb_substr($body, 0, 500), $url, $tag, date('Y-m-d H:i:s')]);
+                }
                 continue;
             }
             try {

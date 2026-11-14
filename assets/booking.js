@@ -53,11 +53,14 @@
   }
 
   /* ---------- Étape 2 : calendrier ---------- */
+  // Disponibilités d'un mois, relues si elles ont plus d'une minute (une autre réservation a pu être prise entre-temps)
+  const cacheAt = {};
   async function loadMonth(ym, force) {
-    if (cache[ym] && !force) return cache[ym];
+    if (cache[ym] && !force && Date.now() - (cacheAt[ym] || 0) < 60000) return cache[ym];
     const r = await fetch('api.php?a=month&m=' + ym, { headers: { Accept: 'application/json' } });
     const j = await r.json();
     if (!r.ok) throw new Error(j.error || 'Erreur');
+    cacheAt[ym] = Date.now();
     return (cache[ym] = j.days || {});
   }
 
@@ -98,7 +101,17 @@
   $('#calPrev').addEventListener('click', () => { st.month = addMonths(st.month, -1); renderCal(); });
   $('#calNext').addEventListener('click', () => { st.month = addMonths(st.month, 1); renderCal(); });
 
-  function selectDate(key) {
+  async function selectDate(key) {
+    // Données de plus d'une minute : on relit le mois avant de proposer les horaires
+    if (Date.now() - (cacheAt[st.month] || 0) >= 60000) {
+      await renderCal(true);
+      const info = (cache[st.month] || {})[key];
+      if (!info || !dayState(info) || (st.mode === 'day' && !info.day)) {
+        st.date = null; $('#slots').hidden = true; updateSteps(); quote();
+        showErrors(['Cette date vient d’être réservée : choisissez-en une autre.']);
+        return;
+      }
+    }
     st.date = key; st.start = null; st.hours = null;
     $$('.day').forEach(b => { const on = b.dataset.date === key; b.classList.toggle('sel', on); b.setAttribute('aria-pressed', on); });
     const slots = $('#slots');
@@ -248,6 +261,7 @@
   function setTotal(t, due) {
     st.total = t;
     $$('.pay .btn').forEach(b => b.disabled = !t || !st.quoteOk);
+    const dv = $('#devisBtn'); if (dv && dv.textContent.indexOf('…') < 0) dv.disabled = !t || !st.quoteOk;
     $('#barTotal').textContent = t ? eur.format(typeof due === 'number' ? due : t) : '—';
     $('#mobileBar').hidden = !t;
     document.body.classList.toggle('has-bar', !!t);
@@ -287,6 +301,7 @@
       phone: fd.get('phone'), company: fd.get('company'), address: fd.get('address'), zip: fd.get('zip'), city: fd.get('city'),
       message: fd.get('message'), asso_name: fd.get('asso_name') || '', website: fd.get('website'), cgv: true,
       provider: btn.dataset.provider, expected_total: st.total, pay: st.pay || 'total',
+      devis: C.prefill ? C.prefill.number : '', devis_t: C.prefill ? C.prefill.token : '',
     });
     const label = btn.innerHTML;
     $$('.pay .btn').forEach(b => b.disabled = true);
@@ -302,6 +317,71 @@
     }
     btn.innerHTML = label;
     $$('.pay .btn').forEach(b => b.disabled = !st.quoteOk);
+  });
+
+  /* ---------- Devis établi par le client ---------- */
+  const devisBtn = $('#devisBtn');
+  if (devisBtn) devisBtn.addEventListener('click', async () => {
+    const fd = new FormData(form);
+    const need = [['event_type', 'le type d’événement'], ['guests', 'le nombre de personnes'], ['first_name', 'votre prénom'], ['last_name', 'votre nom'], ['email', 'votre e-mail']]
+      .filter(([k]) => !String(fd.get(k) || '').trim());
+    if (need.length) {
+      showErrors(['Pour recevoir le devis, indiquez ' + need.map(n => n[1]).join(', ') + '.']);
+      const el = form.querySelector('[name="' + need[0][0] + '"]'); if (el) el.focus();
+      return;
+    }
+    const data = Object.assign(payload(), {
+      event_type: fd.get('event_type'), first_name: fd.get('first_name'), last_name: fd.get('last_name'), email: fd.get('email'),
+      phone: fd.get('phone'), company: fd.get('company'), address: fd.get('address'), zip: fd.get('zip'), city: fd.get('city'),
+      message: fd.get('message'), asso_name: fd.get('asso_name') || '', website: fd.get('website'),
+    });
+    const label = devisBtn.innerHTML; devisBtn.disabled = true; devisBtn.textContent = 'Préparation du devis…';
+    try {
+      const r = await fetch('api.php?a=devis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      const j = await r.json();
+      if (j.redirect) { window.location.href = j.redirect; return; }
+      showErrors(j.errors || [j.error || 'Le devis n’a pas pu être établi.']);
+    } catch (e) { showErrors(['Connexion impossible. Réessayez.']); }
+    devisBtn.innerHTML = label; devisBtn.disabled = !st.quoteOk;
+  });
+
+  /* ---------- Réservation à partir d'un devis : tout est prérempli ---------- */
+  (async function () {
+    const P = C.prefill;
+    if (!P) return;
+    const wait = async (sel, n = 40) => { for (let i = 0; i < n; i++) { const el = $(sel); if (el) return el; await new Promise(r => setTimeout(r, 150)); } return null; };
+    Object.entries(P.fields).forEach(([k, v]) => { const el = form.querySelector('[name="' + k + '"]'); if (el && v) el.value = v; });
+    $('#guests').value = P.guests || '';
+    $$('input[name="options"]').forEach(c => { c.checked = P.options.includes(+c.value); });
+    if (asso && P.asso) { asso.checked = true; $('#assoWrap').hidden = false; }
+    if (P.promo) { $('#promoInput').value = P.promo; st.promo = P.promo; }
+    st.month = P.date.slice(0, 7);
+    const f = $('.formula[data-mode="' + P.mode + '"]'); if (!f) return;
+    f.click();
+    const day = await wait('#cal .day[data-date="' + P.date + '"]');
+    if (!day || day.disabled) { showErrors(['La date du devis n’est plus disponible : choisissez-en une autre, les autres éléments sont conservés.']); quote(); return; }
+    await selectDate(P.date);
+    if (P.mode === 'day') {
+      const chip = $('#daysPick .chip[data-days="' + P.days + '"]'); if (chip) chip.click();
+    } else if (P.start) {
+      const chip = await wait('#startChips .chip[data-start="' + P.start + '"]', 10);
+      if (chip) { chip.click(); const sel = $('#duration'); if ([...sel.options].some(o => +o.value === P.hours)) { sel.value = String(P.hours); st.hours = P.hours; } }
+    }
+    updateSteps(); quote(0);
+    day.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  })();
+
+  // Retour sur l'onglet après un moment : le calendrier est relu (sans perdre la sélection si elle reste possible)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && st.mode && Date.now() - (cacheAt[st.month] || 0) >= 60000) {
+      renderCal(true).then(() => {
+        if (!st.date) return;
+        const info = (cache[st.month] || {})[st.date];
+        const ok = info && (st.mode === 'day' ? info.days >= st.days : (!st.start || (info.hours || {})[st.start] >= (st.hours || C.minHours)));
+        if (!ok) { st.date = st.start = st.hours = null; $('#slots').hidden = true; updateSteps(); quote(); showErrors(['Le créneau choisi vient d’être réservé : choisissez-en un autre.']); }
+        else $$('.day').forEach(b => b.classList.toggle('sel', b.dataset.date === st.date));
+      });
+    }
   });
 
   /* ---------- Lien direct depuis l'accueil (« prochaines dates libres ») : reservation?date=AAAA-MM-JJ ---------- */

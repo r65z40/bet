@@ -55,7 +55,7 @@ const SETTINGS_SCHEMA = [
             'mobilier_title'     => ['label' => 'Mobilier — titre', 'default' => 'Mobilier inclus & équipements'],
             'mobilier_subtitle'  => ['label' => 'Mobilier — sous-titre', 'type' => 'textarea', 'default' => 'Le mobilier et plusieurs équipements sont disponibles sur place pour faciliter l’organisation de votre événement.'],
             'mobilier_panel1'    => ['label' => 'Mobilier — titre colonne 1', 'default' => 'Mobilier'],
-            'mobilier_panel2'    => ['label' => 'Mobilier — titre colonne 2', 'default' => 'Vaisselle & matériel de cuisine'],
+            'mobilier_panel2'    => ['label' => 'Mobilier — titre colonne 2', 'default' => 'Cuisine, bar & vaisselle'],
             'plan_cta_eyebrow'   => ['label' => 'Encart plan — petit titre', 'default' => 'Plan de la salle'],
             'plan_cta_title'     => ['label' => 'Encart plan — titre', 'default' => 'Découvrez l’agencement de La Salle RN6'],
             'plan_cta_text'      => ['label' => 'Encart plan — texte', 'type' => 'textarea', 'default' => 'Consultez le plan détaillé de la salle, du bar, de la cuisine et des espaces de stockage sur une page dédiée.'],
@@ -207,7 +207,7 @@ const DEFAULT_ITEMS = [
     'salle_cards' => [
         ['icon' => '◫', 'title' => 'Grande salle principale', 'text' => '**125 m²** avec une capacité confortable de **jusqu’à 120 personnes assises**.'],
         ['icon' => '◇', 'title' => 'Espace bar dédié', 'text' => '**11,77 m²**, idéal pour les vins d’honneur, réceptions et pauses café.'],
-        ['icon' => '⌂', 'title' => 'Cuisine / office traiteur', 'text' => '**8,56 m²**, équipée pour le maintien au frais et le réchauffage des plats.'],
+        ['icon' => '⌂', 'title' => 'Cuisine / office traiteur', 'text' => '**8,56 m²**, avec étuve industrielle et réfrigérateurs pour votre traiteur.'],
         ['icon' => '▤', 'title' => 'Espaces de stockage', 'text' => '**26,34 m²** au total, répartis en deux réserves de 17,11 m² et 9,23 m².'],
         ['icon' => '♿', 'title' => 'Accessibilité PMR', 'text' => 'Rampes d’accès extérieures et sanitaires adaptés séparés.'],
         ['icon' => 'P', 'title' => 'Stationnement', 'text' => 'Grand parking public immédiatement accessible pour les invités.'],
@@ -217,17 +217,23 @@ const DEFAULT_ITEMS = [
         ['title' => 'Audio pro', 'text' => 'Sonorisation intégrée avec micros sans fil, **disponible en option**.'],
         ['title' => 'Wi‑Fi', 'text' => 'Connexion haut débit gratuite dans tout l’établissement.'],
         ['title' => 'Confort', 'text' => 'Climatisation réversible et chauffage par pompe à chaleur.'],
+        ['title' => 'Vidéoprojecteur', 'text' => 'Avec grand écran de projection, pour vos films, diaporamas et présentations.'],
+        ['title' => 'Cuisine pro', 'text' => 'Étuve industrielle et réfrigérateurs : idéal pour votre traiteur.'],
     ],
     'mobilier' => [
         ['text' => '**144 chaises**'],
         ['text' => '**20 tables pliantes** de 180 cm de longueur'],
         ['text' => '**Tables rondes**'],
-        ['text' => '**Mange-debout**'],
+        ['text' => '**20 mange-debout**'],
     ],
     'vaisselle' => [
         ['text' => '**Vaisselle disponible sur place** : assiettes, verres et couverts'],
+        ['text' => '**Étuve industrielle** pour garder les plats au chaud'],
+        ['text' => '**Réfrigérateurs** pour les boissons et les préparations'],
         ['text' => '**Lave-vaisselle** à disposition'],
-        ['text' => '**Machine à glaçons**'],
+        ['text' => '**Lave-verres industriels**'],
+        ['text' => '**Machines à glaçons industrielles**'],
+        ['text' => '**Machines à boissons chaudes** (café, thé)'],
     ],
     'acces' => [
         ['text' => '**71 C route d’Auxerre, 89380 Appoigny**'],
@@ -263,13 +269,13 @@ const DEFAULT_ITEMS = [
     'evenements_cartes' => [
         ['icon' => '💍', 'title' => 'Mariages', 'text' => 'Repas, vin d’honneur et soirée dansante, jusqu’à 120 invités assis.', 'value' => '2'],
         ['icon' => '🎂', 'title' => 'Anniversaires & fêtes', 'text' => 'Tables rondes ou rectangulaires, bar, et la sono en option : il ne manque que vos invités.', 'value' => '10'],
-        ['icon' => '🥂', 'title' => 'Vins d’honneur & cocktails', 'text' => 'Un bar dédié et des mange-debout pour recevoir debout.', 'value' => '6'],
-        ['icon' => '💼', 'title' => 'Séminaires & réunions', 'text' => 'Wi-Fi haut débit, et en option un écran 98 pouces avec sono et micros sans fil.', 'value' => '9'],
+        ['icon' => '🥂', 'title' => 'Vins d’honneur & cocktails', 'text' => 'Un bar équipé (glaçons, boissons chaudes, lave-verres) et 20 mange-debout.', 'value' => '6'],
+        ['icon' => '💼', 'title' => 'Séminaires & réunions', 'text' => 'Vidéoprojecteur et grand écran de projection, Wi-Fi haut débit ; écran 98 pouces et sono en option.', 'value' => '9'],
     ],
     'faq' => [
-        ['title' => 'Peut-on faire venir son traiteur ?', 'text' => 'Oui, le traiteur de votre choix. La cuisine sert d’office : maintien au frais et réchauffage des plats (il n’est pas possible de cuisiner sur place).'],
+        ['title' => 'Peut-on faire venir son traiteur ?', 'text' => 'Oui, le traiteur de votre choix. La cuisine sert d’office, avec **étuve industrielle** et **réfrigérateurs** : maintien au frais et réchauffage des plats (il n’est pas possible de cuisiner sur place).'],
         ['title' => 'Jusqu’à quelle heure peut-on faire la fête ?', 'text' => 'La musique et les animations s’arrêtent à **2 h**, par respect du voisinage. La location à la journée court de 10 h 30 au lendemain 10 h.'],
-        ['title' => 'Que comprend la location ?', 'text' => 'La salle, le bar, la cuisine, le mobilier (**144 chaises**, 20 tables de 180 cm, tables rondes, mange-debout), l’eau et l’électricité. D’autres services sont proposés en option lors de la réservation.'],
+        ['title' => 'Que comprend la location ?', 'text' => 'La salle, le mobilier (**144 chaises**, 20 tables de 180 cm, tables rondes, **20 mange-debout**), la cuisine équipée (étuve, réfrigérateurs), le bar (machines à glaçons et à boissons chaudes, lave-verres), l’eau et l’électricité. D’autres services sont proposés en option lors de la réservation.'],
         ['title' => 'Peut-on décorer la salle ?', 'text' => 'Oui, librement, à condition de ne rien fixer sur les murs et de ne pas utiliser de confettis ni de flammes (bougies, feux de Bengale…).'],
         ['title' => 'Comment fonctionne la caution ?', 'text' => 'Une caution de **2 × le loyer HT** est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité) ou par chèque remis à l’état des lieux. Elle est rendue après l’état des lieux de sortie.'],
         ['title' => 'Et si je dois annuler ?', 'text' => 'Vous pouvez annuler depuis votre espace client. Le montant remboursé dépend du délai avant l’événement, comme indiqué dans les conditions de location.'],
@@ -303,7 +309,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 21;
 
 /** Documents remis aux clients à l'installation : [titre, description, fichier dans /documents]. */
 const DEFAULT_DOCUMENTS = [

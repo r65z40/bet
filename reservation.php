@@ -45,9 +45,19 @@ $config = [
     'today' => bk_now()->format('Y-m'),
     'options' => array_map(fn($o) => ['id' => (int)$o['id'], 'unit' => $o['unit'], 'ttc' => ttc((float)$o['price'])], bk_options()),
 ];
+// Réservation à partir d'un devis : formulaire prérempli (s'il est encore valable et pas déjà réservé)
+$devis = isset($_GET['devis']) ? devis_find((string)$_GET['devis'], (string)($_GET['t'] ?? '')) : null;
+if ($devis && !devis_expired($devis) && !(($devis['booking_id'] && (bk_get((int)$devis['booking_id'])['status'] ?? '') === 'confirmed'))) {
+    $config['prefill'] = devis_prefill($devis);
+}
 public_header(s('resa_meta_title'), s('resa_lead'), true);
 ?>
 <section class="page-hero"><div class="wrap"><div class="eyebrow">Réservation en ligne</div><h1><?= e(s('resa_title')) ?></h1><p><?= rich(s('resa_lead')) ?></p></div></section>
+<?php if (!empty($config['prefill'])): ?>
+<div class="wrap"><p class="notice" style="margin:18px auto 0"><span>📄</span><span><strong>Devis <?= e($devis['number']) ?></strong> : tout est rempli d’après votre devis. Vérifiez, cochez les conditions et réglez pour bloquer la date.</span></p></div>
+<?php elseif (isset($_GET['devis'])): ?>
+<div class="wrap"><p class="notice" style="margin:18px auto 0"><span>📄</span><span>Ce devis n’est plus valable (expiré ou déjà réservé) : vous pouvez faire une nouvelle demande ci-dessous.</span></p></div>
+<?php endif; ?>
 
 <section class="booking"><div class="wrap">
 <?php if (!$providers): ?>
@@ -166,6 +176,8 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
       </button>
 <?php endforeach; ?>
     </div>
+    <button type="button" class="btn btn-light" id="devisBtn" disabled style="width:100%;margin-top:10px">📄 Recevoir un devis (PDF)</button>
+    <p class="muted" id="devisHelp" style="font-size:.82rem;margin:6px 0 0;text-align:center">Le devis est envoyé à votre adresse e-mail ; il ne bloque pas la date.</p>
     <p class="secure">Paiement sécurisé par <?= e(implode(' et ', array_map(fn($k) => $k === 'paypal' ? 'PayPal' : 'Stripe', array_keys($providers)))) ?>. <span id="secureNote">Le montant total est réglé à la réservation.</span></p>
   </aside>
 </form>
