@@ -82,7 +82,23 @@ function invoice_doc(array $b, bool $avoir): string
     <tr><td>TVA <?= e(rating_label((string)$rate)) ?> %</td><td class="n"><?= money2((float)$b['vat']) ?></td></tr>
     <tr class="big"><td>Total TTC</td><td class="n"><?= money2((float)$b['total_ttc']) ?></td></tr>
   </table>
+<?php if (bk_is_acompte($b)): $full = !empty($b['balance_paid_at']); ?>
+  <table class="tot" style="margin-top:0">
 <?php if ((float)$b['gift_amount'] > 0): ?>
+    <tr><td>Réglé par bon cadeau <?= e($b['gift_code']) ?></td><td class="n">− <?= money2((float)$b['gift_amount']) ?></td></tr>
+<?php endif; ?>
+    <tr><td>Acompte réglé le <?= e(bk_dt($b['paid_at'])->format('d/m/Y')) ?> (<?= e(provider_label($b['provider'])) ?>)</td><td class="n">− <?= money2((float)$b['acompte_amount']) ?></td></tr>
+<?php if ($full): ?>
+    <tr><td>Solde réglé le <?= e(bk_dt($b['balance_paid_at'])->format('d/m/Y')) ?> (<?= e(balance_method_label($b['balance_method'])) ?>)</td><td class="n">− <?= money2(bk_balance_amount($b)) ?></td></tr>
+<?php endif; ?>
+    <tr class="big"><td>Reste à payer</td><td class="n"><?= money2(bk_balance($b)) ?></td></tr>
+  </table>
+<?php if ($full): ?>
+  <span class="paid">✓ Payée : acompte le <?= e(bk_dt($b['paid_at'])->format('d/m/Y')) ?>, solde le <?= e(bk_dt($b['balance_paid_at'])->format('d/m/Y')) ?></span>
+<?php else: ?>
+  <span class="paid" style="background:#fff3dc;color:#8a5a00">Acompte reçu — solde de <?= money2(bk_balance($b)) ?> à régler avant le <?= e(bk_dt($b['balance_due_at'])->format('d/m/Y')) ?></span>
+<?php endif; ?>
+<?php elseif ((float)$b['gift_amount'] > 0): ?>
   <table class="tot" style="margin-top:0">
     <tr><td>Réglé par bon cadeau <?= e($b['gift_code']) ?></td><td class="n">− <?= money2((float)$b['gift_amount']) ?></td></tr>
 <?php if (bk_due($b) > 0): ?>
@@ -90,7 +106,9 @@ function invoice_doc(array $b, bool $avoir): string
 <?php endif; ?>
   </table>
 <?php endif; ?>
+<?php if (!bk_is_acompte($b)): ?>
   <span class="paid">✓ Payée le <?= e(bk_dt($b['paid_at'])->format('d/m/Y')) ?> par <?= e((float)$b['gift_amount'] > 0 && $b['provider'] !== 'giftcard' ? 'bon cadeau et ' . provider_label($b['provider']) : provider_label($b['provider'])) ?></span>
+<?php endif; ?>
 <?php if (!empty($b['moved_at'])): ?>
   <p class="muted" style="margin-top:14px">Date de la location modifiée d’un commun accord le <?= e(bk_dt($b['moved_at'])->format('d/m/Y')) ?> : <strong><?= e(bk_slot_label($b)) ?></strong> (au lieu de : <?= e($b['moved_from']) ?>). Montant inchangé.</p>
 <?php endif; ?>
@@ -107,7 +125,7 @@ function invoice_doc(array $b, bool $avoir): string
     <tr class="big"><td>Total TTC remboursé</td><td class="n">− <?= money2($refundTtc) ?></td></tr>
   </table>
 <?php endif; ?>
-  <div class="foot"><?= nl2br(e(s('bk_invoice_footer'))) ?></div>
+  <div class="foot"><?= nl2br(e($avoir || bk_balance($b) <= 0 ? s('bk_invoice_footer') : trim(str_replace(['Facture acquittée.', 'Facture acquittée'], 'Facture partiellement réglée (acompte reçu, solde à régler).', s('bk_invoice_footer'))))) ?></div>
 </div>
 <?php
     return (string)ob_get_clean();

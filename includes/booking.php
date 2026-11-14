@@ -238,6 +238,7 @@ function bk_quote(array $req, ?int $ignoreBooking = null): array
         'mode' => $mode, 'days' => $days, 'start' => $start, 'end' => $end, 'hours' => $hours, 'guests' => $guests,
         'lines' => $lines, 'subtotal_ht' => $subtotal, 'discount_ht' => $discount, 'asso' => $asso,
         'total_ht' => $totalHt, 'vat' => round($totalTtc - $totalHt, 2), 'total_ttc' => $totalTtc,
+        'acompte' => acompte_offer($start, round($totalTtc - $giftAmount, 2)),
     ];
 }
 
@@ -573,7 +574,7 @@ function bk_confirm_tx(PDO $pdo, int $id, string $provider, string $paymentRef, 
     if (!$b || !in_array($b['status'], ['pending', 'expired'], true)) {
         return null; // déjà confirmée (webhook + retour) ou annulée
     }
-    if (strtolower($currency) !== 'eur' || $amountCents !== (int)round(bk_due($b) * 100)) {
+    if (strtolower($currency) !== 'eur' || $amountCents !== (int)round(bk_pay_now($b) * 100)) {
         return '';
     }
     if ($b['gift_code'] !== '' && (float)$b['gift_amount'] > 0) {

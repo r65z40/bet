@@ -352,6 +352,10 @@ function install_schema(PDO $pdo): void
         'deposit_pi' => "TEXT NOT NULL DEFAULT ''", 'deposit_at' => 'TEXT', 'deposit_requested_at' => 'TEXT', 'deposit_reason' => "TEXT NOT NULL DEFAULT ''", 'deposit_captured_at' => 'TEXT',
         'eve_notified_at' => 'TEXT', 'abandon_notified' => 'INTEGER NOT NULL DEFAULT 0',
         'no_review' => 'INTEGER NOT NULL DEFAULT 0', // litige : pas de demande d'avis
+        // Acompte : 'total' (tout payé à la réservation) ou 'acompte' (acompte puis solde avant l'événement)
+        'pay_plan' => "TEXT NOT NULL DEFAULT 'total'", 'acompte_amount' => 'REAL NOT NULL DEFAULT 0', 'balance_due_at' => 'TEXT',
+        'balance_paid_at' => 'TEXT', 'balance_method' => "TEXT NOT NULL DEFAULT ''", 'balance_ref' => "TEXT NOT NULL DEFAULT ''", 'balance_order' => "TEXT NOT NULL DEFAULT ''",
+        'balance_requested_at' => 'TEXT', 'balance_reminded_at' => 'TEXT', 'balance_late_at' => 'TEXT',
     ] as $col => $def) {
         if (!in_array($col, $bcols, true)) {
             $pdo->exec("ALTER TABLE bookings ADD COLUMN $col $def");
@@ -476,6 +480,10 @@ function migrate(PDO $pdo): void
             $pdo->prepare("UPDATE settings SET value = replace(value, ?, ?) WHERE key = 'bk_cgv'")->execute([$o, $n]);
         }
         $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'bk_deposit_text' AND value = ?")->execute(['Une caution de 2 × le montant du loyer HT est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité, elle est libérée après l’état des lieux de sortie) ou par chèque remis lors de l’état des lieux d’entrée.', 'Une caution de 2 × le montant du loyer HT est demandée par chèque lors de l’état des lieux d’entrée. Elle est restituée après l’état des lieux de sortie.']);
+    }
+    // v20 : acompte — la phrase sur le paiement des conditions de location suit le réglage (si elle n'a pas été personnalisée)
+    if ((int)setting_raw($pdo, '_schema_version') < 20 && setting_raw($pdo, '_seeded') !== null) {
+        $pdo->prepare("UPDATE settings SET value = replace(value, ?, ?) WHERE key = 'bk_cgv'")->execute(['La réservation est ferme dès le paiement intégral du prix TTC en ligne (carte bancaire ou PayPal). Un e-mail de confirmation et une facture sont envoyés au client.', 'La réservation est ferme dès le paiement en ligne (carte bancaire ou PayPal) : {paiement} Un e-mail de confirmation et une facture sont envoyés au client.']);
     }
     // v19 : écran et sono présentés « en option », horaires de la journée (10 h 30 → 10 h) — seulement les textes non personnalisés
     if ((int)setting_raw($pdo, '_schema_version') < 19 && setting_raw($pdo, '_seeded') !== null) {

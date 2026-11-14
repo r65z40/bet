@@ -259,7 +259,8 @@ function mail_recap(array $b): string
         . '<tr><td style="padding:10px 0 0;font-weight:bold">Total TTC</td><td align="right" style="padding:10px 0 0;font-weight:bold;font-size:16px">' . money2((float)$b['total_ttc']) . '</td></tr>'
         . '<tr><td colspan="2" style="font-size:12px;color:#617083">dont TVA ' . money2((float)$b['vat']) . ' — total HT ' . money2((float)$b['total_ht']) . '</td></tr>'
         . ((float)($b['gift_amount'] ?? 0) > 0 ? '<tr><td style="padding:8px 0 0">Réglé par bon cadeau ' . e($b['gift_code']) . '</td><td align="right" style="padding:8px 0 0">− ' . money2((float)$b['gift_amount']) . '</td></tr>'
-            . '<tr><td style="font-weight:bold">Payé en ligne</td><td align="right" style="font-weight:bold">' . money2(bk_due($b)) . '</td></tr>' : '')
+            . (bk_is_acompte($b) ? '' : '<tr><td style="font-weight:bold">Payé en ligne</td><td align="right" style="font-weight:bold">' . money2(bk_due($b)) . '</td></tr>') : '')
+        . acompte_mail_rows($b)
         . '</table>';
 }
 

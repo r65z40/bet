@@ -80,8 +80,8 @@ function stripe_checkout(array $b): string
             'quantity' => 1,
             'price_data' => [
                 'currency' => 'eur',
-                'unit_amount' => (int)round(bk_due($b) * 100),
-                'product_data' => ['name' => 'Location ' . s('site_name') . ' — ' . bk_slot_label($b), 'description' => $b['event_type'] . ' · ' . $b['guests'] . ' pers. · réf. ' . $b['ref']],
+                'unit_amount' => (int)round(bk_pay_now($b) * 100),
+                'product_data' => ['name' => (bk_is_acompte($b) ? 'Acompte — l' : 'L') . 'ocation ' . s('site_name') . ' — ' . bk_slot_label($b), 'description' => $b['event_type'] . ' · ' . $b['guests'] . ' pers. · réf. ' . $b['ref']],
             ],
         ]],
         'expires_at' => time() + 31 * 60,
@@ -173,8 +173,8 @@ function paypal_checkout(array $b): string
             'reference_id' => $b['ref'],
             'custom_id' => (string)$b['id'],
             'invoice_id' => $b['ref'],
-            'description' => mb_substr('Location ' . s('site_name') . ' — ' . bk_slot_label($b), 0, 127),
-            'amount' => ['currency_code' => 'EUR', 'value' => number_format(bk_due($b), 2, '.', '')],
+            'description' => mb_substr((bk_is_acompte($b) ? 'Acompte — l' : 'L') . 'ocation ' . s('site_name') . ' — ' . bk_slot_label($b), 0, 127),
+            'amount' => ['currency_code' => 'EUR', 'value' => number_format(bk_pay_now($b), 2, '.', '')],
         ]],
         'payment_source' => ['paypal' => ['experience_context' => [
             'brand_name' => mb_substr(s('site_name'), 0, 127),
@@ -246,15 +246,38 @@ function bk_cancel(array $b, float $amount, bool $notify, bool $restoreGift = fa
 
 function bk_cancel_locked(array $b, float $amount, bool $notify, bool $restoreGift = false): float
 {
-    // On ne rembourse en ligne que ce qui a été payé en ligne (la part « bon cadeau » se recrédite sur le bon)
-    $amount = round(max(0, min($amount, bk_due($b) - (float)$b['refunded_amount'])), 2);
+    // On ne rembourse en ligne que ce qui a été payé en ligne (la part « bon cadeau » se recrédite sur le bon,
+    // un solde reçu par virement, chèque ou espèces se rembourse à la main)
+    $amount = round(max(0, min($amount, bk_paid_online($b) - (float)$b['refunded_amount'])), 2);
     $refundId = '';
     if ($amount > 0) {
-        if (empty($b['paid_at']) || $b['payment_ref'] === '') {
+        if (empty($b['paid_at'])) {
             throw new RuntimeException('Aucun paiement à rembourser pour cette réservation.');
         }
-        $cents = (int)round($amount * 100);
-        $refundId = $b['provider'] === 'paypal' ? paypal_refund($b, $cents) : stripe_refund($b, $cents);
+        // Avec un acompte, le paiement du solde est remboursé en premier, puis celui de l'acompte
+        $balOnline = !empty($b['balance_paid_at']) && in_array($b['balance_method'], ['stripe', 'paypal'], true) ? bk_balance_amount($b) : 0.0;
+        $fromBal = round(min($amount, max(0, $balOnline - (float)$b['refunded_amount'])), 2);
+        $fromFirst = round($amount - $fromBal, 2);
+        $ids = [];
+        if ($fromBal > 0) {
+            $rb = ['id' => $b['id'] . '-solde', 'ref' => $b['ref'], 'payment_ref' => $b['balance_ref'], 'refunded_amount' => $b['refunded_amount']];
+            $ids[] = $b['balance_method'] === 'paypal' ? paypal_refund($rb, (int)round($fromBal * 100)) : stripe_refund($rb, (int)round($fromBal * 100));
+        }
+        if ($fromFirst > 0) {
+            if ($b['payment_ref'] === '' || $b['provider'] === 'giftcard') {
+                throw new RuntimeException('Aucun paiement en ligne à rembourser pour cette réservation.');
+            }
+            try {
+                $ids[] = $b['provider'] === 'paypal' ? paypal_refund($b, (int)round($fromFirst * 100)) : stripe_refund($b, (int)round($fromFirst * 100));
+            } catch (Throwable $e) {
+                if ($fromBal > 0) { // le solde a déjà été remboursé : on l'enregistre avant de signaler l'erreur
+                    db()->prepare('UPDATE bookings SET refunded_amount = refunded_amount + ? WHERE id = ?')->execute([$fromBal, $b['id']]);
+                    bk_log((int)$b['id'], 'Remboursement partiel : ' . money2($fromBal) . ' remboursés sur le solde ; le reste a échoué (' . $e->getMessage() . ')');
+                }
+                throw $e;
+            }
+        }
+        $refundId = implode(' + ', array_filter($ids));
     }
     $pdo = db();
     $credit = $b['credit_number'];

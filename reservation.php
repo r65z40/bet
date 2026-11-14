@@ -154,6 +154,8 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
     <div class="sum-total"><span>Total TTC</span><strong id="sumTotal">—</strong></div>
     <div class="sum-vat" id="sumVat"></div>
     <div class="sum-total" id="dueRow" hidden style="margin-top:6px"><span>Reste à payer</span><strong id="sumDue" style="font-size:1.35rem">—</strong></div>
+    <div class="pay-plan" id="payPlan" hidden></div>
+    <div class="sum-total" id="payNow" hidden style="margin-top:6px"><span>À payer aujourd’hui</span><strong style="font-size:1.35rem">—</strong></div>
     <div id="errors"></div>
     <p class="notice" style="margin:14px 0 0;font-size:.86rem"><span>🔑</span><span><?= e(s('bk_deposit_text')) ?></span></p>
     <label class="check"><input type="checkbox" name="cgv" id="cgv"> <span>J’accepte les <a href="<?= e(u('conditions.php')) ?>" target="_blank">conditions de location</a><?= documents() ? ' et le <a href="' . e(u('conditions.php')) . '#documents" target="_blank">règlement intérieur</a>' : '' ?> et j’ai lu la <a href="<?= e(u('confidentialite.php')) ?>" target="_blank">politique de confidentialité</a>.</span></label>
@@ -164,11 +166,11 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
       </button>
 <?php endforeach; ?>
     </div>
-    <p class="secure">Paiement sécurisé par <?= e(implode(' et ', array_map(fn($k) => $k === 'paypal' ? 'PayPal' : 'Stripe', array_keys($providers)))) ?>. Le montant total est réglé à la réservation.</p>
+    <p class="secure">Paiement sécurisé par <?= e(implode(' et ', array_map(fn($k) => $k === 'paypal' ? 'PayPal' : 'Stripe', array_keys($providers)))) ?>. <span id="secureNote">Le montant total est réglé à la réservation.</span></p>
   </aside>
 </form>
 </div></section>
-<div class="mobile-bar" id="mobileBar" hidden><div><small class="muted">Total TTC</small><br><strong id="barTotal">—</strong></div><a class="btn btn-gold" href="#summary">Récapitulatif ↓</a></div>
+<div class="mobile-bar" id="mobileBar" hidden><div><small class="muted" id="barLabel">Total TTC</small><br><strong id="barTotal">—</strong></div><a class="btn btn-gold" href="#summary">Récapitulatif ↓</a></div>
 <script>window.BK = <?= json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;</script>
 <script src="assets/booking.js?v=<?= @filemtime(ROOT . '/assets/booking.js') ?>" defer></script>
 <?php public_footer('reservation');

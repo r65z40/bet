@@ -81,6 +81,11 @@ if ($a === 'quote') {
         'total_ht' => $q['total_ht'] ?? 0,
         'vat' => $q['vat'] ?? 0,
         'total_ttc' => $q['total_ttc'] ?? 0,
+        // Acompte proposé (ou exigé) pour cette date : montant, solde et échéance
+        'acompte' => !empty($q['acompte']) ? [
+            'amount' => $q['acompte']['amount'], 'balance' => $q['acompte']['balance'], 'percent' => $q['acompte']['percent'],
+            'required' => $q['acompte']['required'], 'due' => fr_date($q['acompte']['due_at'], false),
+        ] : null,
     ]);
 }
 
@@ -136,7 +141,14 @@ if ($a === 'book') {
     } catch (DomainException $e) {
         out(['errors' => [$e->getMessage()]], 409);
     }
-    bk_log((int)$b['id'], 'Réservation créée (en attente de paiement ' . $provider . ')');
+    // Acompte : exigé par le réglage, ou choisi par le client (« au choix »)
+    $ac = $q['acompte'] ?? null;
+    if ($ac && !$giftOnly && ($ac['required'] || ($in['pay'] ?? '') === 'acompte')) {
+        db()->prepare("UPDATE bookings SET pay_plan = 'acompte', acompte_amount = ?, balance_due_at = ? WHERE id = ?")
+            ->execute([$ac['amount'], $ac['due_at']->format(BK_FMT), $b['id']]);
+        $b = bk_get((int)$b['id']);
+    }
+    bk_log((int)$b['id'], 'Réservation créée (en attente de paiement ' . $provider . (bk_is_acompte($b) ? ', acompte de ' . money2((float)$b['acompte_amount']) . ', solde avant le ' . bk_dt($b['balance_due_at'])->format('d/m/Y') : '') . ')');
     if ($giftOnly) {
         bk_confirm_paid((int)$b['id'], 'giftcard', 'bon ' . $b['gift_code'], 0, 'eur');
         out(['redirect' => bk_client_url(bk_get((int)$b['id'])) . '&merci=1']);

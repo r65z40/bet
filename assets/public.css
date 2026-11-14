@@ -95,6 +95,11 @@ input:focus,select:focus,textarea:focus{outline:3px solid rgba(242,212,123,.6);b
 .sum-lines li{display:flex;justify-content:space-between;gap:14px;padding:8px 0;border-bottom:1px solid var(--line)}
 .sum-lines li span:last-child{white-space:nowrap;font-weight:700}
 .sum-total{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px}
+.pay-plan{margin-top:14px;padding:12px 14px;border-radius:12px;background:#f4f6f8;border:1px solid var(--line);font-size:.9rem}
+.pay-plan .pp-title{display:block;color:var(--navy);margin-bottom:6px}
+.pay-plan .pp-opt{display:flex;gap:9px;align-items:flex-start;padding:8px 0;cursor:pointer;line-height:1.35}
+.pay-plan .pp-opt + .pp-opt{border-top:1px solid var(--line)}
+.pay-plan .pp-opt input{margin-top:3px;width:18px;height:18px;flex:0 0 18px}
 .sum-total strong{font-size:1.7rem;color:var(--navy);font-variant-numeric:tabular-nums}
 .sum-vat{font-size:.82rem;color:var(--muted);text-align:right}
 .pay{display:grid;gap:10px;margin-top:16px}

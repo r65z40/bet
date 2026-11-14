@@ -24,6 +24,14 @@ if (in_array($type, ['checkout.session.completed', 'checkout.session.async_payme
             http_response_code(500);
             exit;
         }
+    } elseif ($b && ($sess['metadata']['kind'] ?? '') === 'balance' && ($sess['payment_status'] ?? '') === 'paid') {
+        try {
+            stripe_check_balance_session($b, (string)$sess['id']); // solde d'une réservation avec acompte
+        } catch (Throwable $e) {
+            bk_log((int)$b['id'], 'Webhook Stripe (solde) : ' . $e->getMessage());
+            http_response_code(500);
+            exit;
+        }
     } elseif ($b && ($sess['payment_status'] ?? '') === 'paid') {
         try {
             // On relit la session chez Stripe plutôt que de se fier au contenu reçu

@@ -58,7 +58,35 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
     <div class="sum-vat">dont TVA <?= money2((float)$b['vat']) ?> — total HT <?= money2((float)$b['total_ht']) ?></div>
 <?php if ((float)$b['gift_amount'] > 0): ?>
     <div class="sum-total" style="margin-top:8px;font-size:.95rem"><span>Réglé par bon cadeau <?= e($b['gift_code']) ?></span><span>− <?= money2((float)$b['gift_amount']) ?></span></div>
+<?php if (!bk_is_acompte($b)): ?>
     <div class="sum-total"><span><?= $pending ? 'Reste à payer' : 'Payé en ligne' ?></span><strong style="font-size:1.3rem"><?= money2(bk_due($b)) ?></strong></div>
+<?php endif; ?>
+<?php endif; ?>
+<?php if (bk_is_acompte($b)): $bal = bk_balance($b); ?>
+    <div class="deposit" id="paiement" style="margin-top:18px">
+      <h3>💶 Paiement en deux fois</h3>
+<?php if (($_GET['solde'] ?? '') === 'ok'): ?>
+      <div class="alert alert-ok">Merci, le solde est bien réglé : votre location est entièrement payée.</div>
+<?php elseif (($_GET['solde'] ?? '') === 'erreur'): ?>
+      <div class="alert alert-err">Le paiement du solde n’a pas pu être confirmé. Si votre compte a été débité, ne réessayez pas : contactez-nous à <?= e(s('contact_email')) ?>.</div>
+<?php endif; ?>
+      <div class="sum-total" style="font-size:.95rem"><span>Acompte<?= !empty($b['paid_at']) ? ' — réglé le ' . e(bk_dt($b['paid_at'])->format('d/m/Y')) : '' ?></span><strong><?= money2((float)$b['acompte_amount']) ?></strong></div>
+<?php if (!empty($b['balance_paid_at'])): ?>
+      <div class="sum-total" style="font-size:.95rem"><span>Solde — réglé le <?= e(bk_dt($b['balance_paid_at'])->format('d/m/Y')) ?></span><strong><?= money2(bk_balance_amount($b)) ?></strong></div>
+      <p style="margin:10px 0 0;color:#1d7a46;font-weight:700">✓ Location entièrement réglée.</p>
+<?php else: ?>
+      <div class="sum-total"><span>Solde à régler avant le <?= e(fr_date(bk_dt($b['balance_due_at']), false)) ?></span><strong style="font-size:1.3rem"><?= money2(bk_balance_amount($b)) ?></strong></div>
+<?php if ($b['status'] === 'confirmed' && $providers && $bal > 0): ?>
+      <form method="post" action="paiement.php" class="pay" style="margin-top:14px">
+        <input type="hidden" name="ref" value="<?= e($b['ref']) ?>"><input type="hidden" name="t" value="<?= e($b['token']) ?>"><input type="hidden" name="solde" value="1">
+        <?php foreach ($providers as $k => $label): ?>
+        <button class="btn <?= $k === 'paypal' ? 'btn-paypal' : 'btn-blue' ?>" name="provider" value="<?= e($k) ?>"><?= $k === 'paypal' ? 'Régler le solde avec PayPal' : '🔒 Régler le solde par carte' ?> — <?= money2($bal) ?></button>
+        <?php endforeach; ?>
+      </form>
+      <p class="muted" style="font-size:.86rem;margin:8px 0 0">Vous pouvez le régler dès maintenant ; un lien vous sera aussi envoyé par e-mail avant l’échéance.</p>
+<?php endif; ?>
+<?php endif; ?>
+    </div>
 <?php endif; ?>
 <?php if ((float)$b['refunded_amount'] > 0): ?>
     <p class="alert alert-ok" style="margin-top:14px">Remboursé : <?= money2((float)$b['refunded_amount']) ?></p>
@@ -112,7 +140,7 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
     <form method="post" action="paiement.php" class="pay" style="margin-top:22px">
       <input type="hidden" name="ref" value="<?= e($b['ref']) ?>"><input type="hidden" name="t" value="<?= e($b['token']) ?>">
       <?php foreach ($providers as $k => $label): ?>
-      <button class="btn <?= $k === 'paypal' ? 'btn-paypal' : 'btn-blue' ?>" name="provider" value="<?= e($k) ?>"><?= $k === 'paypal' ? 'Payer avec PayPal' : '🔒 Payer par carte bancaire' ?> — <?= money2(bk_due($b)) ?></button>
+      <button class="btn <?= $k === 'paypal' ? 'btn-paypal' : 'btn-blue' ?>" name="provider" value="<?= e($k) ?>"><?= $k === 'paypal' ? 'Payer avec PayPal' : '🔒 Payer par carte bancaire' ?> — <?= money2(bk_pay_now($b)) ?><?= bk_is_acompte($b) ? ' (acompte)' : '' ?></button>
       <?php endforeach; ?>
     </form>
     <p class="muted" style="font-size:.88rem;margin-top:12px">Sans paiement, la réservation n’est pas prise en compte et le créneau est libéré automatiquement.</p>

@@ -48,6 +48,12 @@ $can = fn($p) => admin_can($p);
 <?php if ($can('reglages') && time() - ($lastBackup = backup_last_time()) > 3 * 86400): ?>
 <div class="flash flash-err">💾 <?= $lastBackup ? 'Aucune sauvegarde depuis le ' . e(date('d/m/Y', $lastBackup)) : 'Aucune sauvegarde n’a encore été faite' ?>. <a href="sauvegardes.php">Sauvegarder maintenant</a><?= s('_backup_error') !== '' ? ' — dernière erreur : ' . e(s('_backup_error')) : '' ?></div>
 <?php endif; ?>
+<?php if ($can('reservations')):
+    $soldes = db()->query("SELECT * FROM bookings WHERE status = 'confirmed' AND pay_plan = 'acompte' AND balance_paid_at IS NULL ORDER BY balance_due_at")->fetchAll();
+    $late = array_filter($soldes, fn($x) => $x['balance_due_at'] < bk_now()->format(BK_FMT));
+    if ($soldes): ?>
+<div class="flash<?= $late ? ' flash-err' : '' ?>">💶 <?= count($soldes) ?> solde(s) à encaisser, <?= money2(array_sum(array_map('bk_balance', $soldes))) ?> au total<?= $late ? ' — <strong>' . count($late) . ' en retard</strong> : ' . implode(', ', array_map(fn($x) => '<a href="reservation.php?id=' . (int)$x['id'] . '#solde">' . e($x['first_name'] . ' ' . $x['last_name']) . '</a>', array_slice($late, 0, 5))) : ' (prochaine échéance le ' . e(bk_dt($soldes[0]['balance_due_at'])->format('d/m/Y')) . ')' ?>.</div>
+<?php endif; endif; ?>
 <?php if ($can('reglages') && s('_drive_error') !== ''): ?>
 <div class="flash flash-err">☁ Copie des sauvegardes sur Google Drive en échec : <?= e(s('_drive_error')) ?> <a href="sauvegardes.php#drive">Voir</a></div>
 <?php endif; ?>

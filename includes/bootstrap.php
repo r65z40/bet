@@ -73,6 +73,7 @@ require_once __DIR__ . '/mailing.php';
 require_once __DIR__ . '/ical.php';
 require_once __DIR__ . '/gcal_write.php';
 require_once __DIR__ . '/deposit.php';
+require_once __DIR__ . '/acompte.php';
 require_once __DIR__ . '/notify.php';
 require_once __DIR__ . '/backup.php';
 require_once __DIR__ . '/drive.php';

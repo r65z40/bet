@@ -115,6 +115,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Throwable $e) {
             flash('Suppression impossible : ' . $e->getMessage(), 'err');
         }
+    } elseif ($do === 'balance_send' && $b['status'] === 'confirmed' && bk_balance($b) > 0) {
+        $ok = bk_mail_balance($b, empty($b['balance_requested_at']) ? 'solde_demande' : 'solde_relance');
+        flash($ok ? 'Lien de paiement du solde envoyé à ' . $b['email'] . '.' : 'Échec de l’envoi : ' . mail_last_error(), $ok ? 'ok' : 'err');
+    } elseif ($do === 'balance_offline' && $b['status'] === 'confirmed' && bk_balance($b) > 0) {
+        if (!admin_can('remboursements')) {
+            flash('Votre compte n’a pas le droit d’enregistrer un paiement.', 'err');
+            redirect('reservation.php?id=' . $id);
+        }
+        $m = (string)($_POST['method'] ?? '');
+        if (!isset(BALANCE_OFFLINE[$m])) {
+            flash('Choisissez le moyen de paiement.', 'err');
+            redirect('reservation.php?id=' . $id . '#solde');
+        }
+        bk_balance_paid($id, $m, mb_substr(trim((string)($_POST['note'] ?? '')), 0, 120), (int)round(bk_balance($b) * 100));
+        bk_log($id, 'Action effectuée par ' . current_admin()['username']);
+        admin_log('Solde reçu (' . BALANCE_OFFLINE[$m] . ') — réservation ' . $b['ref']);
+        flash('Solde enregistré comme reçu (' . BALANCE_OFFLINE[$m] . ').');
     } elseif ($do === 'release' && in_array($b['status'], ['pending', 'expired'], true)) {
         db()->prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = ?, hold_until = NULL WHERE id = ?")->execute([bk_now()->format(BK_FMT), $id]);
         bk_log($id, 'Demande non payée annulée par l’administrateur');
@@ -125,9 +142,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 [$sl, $sc] = BOOKING_STATUSES[$b['status']] ?? ['?', 'gray'];
 $paid = !empty($b['paid_at']);
-$remaining = round(bk_due($b) - (float)$b['refunded_amount'], 2); // part payée en ligne encore remboursable
+$remaining = round(bk_paid_online($b) - (float)$b['refunded_amount'], 2); // part payée en ligne encore remboursable
 $pct = bk_refund_percent($b);
-$suggest = round($remaining * $pct / 100, 2);
+// Le pourcentage s'applique au prix de la location ; avec un acompte, on ne rembourse jamais plus que ce qui a été payé
+$suggest = round(max(0, min($remaining, bk_due($b) * $pct / 100 - (float)$b['refunded_amount'])), 2);
 $log = db()->prepare('SELECT * FROM booking_log WHERE booking_id = ? ORDER BY id DESC');
 $log->execute([$id]);
 admin_header('Réservation ' . $b['ref'], 'resa');
@@ -150,9 +168,31 @@ admin_header('Réservation ' . $b['ref'], 'resa');
         <tr><td><strong>Total</strong></td><td class="num"><?= money2((float)$b['total_ht']) ?> HT</td><td class="num"><strong><?= money2((float)$b['total_ttc']) ?> TTC</strong></td></tr>
         <?php if ((float)$b['promo_ht'] > 0): ?><tr><td>Code promo <?= e($b['promo_code']) ?></td><td class="num">− <?= money2((float)$b['promo_ht']) ?></td><td class="num">− <?= money2(ttc((float)$b['promo_ht'])) ?></td></tr><?php endif; ?>
         <?php if ((float)$b['gift_amount'] > 0): ?><tr><td>Réglé par bon cadeau <?= e($b['gift_code']) ?><?= (int)$b['gift_restored'] ? ' <span class="pill">recrédité</span>' : '' ?></td><td></td><td class="num">− <?= money2((float)$b['gift_amount']) ?></td></tr>
-          <tr><td><strong>Payé en ligne</strong></td><td></td><td class="num"><strong><?= money2(bk_due($b)) ?></strong></td></tr><?php endif; ?>
+          <tr><td><strong><?= bk_is_acompte($b) ? 'Reste à payer après le bon' : 'Payé en ligne' ?></strong></td><td></td><td class="num"><strong><?= money2(bk_due($b)) ?></strong></td></tr><?php endif; ?>
+        <?php if (bk_is_acompte($b)): ?>
+          <tr><td>Acompte<?= $paid ? ' — payé le ' . e(bk_dt($b['paid_at'])->format('d/m/Y')) . ' (' . e(provider_label($b['provider'])) . ')' : '' ?></td><td></td><td class="num"><?= money2((float)$b['acompte_amount']) ?></td></tr>
+          <tr><td><strong>Solde</strong> — <?= !empty($b['balance_paid_at']) ? 'payé le ' . e(bk_dt($b['balance_paid_at'])->format('d/m/Y')) . ' (' . e(balance_method_label($b['balance_method'])) . ')' : '<span style="color:#b42318">à régler avant le ' . e(bk_dt($b['balance_due_at'])->format('d/m/Y')) . '</span>' ?></td><td></td><td class="num"><strong><?= money2(bk_balance_amount($b)) ?></strong></td></tr>
+        <?php endif; ?>
         <?php if ((float)$b['refunded_amount'] > 0): ?><tr><td>Remboursé</td><td></td><td class="num">− <?= money2((float)$b['refunded_amount']) ?></td></tr><?php endif; ?>
       </table>
+      <?php if ($b['status'] === 'confirmed' && bk_balance($b) > 0): ?>
+      <div id="solde" style="background:#fff8e8;border:1px solid #f0dca8;border-radius:10px;padding:12px 14px;margin-top:12px">
+        <strong>Solde de <?= money2(bk_balance($b)) ?> à encaisser</strong><br>
+        <span class="muted" style="font-size:.9rem"><?= $b['balance_requested_at'] ? 'Lien envoyé le ' . e(bk_dt($b['balance_requested_at'])->format('d/m/Y')) . ($b['balance_reminded_at'] ? ', relancé le ' . e(bk_dt($b['balance_reminded_at'])->format('d/m/Y')) : '') . '.' : 'Le lien de paiement partira automatiquement le ' . e(bk_dt($b['balance_due_at'])->modify('-7 days')->format('d/m/Y')) . '.' ?></span>
+        <form method="post" style="margin:10px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <?= csrf_field() ?>
+          <button class="btn light sm" name="do" value="balance_send">✉ Envoyer le lien de paiement maintenant</button>
+        </form>
+        <?php if (admin_can('remboursements')): ?>
+        <form method="post" style="margin:8px 0 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <?= csrf_field() ?>
+          <select name="method" aria-label="Moyen de paiement" style="width:auto"><option value="">Reçu par…</option><?php foreach (BALANCE_OFFLINE as $k => $l): ?><option value="<?= e($k) ?>"><?= e($l) ?></option><?php endforeach; ?></select>
+          <input type="text" name="note" placeholder="Référence (facultatif)" maxlength="120" style="width:180px">
+          <button class="btn sm" name="do" value="balance_offline" onclick="return confirm('Noter le solde comme reçu ?')">✓ Solde reçu hors ligne</button>
+        </form>
+        <?php endif; ?>
+      </div>
+      <?php endif; ?>
       <p class="actions" style="margin-top:14px">
         <?php if ($b['invoice_number'] !== ''): ?><a class="btn light sm" href="../facture.php?id=<?= $id ?>" target="_blank">🧾 Facture <?= e($b['invoice_number']) ?></a><?php endif; ?>
         <?php if ($b['credit_number'] !== ''): ?><a class="btn light sm" href="../facture.php?id=<?= $id ?>&amp;avoir=1" target="_blank">🧾 Avoir <?= e($b['credit_number']) ?></a><?php endif; ?>
@@ -189,7 +229,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
       <?= csrf_field() ?>
       <h2><?= $b['status'] === 'confirmed' ? 'Annuler / rembourser' : 'Rembourser à nouveau' ?></h2>
       <p class="muted" style="margin-top:-6px">Selon vos conditions, à <?= max(0, (int)floor((bk_dt($b['start_at'])->getTimestamp() - time()) / 86400)) ?> jour(s) de l’événement : <strong><?= $pct ?> %</strong> remboursable, soit <?= money2($suggest) ?>.
-        Le remboursement est effectué directement sur le moyen de paiement du client (<?= e(provider_label($b['provider'])) ?>).</p>
+        Le remboursement est effectué directement sur le moyen de paiement du client (<?= e(provider_label($b['provider'])) ?>).<?= bk_is_acompte($b) ? ' Calcul sur le prix total ; seuls les montants payés en ligne sont remboursables ici' . (!empty($b['balance_paid_at']) && isset(BALANCE_OFFLINE[$b['balance_method']]) ? ' (le solde reçu par ' . e(strtolower(BALANCE_OFFLINE[$b['balance_method']])) . ' se rembourse à la main)' : '') . '.' : '' ?></p>
       <?= field('amount', 'Montant à rembourser TTC (€) — maximum ' . money2($remaining), rating_label((string)$suggest), 'text') ?>
       <?php if ((float)$b['gift_amount'] > 0 && !(int)$b['gift_restored']): ?>
         <label style="display:block;margin-bottom:10px"><input type="checkbox" name="restore_gift" value="1"> Recréditer le bon cadeau <?= e($b['gift_code']) ?> de <?= money2((float)$b['gift_amount']) ?></label>

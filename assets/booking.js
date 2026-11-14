@@ -198,6 +198,7 @@
     const due = typeof j.amount_due === 'number' ? j.amount_due : j.total_ttc;
     $('#dueRow').hidden = !(j.gift_amount > 0);
     $('#sumDue').textContent = eur.format(due || 0);
+    renderPayPlan(j.acompte, due);
     $$('.pay .btn').forEach((b, i) => {
       if (!b.dataset.label) b.dataset.label = b.innerHTML;
       const giftOnly = j.gift_amount > 0 && due <= 0;
@@ -210,8 +211,40 @@
     showErrors(errs);
     st.quoteOk = !!j.ok || (preview && !errs.length);
     setTotal(j.total_ttc || null, due);
+    if (st.acompte && j.total_ttc) payLabels(due);
     if (errs.some(e => /plus disponible|avance/.test(e))) { delete cache[st.month]; renderCal(true); }
   }
+  /* ---------- Acompte : imposé, au choix, ou totalité ---------- */
+  function renderPayPlan(a, due) {
+    const box = $('#payPlan'), note = $('#secureNote');
+    st.acompte = a || null;
+    if (!a || !(due > 0)) {
+      box.hidden = true; box.innerHTML = ''; st.pay = 'total';
+      $('#barLabel').textContent = 'Total TTC'; $('#payNow').hidden = true;
+      if (note) note.textContent = 'Le montant total est réglé à la réservation.';
+      return;
+    }
+    if (a.required) st.pay = 'acompte';
+    else if (st.pay !== 'acompte') st.pay = 'total';
+    const pct = String(a.percent).replace('.', ',');
+    box.hidden = false;
+    box.innerHTML = a.required
+      ? '<div class="pp-info"><strong>Acompte de ' + pct + ' % à la réservation : ' + eur.format(a.amount) + '</strong><br>Solde de ' + eur.format(a.balance) + ' à régler avant le ' + esc(a.due) + ' (lien envoyé par e-mail).</div>'
+      : '<strong class="pp-title">Comment souhaitez-vous payer ?</strong>'
+        + '<label class="pp-opt"><input type="radio" name="pay" value="total"' + (st.pay === 'total' ? ' checked' : '') + '> <span><strong>Totalité maintenant</strong> — ' + eur.format(due) + '</span></label>'
+        + '<label class="pp-opt"><input type="radio" name="pay" value="acompte"' + (st.pay === 'acompte' ? ' checked' : '') + '> <span><strong>Acompte de ' + pct + ' %</strong> — ' + eur.format(a.amount) + ' maintenant, puis ' + eur.format(a.balance) + ' avant le ' + esc(a.due) + '</span></label>';
+    $$('input[name="pay"]', box).forEach(r => r.addEventListener('change', () => { st.pay = r.value; payLabels(due); }));
+    if (note) note.textContent = 'Acompte possible : le solde se règle en ligne avant l’événement, depuis votre espace client.';
+    payLabels(due);
+  }
+  function payLabels(due) {
+    const now = st.pay === 'acompte' && st.acompte ? st.acompte.amount : due;
+    $('#barTotal').textContent = now ? eur.format(now) : '—';
+    $('#barLabel').textContent = st.acompte && st.pay === 'acompte' ? 'Acompte aujourd’hui' : 'Total TTC';
+    const lbl = $('#payNow');
+    if (lbl) { lbl.hidden = !(st.acompte && st.pay === 'acompte'); lbl.querySelector('strong').textContent = eur.format(now || 0); }
+  }
+
   function setTotal(t, due) {
     st.total = t;
     $$('.pay .btn').forEach(b => b.disabled = !t || !st.quoteOk);
@@ -253,7 +286,7 @@
       event_type: fd.get('event_type'), first_name: fd.get('first_name'), last_name: fd.get('last_name'), email: fd.get('email'),
       phone: fd.get('phone'), company: fd.get('company'), address: fd.get('address'), zip: fd.get('zip'), city: fd.get('city'),
       message: fd.get('message'), asso_name: fd.get('asso_name') || '', website: fd.get('website'), cgv: true,
-      provider: btn.dataset.provider, expected_total: st.total,
+      provider: btn.dataset.provider, expected_total: st.total, pay: st.pay || 'total',
     });
     const label = btn.innerHTML;
     $$('.pay .btn').forEach(b => b.disabled = true);

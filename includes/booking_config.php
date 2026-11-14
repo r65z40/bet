@@ -10,7 +10,7 @@ const BOOKING_DEFAULT_CGV = <<<'TXT'
 Les présentes conditions régissent la location de La Salle RN6, 71 C route d’Auxerre, 89380 Appoigny, réservée sur le site internet.
 
 # 2. Réservation et paiement
-La réservation est ferme dès le paiement intégral du prix TTC en ligne (carte bancaire ou PayPal). Un e-mail de confirmation et une facture sont envoyés au client.
+La réservation est ferme dès le paiement en ligne (carte bancaire ou PayPal) : {paiement} Un e-mail de confirmation et une facture sont envoyés au client.
 
 # 3. Durée et horaires
 Location de 24 heures (horaires indiqués lors de la réservation) ou location à l’heure, entre 8 h et 21 h, pour une durée minimum de 2 heures. Les horaires réservés doivent être respectés, installation et rangement compris.
@@ -79,7 +79,7 @@ const BOOKING_SETTINGS = [
             'bk_cancel_rules' => ['label' => 'Remboursement en cas d’annulation', 'type' => 'textarea', 'default' => "30 = 100\n7 = 50",
                 'help' => 'Une règle par ligne « au moins X jours avant = % remboursé ». En dessous du plus petit délai : 0 %. Utilisé pour proposer le montant du remboursement dans l’admin.'],
             'bk_cgv' => ['label' => 'Conditions générales de location (page publique)', 'type' => 'textarea', 'default' => BOOKING_DEFAULT_CGV,
-                'help' => 'Texte à faire relire par votre comptable ou un juriste. **gras** autorisé. Les lignes commençant par « # » deviennent des titres.'],
+                'help' => 'Texte à faire relire par votre comptable ou un juriste. **gras** autorisé. Les lignes commençant par « # » deviennent des titres. {paiement} est remplacé par les modalités de paiement en vigueur (totalité ou acompte, Réglages › Paiement).'],
         ],
     ],
     'paiement' => [
@@ -92,6 +92,14 @@ const BOOKING_SETTINGS = [
             'bk_paypal_mode'     => ['label' => 'PayPal — mode', 'type' => 'select', 'default' => 'sandbox', 'options' => ['sandbox' => 'Test (sandbox)', 'live' => 'Production (vrais paiements)']],
             'bk_paypal_client'   => ['label' => 'PayPal — Client ID', 'type' => 'text', 'default' => '', 'help' => 'developer.paypal.com › Apps & Credentials › votre application (Live ou Sandbox selon le mode).'],
             'bk_paypal_secret'   => ['label' => 'PayPal — Secret', 'type' => 'secret', 'default' => ''],
+            'bk_pay_mode'        => ['label' => 'Paiement à la réservation', 'type' => 'select', 'default' => 'total', 'options' => [
+                'total'   => 'Totalité à la réservation',
+                'acompte' => 'Acompte à la réservation, solde avant l’événement',
+                'choix'   => 'Au choix du client : totalité ou acompte',
+            ], 'help' => 'Si l’événement est trop proche (moins que le délai du solde ci-dessous), la totalité est toujours demandée.'],
+            'bk_acompte_percent' => ['label' => 'Acompte : pourcentage du montant (%)', 'default' => '30', 'type' => 'number', 'help' => 'Entre 10 et 90 %.'],
+            'bk_solde_days'      => ['label' => 'Solde : à régler combien de jours avant l’événement', 'default' => '30', 'type' => 'number',
+                'help' => 'Le client reçoit le lien de paiement du solde 7 jours avant cette date, puis une relance le jour même ; vous êtes prévenu s’il n’est toujours pas réglé. Il peut aussi le payer à tout moment depuis son espace client.'],
         ],
     ],
     'caution' => [

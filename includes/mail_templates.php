@@ -55,6 +55,30 @@ const MAIL_TEMPLATES = [
         'vars' => ['prenom', 'nom', 'reservation', 'reference', 'montant_caution', 'montant_retenu', 'motif'],
         'blocks' => [],
     ],
+    'solde_demande' => [
+        'label' => 'Acompte : demande du solde (client)',
+        'title' => 'Le solde de votre location',
+        'subject' => 'Votre événement approche : réglez le solde — {site}',
+        'body' => "Bonjour {prenom},\n\nVotre location à {site} approche ({reservation}). Merci pour l’acompte de {montant_acompte} déjà réglé.\n\nComme prévu, le **solde de {montant_solde}** est à régler **avant le {date_limite}**, en ligne et en toute sécurité :\n\n{bouton}\n\nUne question ? Répondez simplement à cet e-mail.",
+        'vars' => ['prenom', 'nom', 'reservation', 'reference', 'montant_solde', 'montant_acompte', 'date_limite', 'lien'],
+        'blocks' => ['bouton'],
+    ],
+    'solde_relance' => [
+        'label' => 'Acompte : relance du solde (client)',
+        'title' => 'Rappel : solde à régler',
+        'subject' => 'Rappel : solde de votre location à régler — {site}',
+        'body' => "Bonjour {prenom},\n\nSauf erreur de notre part, le **solde de {montant_solde}** de votre location ({reservation}) n’est pas encore réglé : il était attendu avant le {date_limite}.\n\nVous pouvez le régler en une minute :\n\n{bouton}\n\nSi vous l’avez déjà réglé autrement (virement, chèque), ne tenez pas compte de ce message.",
+        'vars' => ['prenom', 'nom', 'reservation', 'reference', 'montant_solde', 'date_limite', 'lien'],
+        'blocks' => ['bouton'],
+    ],
+    'solde_recu' => [
+        'label' => 'Acompte : solde reçu (client)',
+        'title' => 'Solde reçu, merci !',
+        'subject' => 'Solde reçu — {site}',
+        'body' => "Bonjour {prenom},\n\nNous avons bien reçu le **solde de {montant_solde}** : votre location ({reservation}) est **entièrement réglée**. Merci !\n\nVotre facture à jour est disponible dans votre espace :\n\n{bouton}\n\nÀ bientôt !",
+        'vars' => ['prenom', 'nom', 'reservation', 'reference', 'montant_solde', 'lien'],
+        'blocks' => ['bouton'],
+    ],
     'alerte' => [
         'label' => 'Alerte « nouvelle réservation » (vous)',
         'title' => 'Nouvelle réservation payée',
@@ -105,7 +129,7 @@ const MAIL_VAR_HELP = [
     'lien' => 'lien principal (espace client ou activation)', 'identifiant' => 'identifiant du compte', 'site' => 'nom de la salle',
     'recapitulatif' => 'tableau du détail et du total', 'boutons' => 'boutons espace client + ajout à l’agenda', 'caution' => 'encadré caution',
     'bouton' => 'bouton principal', 'arrivee' => 'date et heure d’arrivée', 'depart' => 'date et heure de départ', 'jours' => 'nombre de jours avant l’événement',
-    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'montant_caution' => 'montant de la caution', 'montant_retenu' => 'montant retenu sur la caution', 'motif' => 'motif de la retenue', 'documents' => 'liens vers les documents (règlement intérieur, contrat…)', 'option_cheque' => 'phrase « vous préférez le chèque ? » (caution au choix)', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
+    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'montant_caution' => 'montant de la caution', 'montant_retenu' => 'montant retenu sur la caution', 'motif' => 'motif de la retenue', 'documents' => 'liens vers les documents (règlement intérieur, contrat…)', 'option_cheque' => 'phrase « vous préférez le chèque ? » (caution au choix)', 'montant_solde' => 'montant du solde', 'montant_acompte' => 'montant de l’acompte', 'date_limite' => 'date limite', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
 ];
 
 const MAIL_STYLE_DEFAULTS = [

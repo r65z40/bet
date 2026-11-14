@@ -12,6 +12,20 @@ if (!$b || !isset(payment_providers()[$provider])) {
     http_response_code(404);
     exit('Réservation introuvable.');
 }
+// Paiement du solde (réservation confirmée avec acompte)
+if (!empty($_POST['solde'])) {
+    if ($b['status'] !== 'confirmed' || bk_balance($b) <= 0) {
+        header('Location: ' . bk_client_url($b) . '#paiement');
+        exit;
+    }
+    try {
+        header('Location: ' . ($provider === 'paypal' ? paypal_checkout_balance($b) : stripe_checkout_balance($b)));
+    } catch (Throwable $e) {
+        bk_log((int)$b['id'], 'Échec de création du paiement du solde : ' . $e->getMessage());
+        header('Location: ' . bk_client_url($b) . '&solde=erreur#paiement');
+    }
+    exit;
+}
 if (!in_array($b['status'], ['pending', 'expired'], true)) {
     header('Location: ' . bk_client_url($b));
     exit;

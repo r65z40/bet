@@ -4,7 +4,7 @@
  * totaux par mois et par moyen de paiement, export CSV (Excel) pour le comptable.
  */
 
-const COMPTA_TYPES = ['facture' => 'Facture', 'avoir' => 'Avoir', 'caution' => 'Retenue sur caution'];
+const COMPTA_TYPES = ['facture' => 'Facture', 'avoir' => 'Avoir', 'caution' => 'Retenue sur caution', 'solde' => 'Encaissement du solde'];
 
 /** Nom affiché du client (société ou association en priorité). */
 function compta_client(array $b): string
@@ -31,7 +31,7 @@ function compta_entries(DateTimeImmutable $from, DateTimeImmutable $to): array
         $out[] = [
             'type' => 'facture', 'number' => $b['invoice_number'], 'date' => $b['paid_at'], 'b' => $b,
             'ht' => round((float)$b['total_ht'], 2), 'tva' => round((float)$b['vat'], 2), 'ttc' => round((float)$b['total_ttc'], 2),
-            'gift' => round((float)$b['gift_amount'], 2), 'paid' => round(bk_due($b), 2),
+            'gift' => round((float)$b['gift_amount'], 2), 'paid' => round(bk_pay_now($b), 2), // avec acompte : seul l'acompte est encaissé à cette date
             'provider' => $b['provider'] === 'giftcard' ? '' : $b['provider'], 'payment_ref' => $b['payment_ref'],
         ];
     }
@@ -47,6 +47,17 @@ function compta_entries(DateTimeImmutable $from, DateTimeImmutable $to): array
             'ht' => -$ht, 'tva' => -round($ttc - $ht, 2), 'ttc' => -$ttc,
             'gift' => -round($giftBack, 2), 'paid' => -round((float)$b['refunded_amount'], 2),
             'provider' => (float)$b['refunded_amount'] > 0 ? $b['provider'] : '', 'payment_ref' => $b['payment_ref'],
+        ];
+    }
+
+    // Solde d'une facture avec acompte : simple encaissement (la facture est déjà comptée en totalité)
+    $st = db()->prepare("SELECT * FROM bookings WHERE pay_plan = 'acompte' AND balance_paid_at >= ? AND balance_paid_at < ?");
+    $st->execute([$a, $z]);
+    foreach ($st as $b) {
+        $out[] = [
+            'type' => 'solde', 'number' => $b['invoice_number'], 'date' => $b['balance_paid_at'], 'b' => $b,
+            'ht' => 0.0, 'tva' => 0.0, 'ttc' => 0.0, 'gift' => 0.0, 'paid' => round(bk_balance_amount($b), 2),
+            'provider' => $b['balance_method'], 'payment_ref' => $b['balance_ref'],
         ];
     }
 
@@ -68,7 +79,7 @@ function compta_entries(DateTimeImmutable $from, DateTimeImmutable $to): array
 /** Totaux : par mois (Y-m) et par moyen d'encaissement. */
 function compta_totals(array $entries): array
 {
-    $zero = ['factures' => 0, 'ht' => 0.0, 'tva' => 0.0, 'ttc' => 0.0, 'avoirs_ttc' => 0.0, 'cautions' => 0.0, 'net_ht' => 0.0, 'net_tva' => 0.0, 'net_ttc' => 0.0];
+    $zero = ['factures' => 0, 'soldes' => 0.0, 'ht' => 0.0, 'tva' => 0.0, 'ttc' => 0.0, 'avoirs_ttc' => 0.0, 'cautions' => 0.0, 'net_ht' => 0.0, 'net_tva' => 0.0, 'net_ttc' => 0.0];
     $months = [];
     $all = $zero;
     $by = [];
@@ -83,10 +94,12 @@ function compta_totals(array $entries): array
                 $t['ttc'] += $en['ttc'];
             } elseif ($en['type'] === 'avoir') {
                 $t['avoirs_ttc'] += $en['ttc'];
+            } elseif ($en['type'] === 'solde') {
+                $t['soldes'] += $en['paid'];
             } else {
                 $t['cautions'] += $en['ttc'];
             }
-            if ($en['type'] !== 'caution') {
+            if ($en['type'] === 'facture' || $en['type'] === 'avoir') {
                 $t['net_ht'] += $en['ht'];
                 $t['net_tva'] += $en['tva'];
                 $t['net_ttc'] += $en['ttc'];
@@ -94,7 +107,7 @@ function compta_totals(array $entries): array
         }
         unset($t);
         if ($en['provider'] !== '' && abs($en['paid']) > 0) {
-            $by[provider_label($en['provider'])] = ($by[provider_label($en['provider'])] ?? 0) + $en['paid'];
+            $by[balance_method_label($en['provider'])] = ($by[balance_method_label($en['provider'])] ?? 0) + $en['paid'];
         }
         if (abs($en['gift']) > 0) {
             $by['bon cadeau'] = ($by['bon cadeau'] ?? 0) + $en['gift'];
@@ -132,8 +145,10 @@ function compta_csv(array $entries, string $filename): void
         fputcsv($f, array_map($cell, [
             COMPTA_TYPES[$en['type']], $en['number'], bk_dt($en['date'])->format('d/m/Y'), $b['ref'], compta_client($b),
             bk_dt($b['start_at'])->format('d/m/Y'), compta_num($en['ht']), compta_num($en['tva']), compta_num($en['ttc']),
-            compta_num($en['gift']), compta_num($en['paid']), $en['provider'] !== '' ? provider_label($en['provider']) : '', $en['payment_ref'],
-            $en['type'] === 'caution' ? 'Indemnité pour dégradation, hors champ de la TVA — ' . ($en['note'] ?? '') : '',
+            compta_num($en['gift']), compta_num($en['paid']), $en['provider'] !== '' ? balance_method_label($en['provider']) : '', $en['payment_ref'],
+            $en['type'] === 'caution' ? 'Indemnité pour dégradation, hors champ de la TVA — ' . ($en['note'] ?? '')
+                : ($en['type'] === 'solde' ? 'Solde de la facture ' . $en['number'] . ' (déjà comptée en totalité)'
+                : ($en['type'] === 'facture' && bk_is_acompte($b) ? 'Acompte encaissé ; solde de ' . compta_num(bk_balance_amount($b)) . ' € ' . (!empty($b['balance_paid_at']) ? 'réglé le ' . bk_dt($b['balance_paid_at'])->format('d/m/Y') : 'à encaisser') : '')),
         ]), ';', '"', '');
     }
     fclose($f);

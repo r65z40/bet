@@ -14,6 +14,7 @@ function sample_mail(string $key): array
 {
     $b = mail_sample_booking();
     [$vars, $blocks] = mail_booking_data($b);
+    $vars += ['montant_solde' => money2(504), 'montant_acompte' => money2(216), 'date_limite' => fr_date(bk_now()->modify('+25 days'), false)];
     $vars += ['identifiant' => 'marie', 'montant_rembourse' => money2(360), 'arrivee' => 'samedi 12 décembre 2026 à 10h00', 'depart' => 'dimanche 13 décembre 2026 à 10h00', 'jours' => '7', 'lien_avis' => review_url(), 'ancienne_date' => 'Du samedi 5 décembre 2026 à 10h00 au dimanche 6 décembre 2026 à 10h00', 'montant_caution' => money2(1000), 'montant_retenu' => money2(150), 'motif' => 'Une chaise cassée et une tache sur la moquette de l’entrée.'];
     $blocks += [
         'attention' => '',

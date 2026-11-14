@@ -33,7 +33,7 @@ if (isset($_GET['csv'])) {
 }
 
 if (isset($_GET['print'])) {
-    $docs = array_filter($entries, fn($en) => $en['type'] !== 'caution');
+    $docs = array_filter($entries, fn($en) => in_array($en['type'], ['facture', 'avoir'], true));
     ?><!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>Factures et avoirs <?= e($slug) ?> — <?= e(s('bk_company_name')) ?></title>
@@ -114,8 +114,12 @@ admin_header('Comptabilité', 'compta');
       <td><?php if ($en['type'] === 'caution'): ?>Retenue sur caution<br><span class="muted" style="font-size:.85rem"><?= e(mb_strimwidth((string)($en['note'] ?? ''), 0, 60, '…')) ?></span>
         <?php else: ?><a href="../facture.php?id=<?= (int)$b['id'] ?><?= $en['type'] === 'avoir' ? '&amp;avoir=1' : '' ?>" target="_blank"><?= e(COMPTA_TYPES[$en['type']] . ' ' . $en['number']) ?></a><?php endif; ?></td>
       <td><a href="reservation.php?id=<?= (int)$b['id'] ?>"><?= e(compta_client($b)) ?></a><br><span class="muted" style="font-size:.85rem"><?= e($b['ref']) ?> · le <?= e(bk_dt($b['start_at'])->format('d/m/Y')) ?></span></td>
+<?php if ($en['type'] === 'solde'): ?>
+      <td colspan="3" class="num muted" style="font-size:.88rem">encaissé <strong style="color:var(--navy)"><?= money2($en['paid']) ?></strong> (facture déjà comptée)</td>
+<?php else: ?>
       <td class="num"><?= money2($en['ht']) ?></td><td class="num"><?= money2($en['tva']) ?></td><td class="num"><strong><?= money2($en['ttc']) ?></strong></td>
-      <td><?= $en['provider'] !== '' ? e(ucfirst(provider_label($en['provider']))) : '' ?><?= abs($en['gift']) > 0 ? ($en['provider'] !== '' ? ' + ' : '') . 'bon cadeau ' . money2($en['gift']) : '' ?></td>
+<?php endif; ?>
+      <td><?= $en['provider'] !== '' ? e(ucfirst(balance_method_label($en['provider']))) : '' ?><?= $en['type'] === 'facture' && bk_is_acompte($b) ? '<br><span class="muted" style="font-size:.82rem">acompte ' . money2($en['paid']) . '</span>' : '' ?><?= abs($en['gift']) > 0 ? ($en['provider'] !== '' ? ' + ' : '') . 'bon cadeau ' . money2($en['gift']) : '' ?></td>
     </tr>
     <?php endforeach; ?>
   </table></div>
