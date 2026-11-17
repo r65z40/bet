@@ -107,11 +107,21 @@ if ($a === 'devis') {
     if ($c['phone'] !== '' && !preg_match('/^[0-9 +().-]{6,30}$/', $c['phone'])) $errors[] = 'Numéro de téléphone invalide.';
     if (!$recap && !in_array($c['event_type'], bk_event_types(), true)) $errors[] = 'Choisissez le type d’événement.';
     if ($recap && $req['guests'] < 1) $req['guests'] = 1;
-    // Anti-abus : 5 devis par visiteur et par heure
+    // Pas de lien ni d'adresse dans les noms : le devis est envoyé par e-mail, il ne doit pas servir à relayer un message
+    foreach (['first_name', 'last_name', 'company', 'asso_name'] as $k) {
+        if (preg_match('~https?:|www\.|@|<|>|\.(com|fr|net|org|ru|io|xyz)\b~i', $c[$k])) {
+            out(['errors' => ['Le nom ne doit contenir ni lien ni adresse e-mail.']], 422);
+        }
+    }
+    // Anti-abus : 5 devis par visiteur et par heure, 3 par adresse e-mail et par jour, 40 par heure pour tout le site
     $st = db()->prepare('SELECT COUNT(*) FROM quotes WHERE visitor = ? AND created_at > ?');
     $st->execute([ip_fingerprint(), bk_now()->modify('-1 hour')->format(BK_FMT)]);
-    if ((int)$st->fetchColumn() >= 5) {
-        out(['errors' => ['Vous avez déjà demandé plusieurs devis : réessayez dans une heure ou contactez-nous.']], 429);
+    $perEmail = db()->prepare('SELECT COUNT(*) FROM quotes WHERE lower(email) = lower(?) AND created_at > ?');
+    $perEmail->execute([$c['email'], bk_now()->modify('-1 day')->format(BK_FMT)]);
+    $global = db()->prepare('SELECT COUNT(*) FROM quotes WHERE created_at > ?');
+    $global->execute([bk_now()->modify('-1 hour')->format(BK_FMT)]);
+    if ((int)$st->fetchColumn() >= 5 || (int)$perEmail->fetchColumn() >= 3 || (int)$global->fetchColumn() >= 40) {
+        out(['errors' => ['Plusieurs devis viennent déjà d’être demandés : réessayez plus tard ou contactez-nous.']], 429);
     }
     $q = bk_quote($req);
     $errors = array_merge($q['errors'] ?? [], $errors);

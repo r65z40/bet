@@ -9,6 +9,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 $json = str_contains((string)($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
+// Refuse les envois préparés sur un autre site (en-tête Origin ou Referer d'un autre domaine)
+$from = (string)($_SERVER['HTTP_ORIGIN'] ?? ($_SERVER['HTTP_REFERER'] ?? ''));
+if ($from !== '' && parse_url($from, PHP_URL_HOST) !== parse_url('//' . ($_SERVER['HTTP_HOST'] ?? ''), PHP_URL_HOST)) {
+    http_response_code(403);
+    exit;
+}
 $err = contact_send($_POST);
 if ($json) {
     header('Content-Type: application/json; charset=utf-8');

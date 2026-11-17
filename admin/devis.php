@@ -3,6 +3,26 @@
 require __DIR__ . '/_init.php';
 require_perm('reservations');
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    check_csrf();
+    $do = (string)($_POST['do'] ?? '');
+    if ($do === 'del') {
+        $st = db()->prepare('SELECT number FROM quotes WHERE id = ?');
+        $st->execute([(int)($_POST['id'] ?? 0)]);
+        if ($num = $st->fetchColumn()) {
+            db()->prepare('DELETE FROM quotes WHERE id = ?')->execute([(int)$_POST['id']]);
+            admin_log('Devis supprimé : ' . $num);
+            flash('Devis ' . $num . ' supprimé (la réservation éventuelle n’est pas touchée).');
+        }
+    } elseif ($do === 'del_expired') {
+        $st = db()->prepare("DELETE FROM quotes WHERE valid_until < ? AND id NOT IN (SELECT q.id FROM quotes q JOIN bookings b ON b.id = q.booking_id WHERE b.status = 'confirmed')");
+        $st->execute([bk_now()->format(BK_FMT)]);
+        admin_log('Devis expirés supprimés : ' . $st->rowCount());
+        flash($st->rowCount() . ' devis expiré(s) supprimé(s).');
+    }
+    redirect('devis.php?f=' . rawurlencode((string)($_GET['f'] ?? 'tous')));
+}
+
 $f = (string)($_GET['f'] ?? 'tous');
 $rows = db()->query('SELECT q.*, b.status AS b_status, b.ref AS b_ref FROM quotes q LEFT JOIN bookings b ON b.id = q.booking_id ORDER BY q.id DESC LIMIT 500')->fetchAll();
 $state = function (array $q): array {
@@ -34,6 +54,9 @@ admin_header('Devis', 'devis');
     <a class="btn <?= $f === $k ? '' : 'light' ?> sm" href="devis.php?f=<?= $k ?>"><?= $l ?> (<?= $count[$k] ?>)</a>
   <?php endforeach; ?>
 </p>
+<?php if ($count['expire']): ?>
+<form method="post" action="devis.php?f=<?= e($f) ?>" style="margin:-4px 0 12px"><?= csrf_field() ?><button class="btn light sm" name="do" value="del_expired" onclick="return confirm('Supprimer les <?= (int)$count['expire'] ?> devis expirés ?')">🗑 Supprimer les devis expirés (<?= (int)$count['expire'] ?>)</button></form>
+<?php endif; ?>
 <div class="card">
 <?php if (!$list): ?><p class="muted">Aucun devis pour l’instant.</p><?php else: ?>
   <div style="overflow-x:auto"><table>
@@ -50,6 +73,7 @@ admin_header('Devis', 'devis');
       <td style="white-space:nowrap">
         <a class="btn light sm" href="../devis.php?n=<?= e(rawurlencode($q['number'])) ?>&amp;t=<?= e($q['token']) ?>" target="_blank">Voir</a>
         <?php if ($q['booking_id']): ?><a class="btn light sm" href="reservation.php?id=<?= (int)$q['booking_id'] ?>">Réservation</a><?php endif; ?>
+        <form method="post" action="devis.php?f=<?= e($f) ?>" style="display:inline;margin:0"><?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)$q['id'] ?>"><button class="btn danger sm" name="do" value="del" title="Supprimer ce devis" onclick="return confirm('Supprimer le devis <?= e($q['number']) ?> ? Le lien envoyé au client ne fonctionnera plus.')">🗑</button></form>
       </td>
     </tr>
     <?php endforeach; ?>

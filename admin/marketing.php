@@ -6,6 +6,14 @@ require_perm('reservations');
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     check_csrf();
     $do = (string)($_POST['do'] ?? '');
+    // Envoi groupé : droit « E-mails clients » ; remise sur les prix : droit « Tarifs » ; export des données : mot de passe redemandé
+    if (($do === 'lm_send' && !admin_can('emails')) || (in_array($do, ['lm_send', 'lm_apply', 'lm_clear'], true) && !admin_can('tarifs'))) {
+        flash('Votre compte n’a pas le droit de faire cette action (droits « Tarifs » et « E-mails clients »).', 'err');
+        redirect('marketing.php');
+    }
+    if ($do === 'csv') {
+        require_reauth('marketing.php');
+    }
     if ($do === 'lm_send' || $do === 'lm_apply') {
         $n = marketing_lastminute_run($do === 'lm_send');
         $dates = (int)db()->query('SELECT COUNT(*) FROM special_prices WHERE auto = 1')->fetchColumn();
@@ -100,7 +108,7 @@ admin_header('Marketing', 'marketing');
 </div>
 
 <div class="card">
-  <h2 style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">Contacts <form method="post" style="margin:0"><?= csrf_field() ?><button class="btn light sm" name="do" value="csv">⬇ Exporter les abonnés (CSV)</button></form></h2>
+  <h2 style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap">Contacts <form method="post" style="margin:0;display:flex;gap:6px"><?= csrf_field() ?><?= reauth_needed() ? '<input type="password" name="reauth" placeholder="Votre mot de passe" style="width:150px" autocomplete="current-password">' : '' ?><button class="btn light sm" name="do" value="csv">⬇ Exporter les abonnés (CSV)</button></form></h2>
   <p class="muted" style="margin-top:-6px">Abonnés (case cochée), demandes de devis, messages et clients. Preuve du consentement conservée (date, formulaire, texte accepté). Les prospects sans activité depuis 3 ans sont effacés automatiquement.</p>
   <?php if (!$contacts): ?><p class="muted">Aucun contact pour l’instant.</p><?php else: ?>
   <div style="overflow-x:auto"><table>

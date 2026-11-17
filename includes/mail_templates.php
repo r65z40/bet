@@ -130,8 +130,8 @@ const MAIL_TEMPLATES = [
     'parrainage_merci' => [
         'label' => 'Parrainage : avoir offert au parrain',
         'title' => 'Merci pour votre recommandation !',
-        'subject' => '{ami} a réservé grâce à vous : {montant} offerts — {site}',
-        'body' => "Bonjour {prenom},\n\n**{ami}** vient de réserver la salle avec votre code de parrainage. Merci pour cette belle recommandation !\n\nComme promis, voici votre avoir de **{montant}**, à utiliser sur votre prochaine réservation (code à saisir dans « Code promo ou bon cadeau ») :\n\n**{code}**\n\nValable jusqu’au {validite}.\n\n{bouton}",
+        'subject' => '{ami} a fait la fête chez nous grâce à vous : {montant} offerts — {site}',
+        'body' => "Bonjour {prenom},\n\n**{ami}** a loué la salle avec votre code de parrainage, et son événement vient d’avoir lieu. Merci pour cette belle recommandation !\n\nComme promis, voici votre avoir de **{montant}**, à utiliser sur votre prochaine réservation (code à saisir dans « Code promo ou bon cadeau ») :\n\n**{code}**\n\nValable jusqu’au {validite}.\n\n{bouton}",
         'vars' => ['prenom', 'ami', 'montant', 'code', 'validite', 'lien'],
         'blocks' => ['bouton'],
     ],

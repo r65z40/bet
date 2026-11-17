@@ -156,7 +156,6 @@ function marketing_referral_reward(array $b): void
 function marketing_on_confirmed(array $b): void
 {
     try {
-        marketing_referral_reward($b);
         if ($b['source'] === '' && !empty($b['abandon_r1_at'])) { // payée après une relance « réservation non finalisée »
             db()->prepare("UPDATE bookings SET source = 'relance-paiement' WHERE id = ?")->execute([$b['id']]);
         }
@@ -253,7 +252,7 @@ function marketing_cron(array &$errors): array
             $vars += ['code' => $p['code'] ?? '', 'remise' => rating_label((string)bk_num('mk_parrain_percent', 10)) . ' %', 'cadeau' => money2((float)bk_num('mk_parrain_reward', 30))];
             $blocks['parrainage'] = $p ? '<div style="background:#fff8e8;border:1px solid #f0dca8;border-radius:10px;padding:14px 16px;margin:0 0 16px">'
                 . '<p style="margin:0 0 6px"><strong>🎁 Faites plaisir à vos proches</strong></p>'
-                . '<p style="margin:0 0 8px">Avec votre code, ils ont <strong>−' . e($vars['remise']) . '</strong> sur leur location, et vous recevez <strong>' . e($vars['cadeau']) . '</strong> à valoir sur votre prochaine fête dès qu’ils réservent.</p>'
+                . '<p style="margin:0 0 8px">Avec votre code, ils ont <strong>−' . e($vars['remise']) . '</strong> sur leur location, et vous recevez <strong>' . e($vars['cadeau']) . '</strong> à valoir sur votre prochaine fête une fois leur événement passé.</p>'
                 . '<p style="margin:0;font-size:20px;letter-spacing:.06em"><strong>' . e($p['code']) . '</strong></p></div>' : '';
             $blocks['bouton'] = '<p style="margin:18px 0">' . mail_button(mk_link(bk_url(''), 'apres-evenement'), 'Voir la salle') . '</p>';
             if (marketing_send('apres_evenement', $b['email'], $vars, $blocks, 'Vous recevez cet e-mail suite à votre location.')) {
@@ -300,6 +299,17 @@ function marketing_cron(array &$errors): array
             $r['derniere_minute'] = marketing_lastminute_run();
         } catch (Throwable $e) {
             $errors[] = 'dernière minute : ' . $e->getMessage();
+        }
+    }
+
+    // Parrainage : avoir offert au parrain une fois l'événement de l'ami passé (et non annulé)
+    $st = db()->prepare("SELECT * FROM bookings WHERE status = 'confirmed' AND promo_code <> '' AND referral_rewarded = 0 AND end_at <= ? AND end_at >= ?");
+    $st->execute([$nowS, $now->modify('-60 days')->format(BK_FMT)]);
+    foreach ($st->fetchAll() as $b) {
+        try {
+            marketing_referral_reward($b);
+        } catch (Throwable $e) {
+            $errors[] = 'parrainage ' . $b['ref'] . ' : ' . $e->getMessage();
         }
     }
 

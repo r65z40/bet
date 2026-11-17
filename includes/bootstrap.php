@@ -40,6 +40,11 @@ if (!headers_sent()) {
     }
 }
 
+// Site servi en HTTPS : le navigateur n'acceptera plus de version non chiffrée pendant un an (HSTS)
+if (PHP_SAPI !== 'cli' && is_https() && !headers_sent()) {
+    header('Strict-Transport-Security: max-age=31536000');
+}
+
 // Pas de cookie pour les visiteurs : la session ne démarre que dans l'admin
 // (ou si un administrateur connecté consulte le site, pour l'exclure des stats).
 if (session_status() === PHP_SESSION_NONE
