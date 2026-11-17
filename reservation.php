@@ -148,6 +148,7 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
         <label class="f"><span>Ville</span><input type="text" name="city" autocomplete="address-level2" maxlength="80"></label>
       </div>
       <label class="f"><span>Message <i>(facultatif)</i></span><textarea name="message" rows="3" maxlength="2000" placeholder="Horaires d’arrivée des prestataires, questions…"></textarea></label>
+      <label class="check" style="margin-top:6px"><input type="checkbox" name="newsletter" value="1"> <span><?= e(NEWSLETTER_CONSENT) ?></span></label>
       <div class="hp" aria-hidden="true"><label>Site web <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
     </section>
   </div>
@@ -169,6 +170,7 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
     <div id="errors"></div>
     <p class="notice" style="margin:14px 0 0;font-size:.86rem"><span>🔑</span><span><?= e(s('bk_deposit_text')) ?></span></p>
     <label class="check"><input type="checkbox" name="cgv" id="cgv"> <span>J’accepte les <a href="<?= e(u('conditions.php')) ?>" target="_blank">conditions de location</a><?= documents() ? ' et le <a href="' . e(u('conditions.php')) . '#documents" target="_blank">règlement intérieur</a>' : '' ?> et j’ai lu la <a href="<?= e(u('confidentialite.php')) ?>" target="_blank">politique de confidentialité</a>.</span></label>
+    <p class="muted" style="font-size:.78rem;margin:8px 0 0">Après votre réservation, nous pourrons vous proposer nos offres sur la location de la salle ; vous pourrez vous y opposer en un clic dans chaque e-mail. <a href="<?= e(u('confidentialite.php')) ?>" target="_blank">Vos données</a>.</p>
     <div class="pay">
 <?php foreach ($providers as $key => $label): ?>
       <button type="submit" class="btn <?= $key === 'paypal' ? 'btn-paypal' : 'btn-blue' ?>" data-provider="<?= e($key) ?>" disabled>
@@ -183,6 +185,19 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
 </form>
 </div></section>
 <div class="mobile-bar" id="mobileBar" hidden><div><small class="muted" id="barLabel">Total TTC</small><br><strong id="barTotal">—</strong></div><a class="btn btn-gold" href="#summary">Récapitulatif ↓</a></div>
+<?php if (s('mk_recap') !== '0'): ?>
+<div class="recap-pop" id="recapPop" hidden role="dialog" aria-labelledby="recapTitle">
+  <button type="button" class="recap-x" id="recapClose" aria-label="Fermer">×</button>
+  <strong id="recapTitle">📩 Pas encore décidé ?</strong>
+  <p>Recevez ce récapitulatif et le devis par e-mail : vous le retrouverez facilement, sans engagement.</p>
+  <form id="recapForm">
+    <input type="email" name="recap_email" required placeholder="Votre adresse e-mail" autocomplete="email" aria-label="Votre adresse e-mail">
+    <label class="check" style="font-size:.8rem;margin:8px 0 10px"><input type="checkbox" name="recap_news" value="1"> <span><?= e(NEWSLETTER_CONSENT) ?></span></label>
+    <button class="btn btn-gold" type="submit" style="width:100%">Recevoir le récapitulatif</button>
+  </form>
+  <p class="recap-ok" id="recapOk" hidden>✓ C’est envoyé ! Pensez à regarder dans vos indésirables si vous ne le voyez pas.</p>
+</div>
+<?php endif; ?>
 <script>window.BK = <?= json_encode($config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;</script>
 <script src="assets/booking.js?v=<?= @filemtime(ROOT . '/assets/booking.js') ?>" defer></script>
 <?php public_footer('reservation');

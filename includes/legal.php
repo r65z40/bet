@@ -34,7 +34,9 @@ const LEGAL_PRIVACY_DEFAULT = <<<'TXT'
 # Données collectées et pourquoi
 **Réservation** : nom, prénom, e-mail, téléphone, adresse de facturation (facultative), société ou association, type d’événement, nombre de personnes, message. Elles servent à gérer la location, à vous contacter et à établir la facture (exécution du contrat et obligations comptables).
 **Paiement** : le paiement est réalisé directement chez Stripe ou PayPal. Le site ne reçoit ni ne conserve vos données bancaires, seulement la référence du paiement.
-**E-mails** : confirmation, rappel avant l’événement, demande d’avis après l’événement (intérêt légitime, lié à votre location). Les envois d’information aux anciens clients comportent toujours un lien de désinscription.
+**E-mails liés à votre demande** : confirmation, rappel avant l’événement, demande d’avis et remerciement après l’événement, rappel d’un devis non réservé ou d’une réservation non finalisée (au plus deux rappels, intérêt légitime lié à votre demande).
+**Actualités et offres** : uniquement si vous avez coché la case prévue (consentement, dont nous conservons la date et le formulaire), ou si vous êtes déjà client pour des offres sur la location de la salle. Chaque e-mail comporte un lien de désinscription en un clic.
+**Parrainage** : lorsqu’un client partage son code de parrainage, nous conservons le lien entre le code et son adresse e-mail pour lui offrir son avoir.
 **Statistiques de visite** : mesure anonyme réalisée par le site lui-même, sans cookie et sans conserver votre adresse IP.
 
 # Destinataires
@@ -43,7 +45,8 @@ Les données sont réservées à {societe}. Elles sont transmises uniquement aux
 # Durées de conservation
 Réservations et factures : 10 ans (obligation comptable).
 Réservations non payées : supprimées au bout de 6 mois.
-Envois d’information : jusqu’à votre désinscription, au plus 3 ans après votre dernière réservation.
+Envois d’information : jusqu’à votre désinscription, au plus 3 ans après votre dernier contact ou votre dernière réservation.
+Demandes de devis et contacts sans réservation : effacés automatiquement 3 ans après le dernier contact.
 Statistiques de visite : 25 mois.
 
 # Cookies

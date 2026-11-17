@@ -299,7 +299,7 @@
     const data = Object.assign(payload(), {
       event_type: fd.get('event_type'), first_name: fd.get('first_name'), last_name: fd.get('last_name'), email: fd.get('email'),
       phone: fd.get('phone'), company: fd.get('company'), address: fd.get('address'), zip: fd.get('zip'), city: fd.get('city'),
-      message: fd.get('message'), asso_name: fd.get('asso_name') || '', website: fd.get('website'), cgv: true,
+      message: fd.get('message'), asso_name: fd.get('asso_name') || '', website: fd.get('website'), cgv: true, newsletter: fd.get('newsletter') === '1', src: SRC,
       provider: btn.dataset.provider, expected_total: st.total, pay: st.pay || 'total',
       devis: C.prefill ? C.prefill.number : '', devis_t: C.prefill ? C.prefill.token : '',
     });
@@ -319,6 +319,46 @@
     $$('.pay .btn').forEach(b => b.disabled = !st.quoteOk);
   });
 
+  /* ---------- Origine de la visite (lien d'une relance ou d'une offre) ---------- */
+  const SRC = (() => {
+    const q = new URLSearchParams(location.search).get('src');
+    try { if (q) sessionStorage.setItem('rn6src', q); return q || sessionStorage.getItem('rn6src') || ''; } catch (e) { return q || ''; }
+  })();
+
+  /* ---------- « Recevoir ce récapitulatif par e-mail » (visiteur qui hésite) ---------- */
+  (function () {
+    const pop = $('#recapPop');
+    if (!pop) return;
+    const KEY = 'rn6recap';
+    const seen = () => { try { return Date.now() - (+localStorage.getItem(KEY) || 0) < 30 * 86400000; } catch (e) { return false; } };
+    const remember = () => { try { localStorage.setItem(KEY, String(Date.now())); } catch (e) {} };
+    let shown = false;
+    const ready = () => st.quoteOk && !shown && !seen() && !C.prefill && !String(new FormData(form).get('email') || '').trim();
+    const show = () => { if (!ready()) return; shown = true; remember(); pop.hidden = false; };
+    // Ordinateur : la souris quitte la page par le haut ; partout : après 45 s avec un créneau choisi
+    document.addEventListener('mouseout', e => { if (!e.relatedTarget && e.clientY <= 0) show(); });
+    let t0 = null;
+    setInterval(() => { if (st.quoteOk) { t0 = t0 || Date.now(); if (Date.now() - t0 > 45000) show(); } }, 3000);
+    $('#recapClose').addEventListener('click', () => { pop.hidden = true; });
+    $('#recapForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const f = e.target, btn = f.querySelector('button');
+      const fd = new FormData(form);
+      const data = Object.assign(payload(), {
+        recap: true, email: f.recap_email.value.trim(), newsletter: f.recap_news.checked,
+        first_name: fd.get('first_name') || '', last_name: fd.get('last_name') || '', event_type: fd.get('event_type') || '', website: fd.get('website'),
+      });
+      btn.disabled = true; btn.textContent = 'Envoi…';
+      try {
+        const r = await fetch('api.php?a=devis', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        const j = await r.json();
+        if (j.ok) { f.hidden = true; $('#recapOk').hidden = false; setTimeout(() => { pop.hidden = true; }, 6000); return; }
+        alert((j.errors || [j.error || 'Envoi impossible.']).join('\n'));
+      } catch (err) { alert('Connexion impossible. Réessayez.'); }
+      btn.disabled = false; btn.textContent = 'Recevoir le récapitulatif';
+    });
+  })();
+
   /* ---------- Devis établi par le client ---------- */
   const devisBtn = $('#devisBtn');
   if (devisBtn) devisBtn.addEventListener('click', async () => {
@@ -333,7 +373,7 @@
     const data = Object.assign(payload(), {
       event_type: fd.get('event_type'), first_name: fd.get('first_name'), last_name: fd.get('last_name'), email: fd.get('email'),
       phone: fd.get('phone'), company: fd.get('company'), address: fd.get('address'), zip: fd.get('zip'), city: fd.get('city'),
-      message: fd.get('message'), asso_name: fd.get('asso_name') || '', website: fd.get('website'),
+      message: fd.get('message'), asso_name: fd.get('asso_name') || '', website: fd.get('website'), newsletter: fd.get('newsletter') === '1',
     });
     const label = devisBtn.innerHTML; devisBtn.disabled = true; devisBtn.textContent = 'Préparation du devis…';
     try {

@@ -188,6 +188,7 @@ function contact_send(array $in): ?string
         return 'L’envoi a échoué : écrivez-nous directement à ' . s('contact_email') . '.';
     }
     admin_log('Message reçu par le formulaire de contact : ' . $f['name'] . ' <' . $f['email'] . '>');
+    marketing_subscribe($f['email'], $f['name'], 'contact', !empty($in['newsletter']));
     if (notif_on('contact', 'push')) {
         after_response(fn() => push_notify('reservations', 'Message de ' . $f['name'], mb_substr($f['message'], 0, 140), 'index.php', 'contact', 'contact'), 'alerte contact');
     }

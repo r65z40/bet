@@ -17,6 +17,7 @@ const ADMIN_MENU = [
     'resa'  => ['label' => 'Réservations', 'icon' => '📅', 'pages' => [
         'resa'     => ['reservations.php', 'Réservations & planning', 'reservations'],
         'devis'    => ['devis.php', 'Devis', 'reservations'],
+        'marketing' => ['marketing.php', 'Marketing', 'reservations'],
         'tarifs'   => ['reglages.php?s=tarifs', 'Tarifs & options', 'tarifs'],
         'emails'   => ['emails.php', 'E-mails clients', 'emails'],
         'reglages' => ['reglages.php', 'Réglages', 'reglages'],

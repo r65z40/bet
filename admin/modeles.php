@@ -14,6 +14,10 @@ function sample_mail(string $key): array
 {
     $b = mail_sample_booking();
     [$vars, $blocks] = mail_booking_data($b);
+    $vars += ['ami' => 'Julie', 'montant' => money2(30), 'code' => 'AMI-K7P2-9XQM', 'remise' => '10 %', 'cadeau' => money2(30), 'date_proposee' => fr_date(bk_now()->modify('+30 days'))];
+    $blocks += ['rarete' => '<p style="margin:0 0 14px;color:#8a5a00;font-weight:bold">⏳ Il ne reste que 2 samedis libres en juin.</p>',
+        'parrainage' => '<div style="background:#fff8e8;border:1px solid #f0dca8;border-radius:10px;padding:14px 16px;margin:0 0 16px"><p style="margin:0 0 6px"><strong>🎁 Faites plaisir à vos proches</strong></p><p style="margin:0 0 8px">Avec votre code, ils ont <strong>−10 %</strong> sur leur location, et vous recevez <strong>30,00 €</strong> à valoir sur votre prochaine fête dès qu’ils réservent.</p><p style="margin:0;font-size:20px;letter-spacing:.06em"><strong>AMI-K7P2-9XQM</strong></p></div>',
+        'disponibilite' => '<p style="margin:0 0 14px">Bonne nouvelle : à la même période l’an prochain, la salle est <strong>encore libre</strong>.</p>'];
     $vars += ['numero' => 'D' . date('Y') . '-0001', 'validite' => bk_now()->modify('+15 days')->format('d/m/Y')];
     $vars += ['montant_solde' => money2(504), 'montant_acompte' => money2(216), 'date_limite' => fr_date(bk_now()->modify('+25 days'), false)];
     $vars += ['identifiant' => 'marie', 'montant_rembourse' => money2(360), 'arrivee' => 'samedi 12 décembre 2026 à 10h00', 'depart' => 'dimanche 13 décembre 2026 à 10h00', 'jours' => '7', 'lien_avis' => review_url(), 'ancienne_date' => 'Du samedi 5 décembre 2026 à 10h00 au dimanche 6 décembre 2026 à 10h00', 'montant_caution' => money2(1000), 'montant_retenu' => money2(150), 'motif' => 'Une chaise cassée et une tache sur la moquette de l’entrée.'];

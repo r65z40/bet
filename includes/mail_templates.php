@@ -87,6 +87,62 @@ const MAIL_TEMPLATES = [
         'vars' => ['prenom', 'nom', 'numero', 'reservation', 'total', 'validite', 'lien'],
         'blocks' => ['bouton'],
     ],
+    'devis_relance' => [
+        'label' => 'Relance : devis non réservé (3 jours après)',
+        'title' => 'Votre date vous attend',
+        'subject' => 'Votre devis {numero} : la date est toujours libre — {site}',
+        'body' => "Bonjour {prenom},\n\nIl y a quelques jours, vous avez demandé un devis pour la salle ({reservation}, {total} TTC).\n\nBonne nouvelle : **la date est toujours libre**. Pour la bloquer, il suffit de réserver en ligne : tout est déjà rempli d’après votre devis.\n\n{rarete}\n\n{bouton}\n\nUne question, une visite à organiser ? Répondez simplement à cet e-mail.",
+        'vars' => ['prenom', 'numero', 'reservation', 'total', 'validite', 'lien'],
+        'blocks' => ['rarete', 'bouton'],
+    ],
+    'devis_relance2' => [
+        'label' => 'Relance : devis bientôt expiré (2 jours avant)',
+        'title' => 'Votre devis expire bientôt',
+        'subject' => 'Votre devis {numero} expire le {validite} — {site}',
+        'body' => "Bonjour {prenom},\n\nPetit rappel : votre devis pour la salle ({reservation}, {total} TTC) est valable jusqu’au **{validite}**, et la date est encore libre à l’heure où nous vous écrivons.\n\n{rarete}\n\n{bouton}\n\nSi votre projet a changé, pas de souci : vous ne recevrez plus de rappel pour ce devis.",
+        'vars' => ['prenom', 'numero', 'reservation', 'total', 'validite', 'lien'],
+        'blocks' => ['rarete', 'bouton'],
+    ],
+    'paiement_relance' => [
+        'label' => 'Relance : réservation non finalisée (1 heure après)',
+        'title' => 'Votre réservation n’est pas finalisée',
+        'subject' => 'Votre réservation du {date} n’est pas finalisée — {site}',
+        'body' => "Bonjour {prenom},\n\nVous avez commencé à réserver la salle pour le **{date}** ({evenement}, {personnes} personnes), mais le paiement n’a pas abouti.\n\nLa date est **encore libre** : vous pouvez reprendre là où vous en étiez, en toute sécurité.\n\n{bouton}\n\nUn souci pendant le paiement, une question ? Répondez simplement à cet e-mail, nous vous aidons.",
+        'vars' => ['prenom', 'date', 'reservation', 'evenement', 'personnes', 'total', 'lien'],
+        'blocks' => ['bouton', 'recapitulatif'],
+    ],
+    'paiement_relance2' => [
+        'label' => 'Relance : réservation non finalisée (le lendemain)',
+        'title' => 'Votre date est toujours libre',
+        'subject' => 'Le {date} est toujours libre — {site}',
+        'body' => "Bonjour {prenom},\n\nLe **{date}** est toujours libre, mais nous ne pouvons pas vous le garder sans réservation. Il vous suffit d’une minute pour finaliser :\n\n{bouton}\n\nC’est notre dernier rappel pour cette demande.",
+        'vars' => ['prenom', 'date', 'reservation', 'evenement', 'personnes', 'total', 'lien'],
+        'blocks' => ['bouton'],
+    ],
+    'apres_evenement' => [
+        'label' => 'Après l’événement : merci, photos et parrainage',
+        'title' => 'Merci pour votre confiance !',
+        'subject' => 'Merci {prenom} ! Un petit cadeau pour vos proches — {site}',
+        'body' => "Bonjour {prenom},\n\nEncore merci d’avoir choisi la salle pour votre {evenement}. Nous espérons que la fête a été à la hauteur !\n\n📸 **Vous avez de belles photos ?** Envoyez-nous vos préférées en répondant à cet e-mail : avec votre accord, nous aimerions en partager quelques-unes.\n\n{parrainage}\n\n{bouton}\n\nÀ très bientôt !",
+        'vars' => ['prenom', 'evenement', 'date', 'code', 'remise', 'cadeau'],
+        'blocks' => ['parrainage', 'bouton'],
+    ],
+    'parrainage_merci' => [
+        'label' => 'Parrainage : avoir offert au parrain',
+        'title' => 'Merci pour votre recommandation !',
+        'subject' => '{ami} a réservé grâce à vous : {montant} offerts — {site}',
+        'body' => "Bonjour {prenom},\n\n**{ami}** vient de réserver la salle avec votre code de parrainage. Merci pour cette belle recommandation !\n\nComme promis, voici votre avoir de **{montant}**, à utiliser sur votre prochaine réservation (code à saisir dans « Code promo ou bon cadeau ») :\n\n**{code}**\n\nValable jusqu’au {validite}.\n\n{bouton}",
+        'vars' => ['prenom', 'ami', 'montant', 'code', 'validite', 'lien'],
+        'blocks' => ['bouton'],
+    ],
+    'anniversaire' => [
+        'label' => 'Relance 11 mois après : « Vous refaites la fête ? »',
+        'title' => 'Vous refaites la fête cette année ?',
+        'subject' => 'Il y a bientôt un an, votre {evenement} chez nous… — {site}',
+        'body' => "Bonjour {prenom},\n\nIl y a bientôt un an, vous fêtiez votre {evenement} dans notre salle. Le temps passe vite !\n\nSi vous prévoyez de remettre ça cette année, c’est le bon moment pour réserver.\n\n{disponibilite}\n\n{bouton}\n\nÀ bientôt !",
+        'vars' => ['prenom', 'evenement', 'date', 'date_proposee'],
+        'blocks' => ['disponibilite', 'bouton'],
+    ],
     'alerte' => [
         'label' => 'Alerte « nouvelle réservation » (vous)',
         'title' => 'Nouvelle réservation payée',
@@ -137,7 +193,7 @@ const MAIL_VAR_HELP = [
     'lien' => 'lien principal (espace client ou activation)', 'identifiant' => 'identifiant du compte', 'site' => 'nom de la salle',
     'recapitulatif' => 'tableau du détail et du total', 'boutons' => 'boutons espace client + ajout à l’agenda', 'caution' => 'encadré caution',
     'bouton' => 'bouton principal', 'arrivee' => 'date et heure d’arrivée', 'depart' => 'date et heure de départ', 'jours' => 'nombre de jours avant l’événement',
-    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'montant_caution' => 'montant de la caution', 'montant_retenu' => 'montant retenu sur la caution', 'motif' => 'motif de la retenue', 'documents' => 'liens vers les documents (règlement intérieur, contrat…)', 'option_cheque' => 'phrase « vous préférez le chèque ? » (caution au choix)', 'montant_solde' => 'montant du solde', 'montant_acompte' => 'montant de l’acompte', 'date_limite' => 'date limite', 'numero' => 'numéro du devis', 'validite' => 'date de fin de validité', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
+    'infos_pratiques' => 'infos pratiques (Réglages › E-mails automatiques)', 'bouton_avis' => 'bouton « Laisser un avis Google »', 'lien_avis' => 'lien vers vos avis Google', 'remboursement' => 'phrase sur le remboursement', 'ancienne_date' => 'ancienne date et horaires', 'montant_caution' => 'montant de la caution', 'montant_retenu' => 'montant retenu sur la caution', 'motif' => 'motif de la retenue', 'documents' => 'liens vers les documents (règlement intérieur, contrat…)', 'option_cheque' => 'phrase « vous préférez le chèque ? » (caution au choix)', 'montant_solde' => 'montant du solde', 'montant_acompte' => 'montant de l’acompte', 'date_limite' => 'date limite', 'numero' => 'numéro du devis', 'validite' => 'date de fin de validité', 'ami' => 'prénom de l’ami parrainé', 'montant' => 'montant de l’avoir', 'code' => 'code (parrainage ou avoir)', 'remise' => 'remise du parrainage', 'cadeau' => 'avoir offert au parrain', 'date_proposee' => 'même date l’an prochain', 'rarete' => 'phrase « il ne reste que… » (seulement si c’est le cas)', 'parrainage' => 'encadré avec le code de parrainage', 'disponibilite' => 'disponibilité à la même période l’an prochain', 'changement' => 'encadré ancienne date → nouvelle date', 'attention' => 'alerte si conflit d’agenda', 'message_client' => 'message laissé par le client',
 ];
 
 const MAIL_STYLE_DEFAULTS = [
@@ -210,7 +266,7 @@ function mail_render_text(string $text, array $vars, array $blocks = []): string
 }
 
 /** Construit un e-mail à partir d'un modèle : [objet, html]. */
-function mail_from_template(string $key, array $vars, array $blocks = []): array
+function mail_from_template(string $key, array $vars, array $blocks = [], string $after = ''): array
 {
     $tpl = MAIL_TEMPLATES[$key];
     $wrapped = [];
@@ -218,7 +274,8 @@ function mail_from_template(string $key, array $vars, array $blocks = []): array
         $wrapped['{' . $k . '}'] = (string)$v;
     }
     $subject = trim(preg_replace('/\s+/', ' ', strtr(mail_tpl_subject($key), $wrapped + mail_common_vars())));
-    return [$subject, mail_layout($tpl['title'], mail_render_text(mail_tpl_body($key), $wrapped, $blocks))];
+    // $after : ajouté après le texte modifiable (ex. lien de désinscription obligatoire des e-mails commerciaux)
+    return [$subject, mail_layout($tpl['title'], mail_render_text(mail_tpl_body($key), $wrapped, $blocks) . $after)];
 }
 
 /** Variables et blocs d'une réservation, partagés par les modèles client et alerte. */

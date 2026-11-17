@@ -10,6 +10,7 @@ const MAILING_AUDIENCES = [
     'avenir' => 'Clients ayant une réservation à venir',
     'passes' => 'Clients dont la réservation est passée',
     'tous'   => 'Tous les clients ayant payé une réservation',
+    'offres' => 'Abonnés aux actualités + anciens clients (offres)',
 ];
 
 const MAILING_BATCH = 8;            // e-mails par lot
@@ -31,6 +32,9 @@ function mailing_recipients(string $audience, string $single = ''): array
         $st->execute([$single]);
         $b = $st->fetch() ?: null;
         return [strtolower($single) => ['email' => $single, 'first_name' => $b['first_name'] ?? '', 'last_name' => $b['last_name'] ?? '', 'booking' => $b]];
+    }
+    if ($audience === 'offres') {
+        return marketing_audience(false);
     }
     [$where, $params] = match ($audience) {
         'avenir' => ["status = 'confirmed' AND end_at > ?", [$now]],
@@ -117,7 +121,7 @@ function mailing_send_one(array $campaign, array $recipient, bool $test = false)
     $headers = [];
     if ($group) {
         $url = optout_url($recipient['email']);
-        $content .= '<p style="margin-top:28px;font-size:12px;color:#617083">Vous recevez cet e-mail car vous avez réservé ' . e(s('site_name'))
+        $content .= '<p style="margin-top:28px;font-size:12px;color:#617083">Vous recevez cet e-mail car vous ' . ($campaign['audience'] === 'offres' ? 'êtes client ou inscrit aux actualités de ' : 'avez réservé ') . e(s('site_name'))
             . '. <a href="' . e($url) . '" style="color:#617083">Ne plus recevoir ces e-mails</a>.</p>';
         $headers[] = 'List-Unsubscribe: <' . $url . '>';
         $headers[] = 'List-Unsubscribe-Post: List-Unsubscribe=One-Click';

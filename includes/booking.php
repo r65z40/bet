@@ -558,6 +558,7 @@ function bk_confirm_paid(int $id, string $provider, string $paymentRef, int $amo
             bk_mail_admin_new($b, $err);
         }
         gcal_sync_booking($b);
+        marketing_on_confirmed($b); // parrainage, relances arrêtées
         $s = bk_dt($b['start_at']);
         if (notif_on('new_booking', 'push') || ($err && notif_on('conflict', 'push'))) push_notify('reservations', ($err ? '⚠ ' : '💶 ') . 'Nouvelle réservation — ' . money2((float)$b['total_ttc']),
             $b['first_name'] . ' ' . $b['last_name'] . ' · ' . $b['event_type'] . ', ' . (int)$b['guests'] . ' pers. · ' . fr_date($s) . ' ' . $s->format('H\hi')

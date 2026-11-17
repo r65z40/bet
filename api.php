@@ -101,10 +101,12 @@ if ($a === 'devis') {
         'city' => $t('city', 80), 'message' => $t('message', 2000), 'event_type' => $t('event_type', 80),
     ];
     $errors = [];
-    if ($c['first_name'] === '' || $c['last_name'] === '') $errors[] = 'Indiquez votre prénom et votre nom.';
+    $recap = !empty($in['recap']); // « recevoir ce récapitulatif » : seul l'e-mail est demandé
+    if (!$recap && ($c['first_name'] === '' || $c['last_name'] === '')) $errors[] = 'Indiquez votre prénom et votre nom.';
     if (!filter_var($c['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Indiquez votre adresse e-mail : le devis vous y est envoyé.';
     if ($c['phone'] !== '' && !preg_match('/^[0-9 +().-]{6,30}$/', $c['phone'])) $errors[] = 'Numéro de téléphone invalide.';
-    if (!in_array($c['event_type'], bk_event_types(), true)) $errors[] = 'Choisissez le type d’événement.';
+    if (!$recap && !in_array($c['event_type'], bk_event_types(), true)) $errors[] = 'Choisissez le type d’événement.';
+    if ($recap && $req['guests'] < 1) $req['guests'] = 1;
     // Anti-abus : 5 devis par visiteur et par heure
     $st = db()->prepare('SELECT COUNT(*) FROM quotes WHERE visitor = ? AND created_at > ?');
     $st->execute([ip_fingerprint(), bk_now()->modify('-1 hour')->format(BK_FMT)]);
@@ -117,8 +119,10 @@ if ($a === 'devis') {
         out(['errors' => array_values(array_unique($errors))], 422);
     }
     $d = devis_create($q, $c, $req);
+    db()->prepare('UPDATE quotes SET newsletter = ?, recap = ? WHERE id = ?')->execute([!empty($in['newsletter']) ? 1 : 0, $recap ? 1 : 0, $d['id']]);
+    marketing_subscribe($c['email'], $c['first_name'], $recap ? 'récapitulatif' : 'devis', !empty($in['newsletter']));
     after_response(fn() => devis_notify($d), 'devis');
-    out(['redirect' => devis_url($d)]);
+    out($recap ? ['ok' => true] : ['redirect' => devis_url($d)]);
 }
 
 if ($a === 'book') {
@@ -165,6 +169,9 @@ if ($a === 'book') {
     if ($errors) {
         out(['errors' => array_values(array_unique($errors))], 422);
     }
+    if (($q['promo_code'] ?? '') !== '' && ($rp = promo_find($q['promo_code'])) && (int)$rp['referral'] && strtolower($rp['owner_email']) === strtolower($c['email'])) {
+        out(['errors' => ['Ce code de parrainage est à offrir à vos proches : il ne peut pas être utilisé pour votre propre réservation.']], 422);
+    }
     if (isset($in['expected_total']) && abs((float)$in['expected_total'] - $q['total_ttc']) > 0.009) {
         out(['errors' => ['Le prix a été mis à jour : vérifiez le nouveau total (' . money2($q['total_ttc']) . ') puis validez à nouveau.'], 'total_ttc' => $q['total_ttc']], 409);
     }
@@ -173,6 +180,12 @@ if ($a === 'book') {
     } catch (DomainException $e) {
         out(['errors' => [$e->getMessage()]], 409);
     }
+    // Origine (lien d'une relance, d'une offre…) et consentement aux actualités
+    $src = preg_replace('/[^a-z0-9-]/', '', strtolower((string)($in['src'] ?? '')));
+    if ($src !== '') {
+        db()->prepare('UPDATE bookings SET source = ? WHERE id = ?')->execute([mb_substr($src, 0, 40), $b['id']]);
+    }
+    marketing_subscribe($c['email'], $c['first_name'], 'réservation', !empty($in['newsletter']));
     // Acompte : exigé par le réglage, ou choisi par le client (« au choix »)
     $ac = $q['acompte'] ?? null;
     if ($ac && !$giftOnly && ($ac['required'] || ($in['pay'] ?? '') === 'acompte')) {

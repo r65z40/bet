@@ -267,6 +267,19 @@ function install_schema(PDO $pdo): void
             ua TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS contacts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
+            first_name TEXT NOT NULL DEFAULT '',
+            consent INTEGER NOT NULL DEFAULT 0,
+            consent_at TEXT,
+            consent_source TEXT NOT NULL DEFAULT '',
+            consent_text TEXT NOT NULL DEFAULT '',
+            source TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            last_activity_at TEXT NOT NULL,
+            last_marketing_at TEXT
+        );
         CREATE TABLE IF NOT EXISTS push_queue (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             admin_id INTEGER NOT NULL,
@@ -381,9 +394,23 @@ function install_schema(PDO $pdo): void
         'pay_plan' => "TEXT NOT NULL DEFAULT 'total'", 'acompte_amount' => 'REAL NOT NULL DEFAULT 0', 'balance_due_at' => 'TEXT',
         'balance_paid_at' => 'TEXT', 'balance_method' => "TEXT NOT NULL DEFAULT ''", 'balance_ref' => "TEXT NOT NULL DEFAULT ''", 'balance_order' => "TEXT NOT NULL DEFAULT ''",
         'balance_requested_at' => 'TEXT', 'balance_reminded_at' => 'TEXT', 'balance_late_at' => 'TEXT',
+        // Marketing : relances de paiement abandonné, e-mails après l'événement, origine de la réservation
+        'abandon_r1_at' => 'TEXT', 'abandon_r2_at' => 'TEXT', 'post_sent_at' => 'TEXT', 'anniv_sent_at' => 'TEXT',
+        'source' => "TEXT NOT NULL DEFAULT ''", 'referral_rewarded' => 'INTEGER NOT NULL DEFAULT 0',
     ] as $col => $def) {
         if (!in_array($col, $bcols, true)) {
             $pdo->exec("ALTER TABLE bookings ADD COLUMN $col $def");
+        }
+    }
+    // Colonnes du marketing sur les devis, codes promo (parrainage) et dates spéciales (dernière minute)
+    foreach (['quotes' => ['relance1_at' => 'TEXT', 'relance2_at' => 'TEXT', 'newsletter' => 'INTEGER NOT NULL DEFAULT 0', 'recap' => 'INTEGER NOT NULL DEFAULT 0'],
+              'promo_codes' => ['owner_email' => "TEXT NOT NULL DEFAULT ''", 'referral' => 'INTEGER NOT NULL DEFAULT 0'],
+              'special_prices' => ['auto' => 'INTEGER NOT NULL DEFAULT 0']] as $table => $add) {
+        $have = array_column($pdo->query("PRAGMA table_info($table)")->fetchAll(), 'name');
+        foreach ($add as $col => $def) {
+            if (!in_array($col, $have, true)) {
+                $pdo->exec("ALTER TABLE $table ADD COLUMN $col $def");
+            }
         }
     }
     // Catégorie des photos (onglets de la galerie de la nouvelle page d'accueil)
@@ -589,6 +616,14 @@ function migrate(PDO $pdo): void
         $pdo->prepare('UPDATE booking_options SET label = ?, description = ? WHERE label = ? AND description = ?')->execute([
             'Écran 98 pouces, vidéoprojecteur + sonorisation', 'Écran 98 pouces, vidéoprojecteur avec écran de projection de 3 × 2,30 m, sono et micros sans fil.',
             'Écran 98 pouces + sonorisation', 'Écran grand format, sono et micros sans fil.']);
+    }
+    // v24 : marketing — les relances ne concernent pas les devis, paiements et événements déjà anciens
+    if ((int)setting_raw($pdo, '_schema_version') < 24 && setting_raw($pdo, '_seeded') !== null) {
+        $now = date('Y-m-d H:i:s');
+        $pdo->prepare('UPDATE quotes SET relance1_at = ?, relance2_at = ? WHERE created_at < ?')->execute([$now, $now, date('Y-m-d H:i:s', strtotime('-2 days'))]);
+        $pdo->prepare("UPDATE bookings SET abandon_r1_at = ?, abandon_r2_at = ? WHERE paid_at IS NULL AND created_at < ?")->execute([$now, $now, date('Y-m-d H:i:s', strtotime('-1 hour'))]);
+        $pdo->prepare('UPDATE bookings SET post_sent_at = ? WHERE end_at < ?')->execute([$now, date('Y-m-d H:i:s', strtotime('-3 days'))]);
+        $pdo->prepare('UPDATE bookings SET anniv_sent_at = ? WHERE start_at < ?')->execute([$now, date('Y-m-d H:i:s', strtotime('-11 months'))]);
     }
     // v23 : photos des onglets d'équipements — les numéros par défaut (qui ne correspondaient pas aux photos du site)
     //       sont retirés : chaque onglet montre les photos de son espace, ou celles choisies dans Photos

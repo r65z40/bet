@@ -103,6 +103,27 @@ const BOOKING_SETTINGS = [
                 'help' => 'Le client reçoit le lien de paiement du solde 7 jours avant cette date, puis une relance le jour même ; vous êtes prévenu s’il n’est toujours pas réglé. Il peut aussi le payer à tout moment depuis son espace client.'],
         ],
     ],
+    'marketing' => [
+        'title' => 'Marketing & relances',
+        'fields' => [
+            'mk_recap'           => ['label' => 'Proposer « Recevoir ce récapitulatif par e-mail » au visiteur qui hésite', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Oui', '0' => 'Non'],
+                'help' => 'Petit encart sur la page de réservation quand le visiteur s’apprête à partir (ou après 45 s sur ordinateur et mobile), une fois par mois au plus.'],
+            'mk_devis_relance'   => ['label' => 'Relancer les devis non réservés', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Oui : 3 jours après, puis 2 jours avant la fin de validité', '0' => 'Non']],
+            'mk_abandon_relance' => ['label' => 'Relancer les paiements abandonnés', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Oui : 1 heure après, puis le lendemain (si la date est toujours libre)', '0' => 'Non']],
+            'mk_post_event'      => ['label' => 'E-mail de remerciement après l’événement (photos + code de parrainage)', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Oui', '0' => 'Non']],
+            'mk_post_days'       => ['label' => 'Envoyé combien de jours après la fin ?', 'default' => '5', 'type' => 'number', 'help' => 'La demande d’avis part déjà le lendemain : 4 ou 5 jours après évite les deux e-mails le même jour.'],
+            'mk_parrain_percent' => ['label' => 'Parrainage : remise pour l’ami parrainé (%)', 'default' => '10', 'type' => 'number', 'help' => '0 = pas de parrainage.'],
+            'mk_parrain_reward'  => ['label' => 'Parrainage : avoir offert au parrain (€ TTC) quand l’ami réserve', 'default' => '30', 'type' => 'number', 'help' => 'Envoyé automatiquement par e-mail sous forme de bon à valoir, utilisable sur sa prochaine réservation.'],
+            'mk_anniv'           => ['label' => 'Relance 11 mois après (« Vous refaites la fête ? »)', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Oui', '0' => 'Non']],
+            'mk_lastminute'      => ['label' => 'Offres « dernière minute » automatiques', 'type' => 'select', 'default' => '0', 'options' => ['0' => 'Désactivées', '1' => 'Activées : chaque lundi, remise sur les dates libres proches + e-mail aux abonnés et clients'],
+                'help' => 'Les dates libres dans les prochains jours (ci-dessous) reçoivent la remise, visible sur le calendrier et sur l’accueil. Un même destinataire reçoit au plus un e-mail toutes les 2 semaines.'],
+            'lm_percent'         => ['label' => 'Dernière minute : remise (%)', 'default' => '15', 'type' => 'number'],
+            'lm_days'            => ['label' => 'Dernière minute : dates libres dans les combien de prochains jours ?', 'default' => '30', 'type' => 'number'],
+            'lm_weekdays'        => ['label' => 'Dernière minute : jours concernés', 'type' => 'select', 'default' => '5,6,7', 'options' => [
+                '5,6,7' => 'Vendredis, samedis et dimanches', '6' => 'Samedis', '6,7' => 'Samedis et dimanches', '1,2,3,4,5,6,7' => 'Tous les jours',
+            ]],
+        ],
+    ],
     'caution' => [
         'title' => 'Caution',
         'fields' => [

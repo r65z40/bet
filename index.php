@@ -609,11 +609,17 @@ $jsonLd  = [
     .c-form input,.c-form textarea{font:inherit;font-weight:400;font-size:16px;padding:11px 12px;border:1px solid #d5dce4;border-radius:10px;background:#fbfcfd;color:var(--ink);width:100%}
     .c-form input:focus,.c-form textarea:focus{outline:2px solid rgba(199,154,56,.45);border-color:var(--gold)}
     .c-form textarea{min-height:110px;resize:vertical}
+    .c-form .c-news{display:flex;gap:9px;align-items:flex-start;font-weight:500;font-size:.8rem;color:var(--muted)}
+    .c-form .c-news input{width:18px;height:18px;flex:0 0 18px;margin-top:1px;padding:0}
     .c-form .btn{grid-column:1/-1;border:0;cursor:pointer;font:inherit;font-weight:900}
     .c-form .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
     .c-msg{grid-column:1/-1;margin:0;padding:12px 14px;border-radius:10px;font-weight:700}
     .c-msg.ok{background:#e7f6ec;color:#14532d}
     .c-msg.err{background:#fdecea;color:#8a1c12}
+
+    /* Bandeau « dernière minute » */
+    .lm-bar{display:block;text-align:center;padding:10px 16px;background:linear-gradient(90deg,#b5121b,#d9381e);color:#fff!important;text-decoration:none!important;font-size:.95rem}
+    .lm-bar span{display:inline-block;margin-left:8px;font-weight:800;text-decoration:underline}
 
     /* Barre « Réserver » fixe sur mobile */
     .mbar{display:none}
@@ -686,6 +692,9 @@ $jsonLd  = [
   </header>
 
   <main>
+<?php $lm = $v2 ? db()->query("SELECT date_from, value FROM special_prices WHERE auto = 1 AND active = 1 AND date_from >= " . db()->quote(bk_now()->format('Y-m-d')) . " ORDER BY date_from")->fetchAll() : []; if ($lm): ?>
+    <a class="lm-bar" href="<?= e(u('reservation.php')) ?>?src=bandeau-derniere-minute" data-track="reserver">⚡ <strong>Dernière minute</strong> : −<?= e(rating_label((string)abs((float)$lm[0]['value']))) ?> % sur <?= count($lm) ?> date<?= count($lm) > 1 ? 's' : '' ?> libre<?= count($lm) > 1 ? 's' : '' ?> d’ici le <?= e(bk_dt(end($lm)['date_from'])->format('d/m')) ?> <span>Voir les dates →</span></a>
+<?php endif; ?>
     <section class="hero" id="accueil">
       <div class="wrap hero-grid">
         <div class="hero-copy">
@@ -1179,6 +1188,7 @@ $photoIndex = array_flip(array_column($photos, 'id')); // pour ouvrir la visionn
             <label>Téléphone <span style="font-weight:400;color:var(--muted)">(facultatif)</span><input name="phone" type="tel" autocomplete="tel" maxlength="30"></label>
             <label>Date souhaitée<input name="date" maxlength="40" placeholder="ex. samedi 14 juin"></label>
             <label class="full">Votre message<textarea name="message" required maxlength="3000" placeholder="Type d’événement, nombre d’invités, questions…"></textarea></label>
+            <label class="full c-news"><input type="checkbox" name="newsletter" value="1"> <span><?= e(NEWSLETTER_CONSENT) ?></span></label>
             <div class="hp" aria-hidden="true"><label>Site web<input name="website" tabindex="-1" autocomplete="off"></label></div>
             <input type="hidden" name="t" value="<?= time() ?>">
             <button class="btn btn-primary" type="submit">✉ Envoyer le message</button>

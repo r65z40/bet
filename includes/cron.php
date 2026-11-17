@@ -94,6 +94,8 @@ function run_scheduled_tasks(bool $force = false): array
         [$report['cautions_demandees'], $report['cautions_liberees']] = deposit_cron($report['erreurs']);
         // Acompte : demande et relance du solde, alerte si non réglé
         $report['soldes'] = acompte_cron($report['erreurs']);
+        // Marketing : relances, remerciements, parrainage, dernière minute, effacement RGPD
+        $report += marketing_cron($report['erreurs']);
         // Notifications mises de côté pendant la plage « ne pas déranger »
         $report['notifs_nuit'] = push_queue_flush();
 
