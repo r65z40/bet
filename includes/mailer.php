@@ -74,14 +74,19 @@ function mail_from_address(): string
  * Envoie un e-mail HTML + texte. Retourne true si accepté par le serveur.
  * $extraHeaders : en-têtes supplémentaires (ex. List-Unsubscribe), déjà nettoyés.
  */
-function send_mail(string $to, string $subject, string $html, ?string $replyTo = null, array $extraHeaders = []): bool
+/**
+ * $keepBody = false : le contenu n'est pas conservé dans l'historique (e-mails contenant un lien de connexion :
+ * mot de passe oublié, invitation), pour qu'aucun autre administrateur ne puisse le relire.
+ */
+function send_mail(string $to, string $subject, string $html, ?string $replyTo = null, array $extraHeaders = [], bool $keepBody = true): bool
 {
+    $logged = $keepBody ? $html : '';
     $to = mail_clean($to);
     mail_last_error('');
     mail_last_info('');
     if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
         mail_last_error('adresse invalide');
-        mail_journal($to, $subject, false, 'adresse invalide', $html);
+        mail_journal($to, $subject, false, 'adresse invalide', $logged);
         return false;
     }
     $fromAddr = mail_from_address();
@@ -121,14 +126,14 @@ function send_mail(string $to, string $subject, string $html, ?string $replyTo =
         } else {
             mail_last_info(smtp_send($fromAddr, $to, array_merge($headers, ['To: ' . $to, 'Subject: ' . $subjectEnc]), $body));
         }
-        mail_journal($to, $subject, true, mail_last_info(), $html);
+        mail_journal($to, $subject, true, mail_last_info(), $logged);
         if (s('_mail_last_error') !== '') {
             save_setting('_mail_last_error', '');
         }
         return true;
     } catch (Throwable $e) {
         mail_last_error($e->getMessage());
-        mail_journal($to, $subject, false, $e->getMessage(), $html);
+        mail_journal($to, $subject, false, $e->getMessage(), $logged);
         save_setting('_mail_last_error', date('d/m/Y H:i') . ' — envoi à ' . $to . ' : ' . $e->getMessage());
         return false;
     }

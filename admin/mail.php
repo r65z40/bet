@@ -38,7 +38,8 @@ if (isset($_GET['raw'])) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['do'] ?? '') === 'resend' && $html !== '') {
     check_csrf();
-    $to = (string)($_POST['to'] ?? '') !== '' ? trim((string)$_POST['to']) : $m['to_addr'];
+    // Changer d'adresse : droit « E-mails clients » uniquement (l'e-mail contient le lien privé du client)
+    $to = admin_can('emails') && (string)($_POST['to'] ?? '') !== '' ? trim((string)$_POST['to']) : $m['to_addr'];
     if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
         flash('Adresse e-mail invalide.', 'err');
         redirect('mail.php?id=' . $id);
@@ -67,7 +68,7 @@ admin_header('E-mail envoyé', admin_can('emails') ? 'emails' : 'reservations');
     <small class="muted" style="word-break:break-word"><?= e($m['info']) ?></small></p>
   <?php if ($html !== ''): ?>
   <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><?= csrf_field() ?><input type="hidden" name="id" value="<?= $id ?>">
-    <input type="email" name="to" value="<?= e($m['to_addr']) ?>" style="max-width:280px" aria-label="Adresse">
+    <?php if (admin_can('emails')): ?><input type="email" name="to" value="<?= e($m['to_addr']) ?>" style="max-width:280px" aria-label="Adresse"><?php endif; ?>
     <button class="btn light sm" name="do" value="resend" onclick="return confirm('Renvoyer cet e-mail tel quel ?')">✉ Renvoyer</button>
   </form>
   <?php endif; ?>

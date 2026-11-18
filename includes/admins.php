@@ -193,7 +193,7 @@ function admin_send_link(array $admin, string $purpose): array
     $url = admin_create_token((int)$admin['id'], $purpose, $invite ? 48 * 60 : 60);
     [$subject, $html] = mail_from_template($invite ? 'invitation' : 'motdepasse', ['identifiant' => $admin['username'], 'lien' => $url],
         ['bouton' => '<p>' . mail_button($url, $invite ? 'Créer mon mot de passe' : 'Choisir un nouveau mot de passe') . '</p>']);
-    $ok = send_mail($admin['email'], $subject, $html);
+    $ok = send_mail($admin['email'], $subject, $html, null, [], false); // lien de connexion : jamais conservé
     return [$ok, $url];
 }
 

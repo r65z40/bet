@@ -191,7 +191,8 @@ function paypal_checkout_balance(array $b): string
 
 function paypal_capture_balance(array $b, string $orderId): bool
 {
-    if ($orderId === '' || !hash_equals((string)$b['balance_order'], $orderId)) {
+    // Réservation annulée entre-temps (solde non réglé à la date limite) : le paiement PayPal n'est pas encaissé
+    if ($orderId === '' || $b['status'] !== 'confirmed' || !hash_equals((string)$b['balance_order'], $orderId)) {
         return false;
     }
     try {
@@ -216,6 +217,10 @@ function paypal_capture_balance(array $b, string $orderId): bool
 function bk_balance_paid(int $id, string $method, string $ref, int $cents, string $currency = 'eur'): bool
 {
     $b = bk_get($id);
+    if ($b && $b['status'] === 'cancelled' && bk_is_acompte($b) && empty($b['balance_paid_at']) && $method === 'stripe' && $ref !== '' && $cents > 0) {
+        balance_refund_orphan($b, $ref, $cents); // réservation annulée pendant que le client payait : on rend l'argent
+        return false;
+    }
     if (!$b || $b['status'] !== 'confirmed' || !bk_is_acompte($b)) {
         return false;
     }
@@ -238,6 +243,28 @@ function bk_balance_paid(int $id, string $method, string $ref, int $cents, strin
     }
     admin_notify('balance_paid', 'Solde reçu : ' . $b['first_name'] . ' ' . $b['last_name'], [money2($cents / 100) . ' — ' . balance_method_label($method), notif_booking_line($b)], 'reservation.php?id=' . $id);
     return true;
+}
+
+/** Solde payé par carte sur une réservation déjà annulée : remboursement intégral (une seule fois par paiement). */
+function balance_refund_orphan(array $b, string $paymentRef, int $cents): void
+{
+    // Réservation atomique du remboursement : le retour du client et le webhook peuvent arriver en même temps
+    $mark = '_orphan_refund_' . preg_replace('/[^A-Za-z0-9_]/', '', $paymentRef);
+    $claim = db()->prepare("INSERT OR IGNORE INTO settings(key, value) VALUES(?, 'en cours')");
+    $claim->execute([$mark]);
+    if (!$claim->rowCount()) {
+        return;
+    }
+    try {
+        $rid = stripe_refund(['id' => $b['id'] . '-orphelin', 'payment_ref' => $paymentRef, 'refunded_amount' => 0], $cents);
+        db()->prepare('UPDATE settings SET value = ? WHERE key = ?')->execute([$rid !== '' ? $rid : 'fait', $mark]);
+        bk_log((int)$b['id'], 'Solde payé après l’annulation (' . money2($cents / 100) . ') : remboursé automatiquement (' . $rid . ')');
+        admin_notify('balance_late', 'Solde payé après annulation : remboursé', [notif_booking_line($b), money2($cents / 100) . ' remboursés au client'], 'reservation.php?id=' . (int)$b['id']);
+    } catch (Throwable $e) {
+        db()->prepare('DELETE FROM settings WHERE key = ?')->execute([$mark]); // nouvelle tentative au prochain signal
+        bk_log((int)$b['id'], 'ALERTE : solde payé après l’annulation (' . money2($cents / 100) . ', ' . $paymentRef . ') — remboursement automatique impossible : ' . $e->getMessage() . '. À rembourser depuis Stripe.');
+        admin_notify('balance_late', '⚠ Solde à rembourser à la main', [notif_booking_line($b), money2($cents / 100) . ' payés après l’annulation : remboursez depuis Stripe'], 'reservation.php?id=' . (int)$b['id']);
+    }
 }
 
 /* ---------- E-mails et tâche planifiée ---------- */
@@ -326,6 +353,25 @@ function acompte_cron(array &$errors): int
 /** Solde non réglé à la date limite : réservation annulée, acompte remboursé, client et administration prévenus. */
 function acompte_auto_cancel(array $b): void
 {
+    $b = bk_get((int)$b['id']) ?? $b;
+    if ($b['status'] !== 'confirmed' || !empty($b['balance_paid_at'])) {
+        return;
+    }
+    if (str_starts_with((string)$b['balance_order'], 'cs_')) {
+        try {
+            $s = stripe_request('GET', '/v1/checkout/sessions/' . $b['balance_order']);
+            if (($s['payment_status'] ?? '') === 'paid') {
+                stripe_check_balance_session($b, $b['balance_order']); // payé juste à temps : rien à annuler
+                return;
+            }
+            if (($s['status'] ?? '') === 'open') {
+                stripe_request('POST', '/v1/checkout/sessions/' . $b['balance_order'] . '/expire'); // plus de paiement possible
+            }
+        } catch (Throwable $e) {
+            // Stripe injoignable : on annule quand même ; un paiement arrivé ensuite serait remboursé (balance_refund_orphan)
+            bk_log((int)$b['id'], 'Vérification du paiement du solde en cours impossible : ' . $e->getMessage());
+        }
+    }
     $refundable = round(bk_paid_online($b) - (float)$b['refunded_amount'], 2);
     $done = bk_cancel($b, $refundable, false, true); // e-mail dédié ci-dessous ; bon cadeau recrédité
     bk_log((int)$b['id'], 'Annulée automatiquement : solde non réglé à la date limite' . ($done > 0 ? ' — acompte remboursé (' . money2($done) . ')' : ''));

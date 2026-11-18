@@ -53,6 +53,12 @@ if ($err) {
     exit;
 }
 $b = bk_get((int)$b['id']);
+// Paiement repris tard : si l'échéance du solde est passée (ou demain), la totalité est due, plus d'acompte
+if (bk_is_acompte($b) && (empty($b['balance_due_at']) || bk_dt($b['balance_due_at']) < bk_now()->modify('+1 day'))) {
+    db()->prepare("UPDATE bookings SET pay_plan = 'total', acompte_amount = 0, balance_due_at = NULL WHERE id = ?")->execute([$b['id']]);
+    bk_log((int)$b['id'], 'Paiement repris trop près de l’événement : totalité demandée (plus d’acompte)');
+    $b = bk_get((int)$b['id']);
+}
 try {
     $url = $provider === 'paypal' ? paypal_checkout($b) : stripe_checkout($b);
     header('Location: ' . $url);
