@@ -25,11 +25,18 @@ function mail_last_info(?string $set = null): string
 }
 
 /** Journal des e-mails (diagnostic : accepté par le serveur, ou erreur). */
-function mail_journal(string $to, string $subject, bool $ok, string $info): void
+function mail_journal(string $to, string $subject, bool $ok, string $info, string $html = ''): void
 {
     try {
-        db()->prepare('INSERT INTO mail_log(at, to_addr, subject, ok, info) VALUES(?,?,?,?,?)')
-            ->execute([date('Y-m-d H:i:s'), mb_substr($to, 0, 200), mb_substr($subject, 0, 200), $ok ? 1 : 0, mb_substr($info, 0, 500)]);
+        $st = db()->prepare('INSERT INTO mail_log(at, to_addr, subject, ok, info, body) VALUES(?,?,?,?,?,?)');
+        $st->bindValue(1, date('Y-m-d H:i:s'));
+        $st->bindValue(2, mb_substr(strtolower($to), 0, 200));
+        $st->bindValue(3, mb_substr($subject, 0, 200));
+        $st->bindValue(4, $ok ? 1 : 0, PDO::PARAM_INT);
+        $st->bindValue(5, mb_substr($info, 0, 500));
+        // Contenu compressé (quelques Ko par e-mail), relu dans l'historique de l'administration
+        $st->bindValue(6, $html !== '' && strlen($html) < 2000000 ? gzdeflate($html, 6) : null, $html !== '' ? PDO::PARAM_LOB : PDO::PARAM_NULL);
+        $st->execute();
     } catch (Throwable) {
     }
 }
@@ -74,7 +81,7 @@ function send_mail(string $to, string $subject, string $html, ?string $replyTo =
     mail_last_info('');
     if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
         mail_last_error('adresse invalide');
-        mail_journal($to, $subject, false, 'adresse invalide');
+        mail_journal($to, $subject, false, 'adresse invalide', $html);
         return false;
     }
     $fromAddr = mail_from_address();
@@ -114,14 +121,14 @@ function send_mail(string $to, string $subject, string $html, ?string $replyTo =
         } else {
             mail_last_info(smtp_send($fromAddr, $to, array_merge($headers, ['To: ' . $to, 'Subject: ' . $subjectEnc]), $body));
         }
-        mail_journal($to, $subject, true, mail_last_info());
+        mail_journal($to, $subject, true, mail_last_info(), $html);
         if (s('_mail_last_error') !== '') {
             save_setting('_mail_last_error', '');
         }
         return true;
     } catch (Throwable $e) {
         mail_last_error($e->getMessage());
-        mail_journal($to, $subject, false, $e->getMessage());
+        mail_journal($to, $subject, false, $e->getMessage(), $html);
         save_setting('_mail_last_error', date('d/m/Y H:i') . ' — envoi à ' . $to . ' : ' . $e->getMessage());
         return false;
     }

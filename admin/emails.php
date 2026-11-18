@@ -95,7 +95,8 @@ admin_header('E-mails clients', 'emails');
 
 <nav class="tabs">
   <a href="emails.php" class="<?= !$id && $vue === '' ? 'on' : '' ?>">✉ Écrire</a>
-  <a href="emails.php?vue=historique" class="<?= $id || $vue === 'historique' ? 'on' : '' ?>">Envois</a>
+  <a href="emails.php?vue=historique" class="<?= $id || $vue === 'historique' ? 'on' : '' ?>">Envois groupés</a>
+  <a href="emails.php?vue=journal" class="<?= $vue === 'journal' ? 'on' : '' ?>">Tous les e-mails envoyés</a>
   <?php if (admin_can('reglages')): ?><a href="modeles.php">Modèles</a><?php endif; ?>
   <a href="emails.php?vue=desinscrits" class="<?= $vue === 'desinscrits' ? 'on' : '' ?>">Désinscrits</a>
 </nav>
@@ -163,6 +164,43 @@ admin_header('E-mails clients', 'emails');
         <td><a class="btn light sm" href="emails.php?id=<?= (int)$r['id'] ?>">Détails</a></td></tr>
     <?php endforeach; ?>
   </table></div>
+  <?php endif; ?>
+</div>
+
+<?php elseif ($vue === 'journal'):
+    $q = trim((string)($_GET['q'] ?? ''));
+    $page = max(1, (int)($_GET['p'] ?? 1));
+    $like = '%' . addcslashes($q, '%_\\') . '%';
+    $where = $q !== '' ? "WHERE to_addr LIKE ? ESCAPE '\\' OR subject LIKE ? ESCAPE '\\'" : '';
+    $args = $q !== '' ? [$like, $like] : [];
+    $cnt = db()->prepare("SELECT COUNT(*) FROM mail_log $where");
+    $cnt->execute($args);
+    $total = (int)$cnt->fetchColumn();
+    $st = db()->prepare("SELECT id, at, to_addr, subject, ok, body IS NOT NULL AS has_body FROM mail_log $where ORDER BY id DESC LIMIT 100 OFFSET " . (($page - 1) * 100));
+    $st->execute($args);
+    $rows = $st->fetchAll();
+?>
+<div class="card">
+  <form method="get" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+    <input type="hidden" name="vue" value="journal">
+    <input type="search" name="q" value="<?= e($q) ?>" placeholder="Adresse e-mail ou objet…" style="flex:1;min-width:200px">
+    <button class="btn light sm">Rechercher</button>
+  </form>
+  <p class="muted" style="margin-top:0">Tous les e-mails partis du site (réservations, relances, devis, envois groupés, notifications) : cliquez sur l’objet pour les relire tels que reçus, ou les renvoyer. Conservés 2 ans. · <?= $total ?> e-mail(s)</p>
+  <?php if (!$rows): ?><p class="muted">Aucun e-mail.</p><?php else: ?>
+  <div style="overflow-x:auto"><table>
+    <tr><th>Date</th><th>Destinataire</th><th>Objet</th><th>Résultat</th></tr>
+    <?php foreach ($rows as $r): ?>
+      <tr><td style="white-space:nowrap"><?= e(date('d/m/y H\hi', strtotime($r['at']))) ?></td>
+        <td><a href="emails.php?vue=journal&amp;q=<?= e(rawurlencode($r['to_addr'])) ?>" title="Tous les e-mails de cette adresse"><?= e($r['to_addr']) ?></a></td>
+        <td style="word-break:break-word"><?= $r['has_body'] ? '<a href="mail.php?id=' . (int)$r['id'] . '">' . e($r['subject']) . '</a>' : e($r['subject']) ?></td>
+        <td style="color:<?= $r['ok'] ? '#1d7a46' : '#b42318' ?>;font-weight:600;white-space:nowrap"><?= $r['ok'] ? '✓ Envoyé' : '✕ Échec' ?></td></tr>
+    <?php endforeach; ?>
+  </table></div>
+  <?php if ($total > 100): ?><p style="display:flex;gap:8px;margin-top:12px">
+    <?php if ($page > 1): ?><a class="btn light sm" href="emails.php?vue=journal&amp;q=<?= e(rawurlencode($q)) ?>&amp;p=<?= $page - 1 ?>">← Plus récents</a><?php endif; ?>
+    <?php if ($page * 100 < $total): ?><a class="btn light sm" href="emails.php?vue=journal&amp;q=<?= e(rawurlencode($q)) ?>&amp;p=<?= $page + 1 ?>">Plus anciens →</a><?php endif; ?>
+  </p><?php endif; ?>
   <?php endif; ?>
 </div>
 

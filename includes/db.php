@@ -405,7 +405,8 @@ function install_schema(PDO $pdo): void
     // Colonnes du marketing sur les devis, codes promo (parrainage) et dates spéciales (dernière minute)
     foreach (['quotes' => ['relance1_at' => 'TEXT', 'relance2_at' => 'TEXT', 'newsletter' => 'INTEGER NOT NULL DEFAULT 0', 'recap' => 'INTEGER NOT NULL DEFAULT 0'],
               'promo_codes' => ['owner_email' => "TEXT NOT NULL DEFAULT ''", 'referral' => 'INTEGER NOT NULL DEFAULT 0'],
-              'special_prices' => ['auto' => 'INTEGER NOT NULL DEFAULT 0']] as $table => $add) {
+              'special_prices' => ['auto' => 'INTEGER NOT NULL DEFAULT 0'],
+              'mail_log' => ['body' => 'BLOB']] as $table => $add) { // contenu des e-mails (compressé) pour l'historique
         $have = array_column($pdo->query("PRAGMA table_info($table)")->fetchAll(), 'name');
         foreach ($add as $col => $def) {
             if (!in_array($col, $have, true)) {
@@ -413,6 +414,7 @@ function install_schema(PDO $pdo): void
             }
         }
     }
+    $pdo->exec('CREATE INDEX IF NOT EXISTS mail_log_to ON mail_log(to_addr COLLATE NOCASE)');
     // Catégorie des photos (onglets de la galerie de la nouvelle page d'accueil)
     if (!in_array('category', array_column($pdo->query('PRAGMA table_info(photos)')->fetchAll(), 'name'), true)) {
         $pdo->exec("ALTER TABLE photos ADD COLUMN category TEXT NOT NULL DEFAULT ''");

@@ -318,6 +318,19 @@ admin_header('Réservation ' . $b['ref'], 'resa');
     </form>
     <?php endif; ?>
 
+    <?php $ml = db()->prepare('SELECT id, at, subject, ok, body IS NOT NULL AS has_body FROM mail_log WHERE to_addr = ? COLLATE NOCASE ORDER BY id DESC LIMIT 100');
+          $ml->execute([$b['email']]); $mails = $ml->fetchAll(); ?>
+    <div class="card" id="emails-envoyes">
+      <h2>E-mails envoyés au client <span class="pill"><?= count($mails) ?></span></h2>
+      <?php if (!$mails): ?><p class="muted" style="margin:0">Aucun e-mail envoyé à <?= e($b['email']) ?> pour l’instant.</p><?php endif; ?>
+      <?php foreach ($mails as $i => $m): ?>
+        <?php if ($i === 8): ?><details><summary class="muted" style="cursor:pointer;margin-bottom:8px">Voir les <?= count($mails) - 8 ?> plus anciens</summary><?php endif; ?>
+        <p style="margin:0 0 8px;font-size:.9rem;display:flex;gap:8px;align-items:baseline"><span class="muted" style="white-space:nowrap"><?= e(date('d/m/y H\hi', strtotime($m['at']))) ?></span>
+          <span style="flex:1;word-break:break-word"><?= $m['ok'] ? '' : '<strong style="color:#b42318">✕ Échec</strong> — ' ?><?= $m['has_body'] ? '<a href="mail.php?id=' . (int)$m['id'] . '">' . e($m['subject']) . '</a>' : e($m['subject']) ?></span></p>
+      <?php endforeach; ?>
+      <?php if (count($mails) > 8): ?></details><?php endif; ?>
+    </div>
+
     <div class="card">
       <h2>Historique</h2>
       <?php foreach ($log as $l): ?>

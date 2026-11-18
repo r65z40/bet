@@ -211,7 +211,7 @@ admin_header('Réglages des réservations', $current === 'tarifs' ? 'tarifs' : '
       </div>
     </form>
 
-<?php if ($current === 'emails'): $logs = db()->query('SELECT * FROM mail_log ORDER BY id DESC LIMIT 30')->fetchAll(); ?>
+<?php if ($current === 'emails'): $logs = db()->query('SELECT id, at, to_addr, subject, ok, info, body IS NOT NULL AS has_body FROM mail_log ORDER BY id DESC LIMIT 30')->fetchAll(); ?>
     <div class="card">
       <h2>Derniers e-mails envoyés</h2>
       <p class="muted" style="margin-top:-6px">« Accepté » = le serveur d’envoi a pris l’e-mail en charge. S’il n’arrive pas, il est bloqué ou classé en indésirables chez le destinataire.</p>
