@@ -85,7 +85,7 @@ if ($a === 'quote') {
         // Acompte proposé (ou exigé) pour cette date : montant, solde et échéance
         'acompte' => !empty($q['acompte']) ? [
             'amount' => $q['acompte']['amount'], 'balance' => $q['acompte']['balance'], 'percent' => $q['acompte']['percent'],
-            'required' => $q['acompte']['required'], 'due' => fr_date($q['acompte']['due_at'], false),
+            'required' => $q['acompte']['required'], 'due' => fr_date($q['acompte']['due_at'], false), 'cancel' => acompte_cancel_days() > 0 ? fr_date($q['acompte']['due_at']->modify('+' . (acompte_days() - acompte_cancel_days()) . ' days'), false) : '',
         ] : null,
     ]);
 }

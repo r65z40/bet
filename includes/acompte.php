@@ -20,7 +20,20 @@ function acompte_percent(): float
 
 function acompte_days(): int
 {
-    return max(1, (int)bk_num('bk_solde_days', 30));
+    return max(1, (int)bk_num('bk_solde_days', 60));
+}
+
+/** Date limite absolue du solde : passé ce délai, annulation et remboursement de l'acompte (0 = jamais). */
+function acompte_cancel_days(): int
+{
+    return max(0, min(acompte_days(), (int)bk_num('bk_solde_cancel_days', 30)));
+}
+
+/** Date limite (fin de journée) avant annulation automatique, ou null. */
+function bk_balance_deadline(array $b): ?DateTimeImmutable
+{
+    $d = acompte_cancel_days();
+    return $d > 0 ? bk_dt($b['start_at'])->modify('-' . $d . ' days')->setTime(23, 59) : null;
 }
 
 /**
@@ -34,8 +47,8 @@ function acompte_offer(DateTimeImmutable $start, float $due): ?array
         return null;
     }
     $dueAt = $start->modify('-' . acompte_days() . ' days')->setTime(23, 59);
-    if ($dueAt < bk_now()->modify('+3 days')) {
-        return null;
+    if ($dueAt < bk_now()->modify('+1 day')) {
+        return null; // événement dans moins de 2 mois (réglage) : totalité à la réservation
     }
     $amount = round($due * acompte_percent() / 100, 2);
     if ($amount <= 0 || $amount >= $due) {
@@ -97,10 +110,17 @@ function acompte_terms(): string
     $pct = rating_label((string)acompte_percent()) . ' %';
     $days = acompte_days();
     return match (acompte_mode()) {
-        'acompte' => 'un acompte de ' . $pct . ' du prix TTC est réglé à la réservation, et le solde au plus tard ' . $days . ' jours avant l’événement (lien de paiement envoyé par e-mail et disponible dans l’espace client). Pour une réservation faite moins de ' . $days . ' jours avant l’événement, la totalité est réglée à la réservation. À défaut de paiement du solde dans les délais, la réservation peut être annulée selon les conditions d’annulation ci-dessous.',
-        'choix' => 'le client choisit de régler la totalité du prix TTC à la réservation, ou un acompte de ' . $pct . ' puis le solde au plus tard ' . $days . ' jours avant l’événement (lien de paiement envoyé par e-mail et disponible dans l’espace client). Pour une réservation faite moins de ' . $days . ' jours avant l’événement, la totalité est réglée à la réservation. À défaut de paiement du solde dans les délais, la réservation peut être annulée selon les conditions d’annulation ci-dessous.',
+        'acompte' => 'un acompte de ' . $pct . ' du prix TTC est réglé à la réservation, et le solde ' . $days . ' jours avant l’événement (lien de paiement envoyé par e-mail et disponible dans l’espace client). Pour une réservation faite ' . $days . ' jours ou moins avant l’événement, la totalité est réglée à la réservation.' . acompte_terms_cancel(),
+        'choix' => 'pour un événement dans plus de ' . $days . ' jours, le client choisit de régler la totalité du prix TTC à la réservation, ou un acompte de ' . $pct . ' puis le solde ' . $days . ' jours avant l’événement (lien de paiement envoyé par e-mail et disponible dans l’espace client). Pour une réservation faite ' . $days . ' jours ou moins avant l’événement, la totalité est réglée à la réservation.' . acompte_terms_cancel(),
         default => 'le prix TTC est réglé en totalité à la réservation.',
     };
+}
+
+function acompte_terms_cancel(): string
+{
+    $c = acompte_cancel_days();
+    return $c > 0 ? ' Si le solde n’est pas réglé au plus tard ' . $c . ' jours avant l’événement, la réservation est annulée et l’acompte remboursé.'
+        : ' À défaut de paiement du solde dans les délais, la réservation peut être annulée selon les conditions d’annulation ci-dessous.';
 }
 
 /* ---------- Paiement du solde en ligne ---------- */
@@ -228,11 +248,15 @@ function bk_mail_balance(array $b, string $tpl): bool
     [$vars, $blocks] = mail_booking_data($b);
     $vars['montant_solde'] = money2(bk_balance_amount($b));
     $vars['montant_acompte'] = money2((float)$b['acompte_amount']);
+    $vars['montant_rembourse'] = money2((float)($b['_refund'] ?? 0));
     $vars['date_limite'] = $b['balance_due_at'] ? fr_date(bk_dt($b['balance_due_at']), false) : '';
+    $dl = bk_balance_deadline($b);
+    $vars['date_annulation'] = $dl ? fr_date($dl, false) : '';
+    $blocks['annulation'] = $dl ? '<p style="margin:0 0 14px;background:#fdecea;border-radius:8px;padding:10px 14px;color:#8a1c12">Sans règlement du solde au plus tard le <strong>' . e(fr_date($dl, false)) . '</strong>, la réservation sera annulée et l’acompte remboursé.</p>' : '';
     $blocks['bouton'] = '<p style="margin:18px 0">' . mail_button(bk_client_url($b) . '#paiement', $tpl === 'solde_recu' ? 'Ma réservation et ma facture' : '🔒 Régler le solde') . '</p>';
     [$subject, $html] = mail_from_template($tpl, $vars, $blocks);
     $ok = send_mail($b['email'], $subject, $html, mail_reply_to());
-    $labels = ['solde_demande' => ['Demande de solde', 'envoyée'], 'solde_relance' => ['Relance du solde', 'envoyée'], 'solde_recu' => ['E-mail « solde reçu »', 'envoyé']];
+    $labels = ['solde_demande' => ['Demande de solde', 'envoyée'], 'solde_relance' => ['Relance du solde', 'envoyée'], 'solde_dernier' => ['Dernier rappel du solde', 'envoyé'], 'solde_annule' => ['E-mail « réservation annulée faute de solde »', 'envoyé'], 'solde_recu' => ['E-mail « solde reçu »', 'envoyé']];
     [$label, $sent] = $labels[$tpl] ?? [$tpl, 'envoyé'];
     bk_log((int)$b['id'], $label . ($ok ? ' ' . $sent . ' au client' : ' : ÉCHEC de l’envoi (' . mail_last_error() . ')'));
     if ($ok && $tpl === 'solde_demande') {
@@ -245,7 +269,8 @@ function bk_mail_balance(array $b, string $tpl): bool
 
 /**
  * Tâche planifiée : demande du solde 7 jours avant l'échéance, relance le jour de l'échéance,
- * alerte à l'administration 2 jours après si le solde n'est toujours pas réglé.
+ * alerte à l'administration 2 jours après, dernier rappel 7 jours avant la date limite,
+ * puis à la date limite : annulation et remboursement de l'acompte (prévenus : client et administration).
  */
 function acompte_cron(array &$errors): int
 {
@@ -255,8 +280,12 @@ function acompte_cron(array &$errors): int
     $st->execute([$now->modify('-1 day')->format(BK_FMT)]);
     foreach ($st->fetchAll() as $b) {
         $due = bk_dt($b['balance_due_at']);
+        $dl = bk_balance_deadline($b);
         try {
-            if (empty($b['balance_requested_at']) && $now >= $due->modify('-7 days')) {
+            if ($dl && $now > $dl) {
+                acompte_auto_cancel($b);
+                $n++;
+            } elseif (empty($b['balance_requested_at']) && $now >= $due->modify('-7 days')) {
                 if (notif_on('balance_request', 'client')) {
                     if (bk_mail_balance($b, 'solde_demande')) {
                         $n++;
@@ -276,6 +305,11 @@ function acompte_cron(array &$errors): int
                 } else {
                     db()->prepare('UPDATE bookings SET balance_reminded_at = ? WHERE id = ?')->execute([$now->format(BK_FMT), $b['id']]);
                 }
+            } elseif ($dl && empty($b['balance_final_at']) && $now >= $dl->modify('-7 days')->setTime(9, 0)) {
+                db()->prepare('UPDATE bookings SET balance_final_at = ? WHERE id = ?')->execute([$now->format(BK_FMT), $b['id']]);
+                if (notif_on('balance_request', 'client') && bk_mail_balance($b, 'solde_dernier')) {
+                    $n++;
+                }
             } elseif (empty($b['balance_late_at']) && $now >= $due->modify('+2 days')) {
                 db()->prepare('UPDATE bookings SET balance_late_at = ? WHERE id = ?')->execute([$now->format(BK_FMT), $b['id']]);
                 bk_log((int)$b['id'], 'Solde non réglé à l’échéance');
@@ -287,6 +321,18 @@ function acompte_cron(array &$errors): int
         }
     }
     return $n;
+}
+
+/** Solde non réglé à la date limite : réservation annulée, acompte remboursé, client et administration prévenus. */
+function acompte_auto_cancel(array $b): void
+{
+    $refundable = round(bk_paid_online($b) - (float)$b['refunded_amount'], 2);
+    $done = bk_cancel($b, $refundable, false, true); // e-mail dédié ci-dessous ; bon cadeau recrédité
+    bk_log((int)$b['id'], 'Annulée automatiquement : solde non réglé à la date limite' . ($done > 0 ? ' — acompte remboursé (' . money2($done) . ')' : ''));
+    $nb = bk_get((int)$b['id']);
+    if ($nb) {
+        bk_mail_balance($nb + ['_refund' => $done], 'solde_annule');
+    }
 }
 
 /** Lignes « acompte / solde » pour les e-mails (tableau du récapitulatif). */

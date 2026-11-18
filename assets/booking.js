@@ -242,7 +242,7 @@
     const pct = String(a.percent).replace('.', ',');
     box.hidden = false;
     box.innerHTML = a.required
-      ? '<div class="pp-info"><strong>Acompte de ' + pct + ' % à la réservation : ' + eur.format(a.amount) + '</strong><br>Solde de ' + eur.format(a.balance) + ' à régler avant le ' + esc(a.due) + ' (lien envoyé par e-mail).</div>'
+      ? '<div class="pp-info"><strong>Acompte de ' + pct + ' % à la réservation : ' + eur.format(a.amount) + '</strong><br>Solde de ' + eur.format(a.balance) + ' à régler avant le ' + esc(a.due) + ' (lien envoyé par e-mail)' + (a.cancel ? ', au plus tard le ' + esc(a.cancel) + ' sinon la réservation est annulée et l’acompte remboursé' : '') + '.</div>'
       : '<strong class="pp-title">Comment souhaitez-vous payer ?</strong>'
         + '<label class="pp-opt"><input type="radio" name="pay" value="total"' + (st.pay === 'total' ? ' checked' : '') + '> <span><strong>Totalité maintenant</strong> — ' + eur.format(due) + '</span></label>'
         + '<label class="pp-opt"><input type="radio" name="pay" value="acompte"' + (st.pay === 'acompte' ? ' checked' : '') + '> <span><strong>Acompte de ' + pct + ' %</strong> — ' + eur.format(a.amount) + ' maintenant, puis ' + eur.format(a.balance) + ' avant le ' + esc(a.due) + '</span></label>';

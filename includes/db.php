@@ -393,7 +393,7 @@ function install_schema(PDO $pdo): void
         // Acompte : 'total' (tout payé à la réservation) ou 'acompte' (acompte puis solde avant l'événement)
         'pay_plan' => "TEXT NOT NULL DEFAULT 'total'", 'acompte_amount' => 'REAL NOT NULL DEFAULT 0', 'balance_due_at' => 'TEXT',
         'balance_paid_at' => 'TEXT', 'balance_method' => "TEXT NOT NULL DEFAULT ''", 'balance_ref' => "TEXT NOT NULL DEFAULT ''", 'balance_order' => "TEXT NOT NULL DEFAULT ''",
-        'balance_requested_at' => 'TEXT', 'balance_reminded_at' => 'TEXT', 'balance_late_at' => 'TEXT',
+        'balance_requested_at' => 'TEXT', 'balance_reminded_at' => 'TEXT', 'balance_late_at' => 'TEXT', 'balance_final_at' => 'TEXT',
         // Marketing : relances de paiement abandonné, e-mails après l'événement, origine de la réservation
         'abandon_r1_at' => 'TEXT', 'abandon_r2_at' => 'TEXT', 'post_sent_at' => 'TEXT', 'anniv_sent_at' => 'TEXT',
         'source' => "TEXT NOT NULL DEFAULT ''", 'referral_rewarded' => 'INTEGER NOT NULL DEFAULT 0',
@@ -616,6 +616,12 @@ function migrate(PDO $pdo): void
         $pdo->prepare('UPDATE booking_options SET label = ?, description = ? WHERE label = ? AND description = ?')->execute([
             'Écran 98 pouces, vidéoprojecteur + sonorisation', 'Écran 98 pouces, vidéoprojecteur avec écran de projection de 3 × 2,30 m, sono et micros sans fil.',
             'Écran 98 pouces + sonorisation', 'Écran grand format, sono et micros sans fil.']);
+    }
+    // v25 : acompte de 30 % (ou totalité au choix) à plus de 2 mois ; solde 2 mois avant ; annulation à 1 mois
+    if ((int)setting_raw($pdo, '_schema_version') < 25 && setting_raw($pdo, '_seeded') !== null) {
+        foreach (['bk_pay_mode' => 'choix', 'bk_acompte_percent' => '30', 'bk_solde_days' => '60', 'bk_solde_cancel_days' => '30'] as $k => $v) {
+            $pdo->prepare('INSERT OR REPLACE INTO settings(key, value) VALUES(?, ?)')->execute([$k, $v]);
+        }
     }
     // v24 : marketing — les relances ne concernent pas les devis, paiements et événements déjà anciens
     if ((int)setting_raw($pdo, '_schema_version') < 24 && setting_raw($pdo, '_seeded') !== null) {

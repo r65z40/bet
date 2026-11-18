@@ -92,15 +92,17 @@ const BOOKING_SETTINGS = [
             'bk_paypal_mode'     => ['label' => 'PayPal — mode', 'type' => 'select', 'default' => 'sandbox', 'options' => ['sandbox' => 'Test (sandbox)', 'live' => 'Production (vrais paiements)']],
             'bk_paypal_client'   => ['label' => 'PayPal — Client ID', 'type' => 'text', 'default' => '', 'help' => 'developer.paypal.com › Apps & Credentials › votre application (Live ou Sandbox selon le mode).'],
             'bk_paypal_secret'   => ['label' => 'PayPal — Secret', 'type' => 'secret', 'default' => ''],
-            'bk_pay_mode'        => ['label' => 'Paiement à la réservation', 'type' => 'select', 'default' => 'total', 'options' => [
+            'bk_pay_mode'        => ['label' => 'Paiement à la réservation', 'type' => 'select', 'default' => 'choix', 'options' => [
                 'total'   => 'Totalité à la réservation',
                 'acompte' => 'Acompte à la réservation, solde avant l’événement',
                 'choix'   => 'Au choix du client : totalité ou acompte',
-            ], 'help' => 'Si l’événement est trop proche (moins que le délai du solde ci-dessous), la totalité est toujours demandée.'],
+            ], 'help' => 'Si l’événement a lieu dans moins que le délai du solde ci-dessous (2 mois par défaut), la totalité est toujours demandée.'],
             'bk_acompte_percent' => ['label' => 'Acompte : pourcentage du montant (%)', 'default' => '30', 'type' => 'number', 'help' => 'Entre 10 et 90 %.'],
             'bk_devis_days'      => ['label' => 'Devis en ligne : durée de validité (jours)', 'default' => '15', 'type' => 'number', 'help' => 'Le client peut créer lui-même un devis depuis la page de réservation (bouton « Recevoir un devis »).'],
-            'bk_solde_days'      => ['label' => 'Solde : à régler combien de jours avant l’événement', 'default' => '30', 'type' => 'number',
+            'bk_solde_days'      => ['label' => 'Solde : à régler combien de jours avant l’événement', 'default' => '60', 'type' => 'number',
                 'help' => 'Le client reçoit le lien de paiement du solde 7 jours avant cette date, puis une relance le jour même ; vous êtes prévenu s’il n’est toujours pas réglé. Il peut aussi le payer à tout moment depuis son espace client.'],
+            'bk_solde_cancel_days' => ['label' => 'Solde non réglé : annulation automatique combien de jours avant l’événement', 'default' => '30', 'type' => 'number',
+                'help' => 'Date limite absolue. Dernier rappel au client 7 jours avant ; à cette date, la réservation est annulée, l’acompte remboursé et la date libérée. 0 = jamais d’annulation automatique.'],
         ],
     ],
     'marketing' => [
