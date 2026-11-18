@@ -33,6 +33,17 @@ if (stripos((string)($_SERVER['SERVER_SOFTWARE'] ?? ''), 'nginx') !== false) {
 if (is_file(SETUP_CODE_FILE)) {
     @unlink(SETUP_CODE_FILE);
 }
+// Informations légales obligatoires manquantes (mentions légales, conditions de location)
+$legalMissing = array_keys(array_filter([
+    'médiateur de la consommation (Contenu du site › Textes › Pages légales)' => s('legal_mediator') === '',
+    'directeur de la publication (Contenu du site › Textes › Pages légales)' => s('legal_director') === '',
+    'téléphone (Contenu du site › Textes, champ « Téléphone affiché »)' => s('contact_phone') === '',
+    'forme juridique et capital (Réservations › Réglages › Société)' => s('bk_company_form') === '',
+    'SIREN (Réservations › Réglages › Société)' => s('bk_company_siren') === '',
+]));
+if ($legalMissing) {
+    $checks[] = 'Informations légales obligatoires à compléter : ' . implode(' ; ', $legalMissing) . '.';
+}
 if (!is_writable(UPLOAD_DIR)) {
     $checks[] = 'Le dossier photos/ n’est pas accessible en écriture : l’envoi de photos échouera.';
 }

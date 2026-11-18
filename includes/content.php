@@ -108,9 +108,11 @@ const SETTINGS_SCHEMA = [
         'title' => 'Pages légales',
         'fields' => [
             'legal_director' => ['label' => 'Directeur de la publication (nom et prénom du gérant)', 'default' => ''],
-            'legal_host'     => ['label' => 'Hébergeur', 'default' => '', 'help' => 'Vide = OVH SAS, 2 rue Kellermann, 59100 Roubaix.'],
+            'legal_host'     => ['label' => 'Hébergeur', 'default' => '', 'help' => 'Vide = OVH SAS, 2 rue Kellermann, 59100 Roubaix, tél. 1007.'],
+            'legal_mediator' => ['label' => 'Médiateur de la consommation (nom, adresse ou site internet)', 'default' => '',
+                'help' => 'Obligatoire pour vendre à des particuliers (art. L612-1 du Code de la consommation). Adhérez à un médiateur agréé (liste sur economie.gouv.fr/mediation-conso, environ 50 à 150 € par an), puis indiquez ici son nom et son site. Affiché dans les conditions de location et les mentions légales.'],
             'legal_mentions' => ['label' => 'Mentions légales', 'type' => 'textarea', 'default' => '', 'fallback' => 'LEGAL_MENTIONS_DEFAULT',
-                'help' => 'Lignes commençant par « # » = titres, **gras**. Variables : {societe} {forme} {adresse_siege} {siren} {rcs} {tva} {email} {directeur} {hebergeur} {adresse_site} {conditions} {confidentialite}. Société, SIREN et TVA viennent de Réservations › Réglages › Société.'],
+                'help' => 'Lignes commençant par « # » = titres, **gras**. Variables : {societe} {forme} {adresse_siege} {siren} {rcs} {tva} {email} {tel} {mediateur} {directeur} {hebergeur} {adresse_site} {conditions} {confidentialite}. Société, SIREN et TVA viennent de Réservations › Réglages › Société.'],
             'legal_privacy'  => ['label' => 'Politique de confidentialité', 'type' => 'textarea', 'default' => '', 'fallback' => 'LEGAL_PRIVACY_DEFAULT',
                 'help' => 'Texte proposé à faire relire. Mêmes variables que ci-dessus.'],
         ],
@@ -355,7 +357,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 26;
+const SCHEMA_VERSION = 27;
 
 /** Documents remis aux clients à l'installation : [titre, description, fichier dans /documents]. */
 const DEFAULT_DOCUMENTS = [

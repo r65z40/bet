@@ -54,6 +54,7 @@ function invoice_doc(array $b, bool $avoir): string
       Réservation : <?= e($b['ref']) ?>
     </div>
   </div>
+  <div class="muted" style="margin:-6px 0 14px;font-size:.92em">Nature de l’opération : prestation de services (location de salle) — date de la prestation : <?= e(bk_slot_label($b)) ?></div>
   <div style="background:#f4f6f8;padding:14px 16px;border-radius:8px;max-width:360px">
     <strong>Client</strong><br>
     <?= $b['company'] !== '' ? e($b['company']) . '<br>' : '' ?>

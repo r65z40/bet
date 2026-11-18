@@ -276,10 +276,24 @@ function mail_recap(array $b): string
         . '</table>';
 }
 
+/**
+ * Conditions de location acceptées, jointes à l'e-mail de confirmation : le client les garde sur un support
+ * durable (art. L221-13 du Code de la consommation), même si la page du site change ensuite.
+ */
+function mail_cgv_block(): string
+{
+    $html = strtr(cgv_html(), [
+        '<h2>' => '<p style="margin:12px 0 3px;font-weight:bold;font-size:12px;color:#3a4656">',
+        '</h2>' => '</p>',
+        '<p>' => '<p style="margin:0 0 6px;font-size:12px;line-height:1.45;color:#617083">',
+    ]);
+    return '<div style="margin-top:26px;border-top:1px solid #e3e7ec;padding-top:14px"><p style="margin:0 0 6px;font-size:13px;font-weight:bold;color:#0b1f3a">Conditions de location acceptées lors de votre réservation</p>' . $html . '</div>';
+}
+
 function bk_mail_confirmation(array $b): bool
 {
     [$vars, $blocks] = mail_booking_data($b);
-    [$subject, $html] = mail_from_template('confirmation', $vars, $blocks);
+    [$subject, $html] = mail_from_template('confirmation', $vars, $blocks, mail_cgv_block());
     $ok = send_mail($b['email'], $subject, $html, mail_reply_to());
     bk_log((int)$b['id'], $ok ? 'E-mail de confirmation envoyé à ' . $b['email'] : 'ÉCHEC de l’envoi de l’e-mail de confirmation (voir Réglages › E-mails)');
     return $ok;

@@ -6,6 +6,45 @@
  */
 
 const BOOKING_DEFAULT_CGV = <<<'TXT'
+# 1. Objet et loueur
+Les présentes conditions régissent la location de La Salle RN6, 71 C route d’Auxerre, 89380 Appoigny, réservée sur le site internet, auprès de {societe}{forme}, SIREN {siren} — {email}{telephone}. Le client les accepte avant le paiement ; la version acceptée lui est envoyée avec l’e-mail de confirmation.
+
+# 2. Réservation et paiement
+La réservation est ferme dès le paiement en ligne (carte bancaire ou PayPal) : {paiement} Les sommes versées à la réservation sont un acompte et non des arrhes : la réservation engage le client comme le loueur. Les prix sont indiqués en euros TTC. Un e-mail de confirmation et une facture sont envoyés au client.
+
+# 3. Durée et horaires
+Location à la journée (24, 48 ou 72 heures, horaires indiqués lors de la réservation) ou location à l’heure, entre 8 h et 21 h, pour une durée minimum de 2 heures. Les horaires réservés doivent être respectés, installation et rangement compris.
+
+# 4. Capacité
+La capacité maximale de la salle est de 120 personnes assises. Le client s’engage à ne pas la dépasser.
+
+# 5. Caution et état des lieux
+Une caution de 2 × le montant du loyer HT est demandée. Au choix du client, elle prend la forme d’une **empreinte bancaire** réalisée en ligne depuis l’espace client, quelques jours avant l’arrivée ou à l’état des lieux d’entrée (la somme est bloquée sur la carte sans être débitée), ou d’un **chèque** remis lors de l’état des lieux d’entrée (non encaissé). La caution est libérée ou restituée au plus tard 7 jours après l’état des lieux de sortie. En cas de dégradation, de ménage non effectué ou de matériel manquant, le montant correspondant est retenu sur justificatif (photos, devis ou facture), et son motif est communiqué au client.
+
+# 6. Annulation par le client
+Toute annulation doit être faite par e-mail. **Au moins 30 jours avant** la date : remboursement intégral du montant payé. **Entre 30 et 7 jours avant** : remboursement de 50 % du prix total TTC (dans la limite du montant payé). **Moins de 7 jours avant** : aucun remboursement. Un report de date peut être proposé selon les disponibilités.
+
+# 7. Annulation par le loueur
+Si le loueur annule la location ou ne peut mettre la salle à disposition, le client est intégralement remboursé des sommes versées et reçoit en plus une indemnité égale à la somme qu’il aurait perdue s’il avait lui-même annulé à la même date (article 6). Aucune indemnité n’est due en cas de force majeure (sinistre, décision administrative, intempérie exceptionnelle…) : le client est alors intégralement remboursé ou peut choisir une autre date.
+
+# 8. Droit de rétractation
+La location de la salle est une prestation de loisirs fournie à une date déterminée : conformément à l’article L221-28 12° du Code de la consommation, elle n’ouvre pas droit au délai de rétractation de 14 jours. Les conditions d’annulation de l’article 6 s’appliquent.
+
+# 9. Responsabilité et assurance
+Le client est responsable de la salle, du matériel et de ses invités pendant toute la durée de la location. Il doit disposer d’une assurance responsabilité civile couvrant l’événement et en remettre l’attestation avant la mise à disposition de la salle.
+
+# 10. Règlement intérieur
+Le client s’engage à respecter le règlement intérieur de la salle (à télécharger ci-dessous) et à le faire respecter par ses invités et prestataires, notamment : fin de la musique et des animations à 2 h, respect du voisinage, interdiction de cuisiner sur place (la cuisine sert uniquement d’office pour conserver et réchauffer), interdiction de fumer ou de vapoter à l’intérieur, ni flammes, confettis ou fixations sur les murs. Toute vente de boissons (buvette payante) nécessite une autorisation préalable de la mairie. La salle est rendue rangée et propre.
+
+# 11. Données personnelles
+Les informations demandées servent à la gestion de la réservation et à la facturation. Leur utilisation et vos droits sont détaillés dans la politique de confidentialité : {confidentialite}
+
+# 12. Réclamations, médiation et droit applicable
+Toute réclamation est adressée par écrit à {email}. À défaut d’accord amiable, le client consommateur peut recourir gratuitement au médiateur de la consommation : {mediateur}. Les présentes conditions sont soumises au droit français.
+TXT;
+
+/** Conditions de location par défaut avant la v27 (pour savoir si elles ont été personnalisées). */
+const CGV_V26 = <<<'TXT'
 # 1. Objet
 Les présentes conditions régissent la location de La Salle RN6, 71 C route d’Auxerre, 89380 Appoigny, réservée sur le site internet.
 
@@ -79,7 +118,7 @@ const BOOKING_SETTINGS = [
             'bk_cancel_rules' => ['label' => 'Remboursement en cas d’annulation', 'type' => 'textarea', 'default' => "30 = 100\n7 = 50",
                 'help' => 'Une règle par ligne « au moins X jours avant = % remboursé ». En dessous du plus petit délai : 0 %. Utilisé pour proposer le montant du remboursement dans l’admin.'],
             'bk_cgv' => ['label' => 'Conditions générales de location (page publique)', 'type' => 'textarea', 'default' => BOOKING_DEFAULT_CGV,
-                'help' => 'Texte à faire relire par votre comptable ou un juriste. **gras** autorisé. Les lignes commençant par « # » deviennent des titres. {paiement} est remplacé par les modalités de paiement en vigueur (totalité ou acompte, Réglages › Paiement).'],
+                'help' => 'Texte à faire relire par votre comptable ou un juriste. **gras** autorisé. Les lignes commençant par « # » deviennent des titres. {paiement} est remplacé par les modalités de paiement en vigueur (totalité ou acompte, Réglages › Paiement). Autres variables : {societe} {forme} {siren} {email} {telephone} {mediateur} {confidentialite}. La version en vigueur est jointe à chaque e-mail de confirmation.'],
         ],
     ],
     'paiement' => [

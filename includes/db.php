@@ -619,6 +619,20 @@ function migrate(PDO $pdo): void
             'Écran 98 pouces, vidéoprojecteur + sonorisation', 'Écran 98 pouces, vidéoprojecteur avec écran de projection de 3 × 2,30 m, sono et micros sans fil.',
             'Écran 98 pouces + sonorisation', 'Écran grand format, sono et micros sans fil.']);
     }
+    // v27 : conformité — conditions de location complétées (loueur, acompte ≠ arrhes, annulation par le loueur,
+    //       rétractation, médiation). Texte d'origine remplacé en entier ; texte personnalisé : sections ajoutées à la fin.
+    if ((int)setting_raw($pdo, '_schema_version') < 27 && setting_raw($pdo, '_seeded') !== null) {
+        $cgv = (string)(setting_raw($pdo, 'bk_cgv') ?? '');
+        if (trim(str_replace("\r", '', $cgv)) === trim(CGV_V26)) {
+            $pdo->prepare('UPDATE settings SET value = ? WHERE key = ?')->execute([BOOKING_DEFAULT_CGV, 'bk_cgv']);
+        } elseif ($cgv !== '' && !str_contains($cgv, 'L221-28')) {
+            $cgv = str_replace('Location de 24 heures (horaires indiqués lors de la réservation)', 'Location à la journée (24, 48 ou 72 heures, horaires indiqués lors de la réservation)', $cgv);
+            $cgv = rtrim($cgv) . "\n\n# Annulation par le loueur\nSi le loueur annule la location ou ne peut mettre la salle à disposition, le client est intégralement remboursé des sommes versées et reçoit en plus une indemnité égale à la somme qu’il aurait perdue s’il avait lui-même annulé à la même date. Aucune indemnité n’est due en cas de force majeure (sinistre, décision administrative, intempérie exceptionnelle…) : le client est alors intégralement remboursé ou peut choisir une autre date."
+                . "\n\n# Droit de rétractation\nLa location de la salle est une prestation de loisirs fournie à une date déterminée : conformément à l’article L221-28 12° du Code de la consommation, elle n’ouvre pas droit au délai de rétractation de 14 jours. Les conditions d’annulation ci-dessus s’appliquent."
+                . "\n\n# Réclamations, médiation et droit applicable\nToute réclamation est adressée par écrit à {email}. À défaut d’accord amiable, le client consommateur peut recourir gratuitement au médiateur de la consommation : {mediateur}. Les présentes conditions sont soumises au droit français.";
+            $pdo->prepare('UPDATE settings SET value = ? WHERE key = ?')->execute([$cgv, 'bk_cgv']);
+        }
+    }
     // v25 : acompte de 30 % (ou totalité au choix) à plus de 2 mois ; solde 2 mois avant ; annulation à 1 mois
     if ((int)setting_raw($pdo, '_schema_version') < 25 && setting_raw($pdo, '_seeded') !== null) {
         foreach (['bk_pay_mode' => 'choix', 'bk_acompte_percent' => '30', 'bk_solde_days' => '60', 'bk_solde_cancel_days' => '30'] as $k => $v) {

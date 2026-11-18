@@ -149,6 +149,7 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
       </div>
       <label class="f"><span>Message <i>(facultatif)</i></span><textarea name="message" rows="3" maxlength="2000" placeholder="Horaires d’arrivée des prestataires, questions…"></textarea></label>
       <label class="check" style="margin-top:6px"><input type="checkbox" name="newsletter" value="1"> <span><?= e(NEWSLETTER_CONSENT) ?></span></label>
+      <p class="muted" style="font-size:.8rem;margin:4px 0 0">Une fois client, vous pourrez recevoir ponctuellement nos offres sur la location de la salle ; vous pouvez vous y opposer à tout moment par le lien présent dans chaque e-mail. <a href="<?= e(u('confidentialite.php')) ?>" target="_blank">Vos données</a></p>
       <div class="hp" aria-hidden="true"><label>Site web <input type="text" name="website" tabindex="-1" autocomplete="off"></label></div>
     </section>
   </div>
