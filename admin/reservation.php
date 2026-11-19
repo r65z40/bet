@@ -132,6 +132,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         bk_log($id, 'Action effectuée par ' . current_admin()['username']);
         admin_log('Solde reçu (' . BALANCE_OFFLINE[$m] . ') — réservation ' . $b['ref']);
         flash('Solde enregistré comme reçu (' . BALANCE_OFFLINE[$m] . ').');
+    } elseif ($do === 'ins_paper') {
+        $on = !empty($_POST['on']) ? 1 : 0;
+        db()->prepare('UPDATE bookings SET insurance_paper = ? WHERE id = ?')->execute([$on, $id]);
+        bk_log($id, ($on ? 'Attestation d’assurance notée reçue (papier)' : 'Attestation d’assurance : mention « reçue » retirée') . ' — ' . current_admin()['username']);
+        flash($on ? 'Attestation notée comme reçue.' : 'Mention retirée.');
+    } elseif ($do === 'ins_delete' && $b['insurance_file'] !== '') {
+        if ($f = insurance_path($b)) {
+            @unlink($f);
+        }
+        db()->prepare("UPDATE bookings SET insurance_file = '', insurance_at = NULL WHERE id = ?")->execute([$id]);
+        bk_log($id, 'Attestation d’assurance supprimée (illisible ou non conforme) — ' . current_admin()['username']);
+        flash('Attestation supprimée : le client peut en déposer une nouvelle.');
+    } elseif ($do === 'edl_delete' && isset(EDL_KINDS[$_POST['k'] ?? ''])) {
+        require_reauth('reservation.php?id=' . $id . '#edl');
+        $k = (string)$_POST['k'];
+        foreach (glob(edl_dir($id) . '/' . $k . '-*.jpg') ?: [] as $f) {
+            @unlink($f);
+        }
+        db()->prepare('DELETE FROM inspections WHERE booking_id = ? AND kind = ?')->execute([$id, $k]);
+        bk_log($id, 'État des lieux ' . EDL_KINDS[$k] . ' supprimé — ' . current_admin()['username']);
+        admin_log('État des lieux ' . EDL_KINDS[$k] . ' supprimé — réservation ' . $b['ref']);
+        flash('État des lieux supprimé : vous pouvez le refaire.');
     } elseif ($do === 'release' && in_array($b['status'], ['pending', 'expired'], true)) {
         db()->prepare("UPDATE bookings SET status = 'cancelled', cancelled_at = ?, hold_until = NULL WHERE id = ?")->execute([bk_now()->format(BK_FMT), $id]);
         bk_log($id, 'Demande non payée annulée par l’administrateur');
@@ -209,6 +231,35 @@ admin_header('Réservation ' . $b['ref'], 'resa');
         <?= e(trim($b['address'] . ' ' . $b['zip'] . ' ' . $b['city'])) ?></p>
       <?php if ($b['message'] !== ''): ?><p style="background:#f4f6f8;padding:10px 12px;border-radius:8px"><?= nl2br(e($b['message'])) ?></p><?php endif; ?>
     </div>
+
+    <?php if ($b['status'] === 'confirmed' || $b['insurance_file'] !== '' || edl_get($id, 'entree')): ?>
+    <div class="card" id="assurance">
+      <h2>Assurance et état des lieux</h2>
+      <p style="margin:0 0 10px"><strong>Attestation d’assurance :</strong>
+        <?php if ($b['insurance_file'] !== ''): ?><span style="color:#1d7a46">✓ déposée le <?= e(bk_dt($b['insurance_at'])->format('d/m/Y')) ?></span> — <a href="attestation.php?id=<?= $id ?>" target="_blank">ouvrir</a>
+        <?php elseif ((int)$b['insurance_paper']): ?><span style="color:#1d7a46">✓ reçue sur papier</span>
+        <?php else: ?><span style="color:#b42318">non reçue</span><?= $b['insurance_reminded_at'] ? ' <span class="muted">(rappel envoyé le ' . e(bk_dt($b['insurance_reminded_at'])->format('d/m/Y')) . ')</span>' : '' ?><?php endif; ?></p>
+      <form method="post" style="display:flex;gap:8px;flex-wrap:wrap;margin:0 0 4px"><?= csrf_field() ?>
+        <?php if (!(int)$b['insurance_paper'] && $b['insurance_file'] === ''): ?><input type="hidden" name="on" value="1"><button class="btn light sm" name="do" value="ins_paper">Noter reçue sur papier</button>
+        <?php elseif ((int)$b['insurance_paper']): ?><button class="btn light sm" name="do" value="ins_paper">Retirer « reçue »</button><?php endif; ?>
+        <?php if ($b['insurance_file'] !== ''): ?><button class="btn light sm" name="do" value="ins_delete" onclick="return confirm('Supprimer cette attestation (illisible ou non conforme) ? Le client pourra en déposer une autre.')">Supprimer le fichier</button><?php endif; ?>
+      </form>
+      <?php if (edl_enabled()): ?>
+      <div id="edl" style="border-top:1px solid var(--line);margin-top:14px;padding-top:12px">
+        <?php foreach (EDL_KINDS as $k => $kl): $ed = edl_get($id, $k); ?>
+        <p style="margin:0 0 8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong>État des lieux <?= e($kl) ?> :</strong>
+          <?php if ($ed): ?><span style="color:#1d7a46">✓ signé le <?= e(bk_dt($ed['created_at'])->format('d/m/Y à H\hi')) ?></span>
+            <a class="btn light sm" href="../etat-des-lieux.php?id=<?= $id ?>&amp;k=<?= $k ?>" target="_blank">Voir</a>
+            <form method="post" style="margin:0;display:inline-flex;gap:6px"><?= csrf_field() ?><input type="hidden" name="k" value="<?= $k ?>"><?= reauth_needed() ? '<input type="password" name="reauth" placeholder="Mot de passe" style="width:120px">' : '' ?><button class="btn light sm" name="do" value="edl_delete" onclick="return confirm('Supprimer cet état des lieux signé (photos comprises) pour le refaire ?')">Supprimer</button></form>
+          <?php elseif ($b['status'] === 'confirmed' && ($k === 'entree' || edl_get($id, 'entree') || bk_dt($b['start_at']) < bk_now())): ?>
+            <a class="btn gold sm" href="etat-des-lieux.php?id=<?= $id ?>&amp;k=<?= $k ?>">📋 Faire l’état des lieux <?= e($kl) ?></a>
+          <?php else: ?><span class="muted">à faire au départ</span><?php endif; ?>
+        </p>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
+    </div>
+    <?php endif; ?>
 
     <form method="post" class="card">
       <?= csrf_field() ?>

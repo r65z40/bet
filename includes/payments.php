@@ -306,6 +306,9 @@ function bk_cancel_locked(array $b, float $amount, bool $notify, bool $restoreGi
             bk_log((int)$b['id'], 'Empreinte de caution non libérée : ' . $e->getMessage());
         }
     }
+    if ($b['status'] === 'confirmed') {
+        after_response(function () { $e = []; waitlist_cron($e); }, 'liste d’attente'); // date libérée : les personnes en attente sont prévenues
+    }
     $chequeHeld = $b['deposit_status'] === 'recue';
     if ($chequeHeld) {
         bk_log((int)$b['id'], 'Chèque de caution à rendre au client (réservation annulée)');

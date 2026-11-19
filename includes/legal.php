@@ -39,6 +39,8 @@ const LEGAL_PRIVACY_DEFAULT = <<<'TXT'
 **Paiement** : le paiement est réalisé directement chez Stripe ou PayPal. Le site ne reçoit ni ne conserve vos données bancaires, seulement la référence du paiement.
 **E-mails liés à votre demande** : confirmation, rappel avant l’événement, demande et rappels du solde, demande d’avis et remerciement après l’événement, rappel d’un devis non réservé ou d’une réservation non finalisée (au plus deux rappels, intérêt légitime lié à votre demande). Une copie des e-mails envoyés est conservée pour pouvoir répondre à vos questions et prouver leur envoi.
 **Caution** : si vous choisissez l’empreinte bancaire, elle est réalisée par Stripe ; le site ne connaît que sa référence et son montant.
+**Attestation d’assurance et état des lieux** : l’attestation que vous déposez et les photos et signatures de l’état des lieux servent à vérifier l’assurance de l’événement et à constater l’état de la salle (exécution du contrat).
+**Liste d’attente** : si vous demandez à être prévenu qu’une date se libère, nous conservons votre e-mail, votre prénom et la date, uniquement pour vous écrire si elle redevient libre.
 **Actualités et offres** : uniquement si vous avez coché la case prévue (consentement, dont nous conservons la date et le formulaire), ou si vous êtes déjà client pour des offres sur la location de la salle. Chaque e-mail comporte un lien de désinscription en un clic.
 **Parrainage** : lorsqu’un client partage son code de parrainage, nous conservons le lien entre le code et son adresse e-mail pour lui offrir son avoir.
 **Statistiques de visite** : mesure anonyme réalisée par le site lui-même, sans cookie et sans conserver votre adresse IP.
@@ -53,6 +55,8 @@ Réservations non payées : supprimées au bout de 6 mois.
 Envois d’information : jusqu’à votre désinscription, au plus 3 ans après votre dernier contact ou votre dernière réservation.
 Demandes de devis et contacts sans réservation : effacés automatiquement 3 ans après le dernier contact.
 Copie des e-mails envoyés : 2 ans.
+Attestations d’assurance : 1 an après l’événement. États des lieux (photos et signatures) : 3 ans après l’événement.
+Liste d’attente : effacée le lendemain de la date attendue.
 Statistiques de visite : 25 mois.
 Sauvegardes : effacées automatiquement au bout de quelques semaines.
 

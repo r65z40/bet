@@ -26,3 +26,6 @@ data/perf.log*
 data/.gcal.lock
 data/inflight/
 data/backups/
+# Attestations d’assurance et états des lieux des clients (données personnelles)
+data/assurances/
+data/etats-des-lieux/

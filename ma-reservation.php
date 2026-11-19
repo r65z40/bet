@@ -128,6 +128,31 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
 <?php else: ?>
     <p class="notice" style="margin-top:20px"><span>🔑</span><span><?= e(s('bk_deposit_text')) ?></span></p>
 <?php endif; ?>
+<?php if (insurance_online() && bk_dt($b['end_at']) > bk_now()): $insErr = (string)($_GET['assurance'] ?? ''); ?>
+    <div class="deposit" id="assurance">
+      <h3>🛡️ Attestation d’assurance</h3>
+<?php if ($insErr === 'ok'): ?>
+      <div class="alert alert-ok">Merci, votre attestation est bien reçue.</div>
+<?php elseif ($insErr !== ''): ?>
+      <div class="alert alert-err"><?= e(mb_substr($insErr, 0, 140)) ?></div>
+<?php endif; ?>
+<?php if ($b['insurance_file'] !== ''): ?>
+      <p>✅ Attestation déposée le <?= e(bk_dt($b['insurance_at'])->format('d/m/Y')) ?>. Vous pouvez la remplacer si besoin.</p>
+<?php elseif ((int)$b['insurance_paper']): ?>
+      <p>✅ Attestation reçue.</p>
+<?php else: ?>
+      <p>Une <strong>assurance responsabilité civile</strong> couvrant l’événement est obligatoire. Votre assureur (habitation ou association) vous fournit l’attestation, en général gratuitement. Déposez-la ici en <strong>PDF ou en photo</strong> avant votre arrivée.</p>
+<?php endif; ?>
+<?php if (!(int)$b['insurance_paper'] || $b['insurance_file'] !== ''): ?>
+      <form method="post" action="assurance.php" enctype="multipart/form-data" class="ins-form">
+        <input type="hidden" name="ref" value="<?= e($b['ref']) ?>"><input type="hidden" name="t" value="<?= e($b['token']) ?>">
+        <input type="file" name="file" accept="application/pdf,image/jpeg,image/png,image/webp,image/heic" required aria-label="Fichier de l’attestation">
+        <button class="btn <?= $b['insurance_file'] !== '' ? 'btn-light' : 'btn-blue' ?>"><?= $b['insurance_file'] !== '' ? 'Remplacer' : 'Envoyer l’attestation' ?></button>
+      </form>
+      <p class="muted" style="margin:8px 0 0;font-size:.85rem">PDF ou photo, 10 Mo au plus.</p>
+<?php endif; ?>
+    </div>
+<?php endif; ?>
 <?php if ($docs = documents()): ?>
     <div style="margin-top:22px">
       <h3 style="margin:0 0 4px;font-size:1.1rem;color:var(--navy)">📎 Documents utiles</h3>

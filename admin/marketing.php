@@ -20,6 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         admin_log('Dernière minute : ' . $dates . ' date(s) remisée(s)' . ($do === 'lm_send' ? ', e-mail à ' . $n . ' destinataire(s)' : ''));
         flash($dates ? $dates . ' date(s) libre(s) affichée(s) avec la remise.' . ($do === 'lm_send' ? ($n ? ' E-mail en cours d’envoi à ' . $n . ' destinataire(s) (suivi dans E-mails clients).' : ' Aucun destinataire à joindre (ou tous ont déjà reçu une offre il y a moins de 2 semaines).') : '')
             : 'Aucune date libre à remiser pour l’instant.');
+    } elseif ($do === 'wl_del') {
+        db()->prepare('DELETE FROM waitlist WHERE id = ?')->execute([(int)($_POST['id'] ?? 0)]);
+        admin_log('Liste d’attente : inscription retirée');
+        flash('Inscription retirée de la liste d’attente.');
     } elseif ($do === 'lm_clear') {
         db()->exec('DELETE FROM special_prices WHERE auto = 1');
         admin_log('Dernière minute : remises retirées');
@@ -105,6 +109,24 @@ admin_header('Marketing', 'marketing');
       <?php if ($lmDates): ?><button class="btn light sm" name="do" value="lm_clear">Retirer les remises</button><?php endif; ?>
     </form>
   </div>
+</div>
+
+<?php $wl = db()->query('SELECT * FROM waitlist WHERE day >= ' . db()->quote(bk_now()->format('Y-m-d')) . ' ORDER BY day, created_at')->fetchAll(); ?>
+<div class="card" id="attente">
+  <h2>Liste d’attente <span class="pill"><?= count($wl) ?></span></h2>
+  <p class="muted" style="margin-top:-6px">Visiteurs qui attendent qu’une date déjà prise se libère. Dès qu’elle redevient libre (annulation, report, blocage retiré), tous sont prévenus par e-mail en même temps.</p>
+  <?php if (!$wl): ?><p class="muted">Personne en attente pour l’instant.</p><?php else: ?>
+  <div style="overflow-x:auto"><table>
+    <tr><th>Date attendue</th><th>Personne</th><th>Inscrite le</th><th>Prévenue</th><th></th></tr>
+    <?php foreach ($wl as $w): ?>
+    <tr><td><strong><?= e(fr_date(DateTimeImmutable::createFromFormat('!Y-m-d', $w['day'], bk_tz()), false)) ?></strong></td>
+      <td><?= e($w['email']) ?><?= $w['first_name'] !== '' ? '<br><span class="muted" style="font-size:.85rem">' . e($w['first_name']) . '</span>' : '' ?></td>
+      <td><?= e(bk_dt($w['created_at'])->format('d/m/Y')) ?></td>
+      <td><?= $w['notified_at'] ? '<span class="pill" style="background:#e7f6ec;color:#1d7a46">le ' . e(bk_dt($w['notified_at'])->format('d/m/Y')) . '</span>' : '<span class="muted">en attente</span>' ?></td>
+      <td><form method="post" style="margin:0"><?= csrf_field() ?><input type="hidden" name="id" value="<?= (int)$w['id'] ?>"><button class="btn light sm" name="do" value="wl_del">Retirer</button></form></td></tr>
+    <?php endforeach; ?>
+  </table></div>
+  <?php endif; ?>
 </div>
 
 <div class="card">

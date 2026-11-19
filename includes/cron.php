@@ -96,6 +96,9 @@ function run_scheduled_tasks(bool $force = false): array
         $report['soldes'] = acompte_cron($report['erreurs']);
         // Marketing : relances, remerciements, parrainage, dernière minute, effacement RGPD
         $report += marketing_cron($report['erreurs']);
+        // Liste d'attente (dates libérées) et attestations d'assurance manquantes
+        $report['liste_attente'] = waitlist_cron($report['erreurs']);
+        $report['assurances'] = insurance_cron($report['erreurs']);
         // Notifications mises de côté pendant la plage « ne pas déranger »
         $report['notifs_nuit'] = push_queue_flush();
 
@@ -115,6 +118,7 @@ function run_scheduled_tasks(bool $force = false): array
             $report['purges']++;
         }
         stats_purge();
+        sejour_purge();
         db()->prepare('DELETE FROM mail_log WHERE at < ?')->execute([date('Y-m-d H:i:s', strtotime('-24 months'))]);
     } catch (Throwable $e) {
         $report['erreurs'][] = $e->getMessage();

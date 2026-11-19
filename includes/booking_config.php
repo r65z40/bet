@@ -174,7 +174,7 @@ const BOOKING_SETTINGS = [
         ],
     ],
     'caution' => [
-        'title' => 'Caution',
+        'title' => 'Caution, assurance & état des lieux',
         'fields' => [
             'bk_deposit_mode' => ['label' => 'Mode de caution', 'type' => 'select', 'default' => 'choix', 'options' => [
                 'choix'  => 'Au choix du client : empreinte bancaire en ligne ou chèque à l’état des lieux',
@@ -189,6 +189,12 @@ const BOOKING_SETTINGS = [
             'bk_deposit_release_days' => ['label' => 'Empreinte : libérée automatiquement combien de jours après le départ', 'default' => '2', 'type' => 'number',
                 'help' => 'Si vous n’avez rien retenu d’ici là, l’empreinte est annulée et le client prévenu. Respectez : jours avant + durée de location + jours après ≤ 7.'],
             'bk_deposit_text'  => ['label' => 'Caution (texte affiché au client)', 'type' => 'textarea', 'default' => 'Une caution de 2 × le montant du loyer HT est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité, elle est libérée après l’état des lieux de sortie) ou par chèque remis lors de l’état des lieux d’entrée.', 'help' => 'Affiché dans les e-mails et sur la page client. Avec l’empreinte bancaire, par exemple : « Une empreinte bancaire de caution vous sera demandée 2 jours avant votre arrivée. Rien n’est débité, sauf en cas de dégradation constatée à l’état des lieux de sortie. »'],
+            'bk_insurance_online' => ['label' => 'Attestation d’assurance : dépôt en ligne par le client', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Oui, avec rappel automatique', '0' => 'Non (remise sur papier)']],
+            'bk_insurance_days' => ['label' => 'Attestation d’assurance : rappel combien de jours avant l’arrivée', 'default' => '10', 'type' => 'number',
+                'help' => 'Si l’attestation n’est ni déposée ni notée reçue sur papier, le client reçoit un rappel et vous êtes alerté.'],
+            'bk_edl_enabled' => ['label' => 'État des lieux sur tablette ou téléphone', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Activé', '0' => 'Désactivé (état des lieux papier)'],
+                'help' => 'Depuis la fiche d’une réservation : état de chaque espace, photos, signatures du client et du loueur. Le client reçoit le document par e-mail.'],
+            'bk_edl_rooms' => ['label' => 'État des lieux : espaces à contrôler (un par ligne)', 'type' => 'textarea', 'default' => "Salle principale\nCuisine\nBar\nSanitaires\nMobilier et matériel\nExtérieur et parking"],
         ],
     ],
     'emails' => [

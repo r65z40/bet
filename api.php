@@ -5,6 +5,7 @@
  *   POST api.php?a=quote             devis (prix calculé côté serveur)
  *   POST api.php?a=book              création de la réservation + lien de paiement
  *   POST api.php?a=devis             devis établi par le client (envoyé par e-mail)
+ *   POST api.php?a=waitlist          liste d'attente sur une date déjà prise
  */
 require __DIR__ . '/includes/bootstrap.php';
 
@@ -65,6 +66,14 @@ $req = [
     'asso' => !empty($in['asso']),
     'promo' => mb_substr((string)($in['promo'] ?? ''), 0, 40),
 ];
+
+if ($a === 'waitlist') {
+    if (!empty($in['website'])) {
+        out(['error' => 'Requête refusée.'], 400);
+    }
+    [$code, $res] = waitlist_add((string)($in['email'] ?? ''), (string)($in['first_name'] ?? ''), (string)($in['date'] ?? ''));
+    out($res, $code);
+}
 
 if ($a === 'quote') {
     $q = bk_quote($req);

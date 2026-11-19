@@ -638,7 +638,7 @@ function bk_move(array $b, DateTimeImmutable $newStart): array
         if ($err) {
             throw new DomainException($err);
         }
-        $pdo->prepare('UPDATE bookings SET start_at = ?, end_at = ?, reminder_sent_at = NULL, review_sent_at = NULL, eve_notified_at = NULL, deposit_requested_at = NULL,
+        $pdo->prepare('UPDATE bookings SET start_at = ?, end_at = ?, reminder_sent_at = NULL, review_sent_at = NULL, eve_notified_at = NULL, deposit_requested_at = NULL, insurance_reminded_at = NULL,
                 moved_at = ?, moved_from = CASE WHEN moved_from IS NULL OR moved_from = \'\' THEN ? ELSE moved_from END WHERE id = ?')
             ->execute([$newStart->format(BK_FMT), $newEnd->format(BK_FMT), bk_now()->format(BK_FMT), bk_slot_label($b), $b['id']]);
         $pdo->exec('COMMIT');
@@ -648,11 +648,12 @@ function bk_move(array $b, DateTimeImmutable $newStart): array
     }
     $nb = bk_get((int)$b['id']);
     bk_log((int)$b['id'], 'Déplacée : ' . bk_slot_label($b) . ' → ' . bk_slot_label($nb));
+    after_response(function () { $e = []; waitlist_cron($e); }, 'liste d’attente'); // l'ancienne date est peut-être attendue
     // Acompte : l'échéance du solde suit la nouvelle date (au plus tôt demain), demandes et relances repartent de zéro
     if (bk_is_acompte($nb) && empty($nb['balance_paid_at'])) {
         $due = $newStart->modify('-' . acompte_days() . ' days')->setTime(23, 59);
         $due = max($due, bk_now()->modify('+1 day')->setTime(23, 59));
-        db()->prepare('UPDATE bookings SET balance_due_at = ?, balance_requested_at = NULL, balance_reminded_at = NULL, balance_late_at = NULL WHERE id = ?')
+        db()->prepare('UPDATE bookings SET balance_due_at = ?, balance_requested_at = NULL, balance_reminded_at = NULL, balance_late_at = NULL, balance_final_at = NULL WHERE id = ?')
             ->execute([$due->format(BK_FMT), $nb['id']]);
         bk_log((int)$b['id'], 'Échéance du solde reportée au ' . $due->format('d/m/Y'));
         $nb = bk_get((int)$b['id']);

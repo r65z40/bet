@@ -377,6 +377,30 @@ function install_schema(PDO $pdo): void
             position INTEGER NOT NULL DEFAULT 0,
             visible INTEGER NOT NULL DEFAULT 1
         );
+        CREATE TABLE IF NOT EXISTS waitlist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL,
+            first_name TEXT NOT NULL DEFAULT '',
+            day TEXT NOT NULL,
+            visitor TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            notified_at TEXT,
+            UNIQUE(email, day)
+        );
+        CREATE TABLE IF NOT EXISTS inspections (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            booking_id INTEGER NOT NULL,
+            kind TEXT NOT NULL,
+            rooms_json TEXT NOT NULL DEFAULT '[]',
+            notes TEXT NOT NULL DEFAULT '',
+            keys_count TEXT NOT NULL DEFAULT '',
+            client_name TEXT NOT NULL DEFAULT '',
+            sig_client TEXT NOT NULL DEFAULT '',
+            sig_owner TEXT NOT NULL DEFAULT '',
+            admin TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            UNIQUE(booking_id, kind)
+        );
     ");
 
     // Colonnes ajoutées aux réservations (codes promo, bons cadeaux, e-mails automatiques)
@@ -394,6 +418,8 @@ function install_schema(PDO $pdo): void
         'pay_plan' => "TEXT NOT NULL DEFAULT 'total'", 'acompte_amount' => 'REAL NOT NULL DEFAULT 0', 'balance_due_at' => 'TEXT',
         'balance_paid_at' => 'TEXT', 'balance_method' => "TEXT NOT NULL DEFAULT ''", 'balance_ref' => "TEXT NOT NULL DEFAULT ''", 'balance_order' => "TEXT NOT NULL DEFAULT ''",
         'balance_requested_at' => 'TEXT', 'balance_reminded_at' => 'TEXT', 'balance_late_at' => 'TEXT', 'balance_final_at' => 'TEXT',
+        // Attestation d'assurance déposée en ligne (fichier dans data/assurances), ou notée reçue sur papier
+        'insurance_file' => "TEXT NOT NULL DEFAULT ''", 'insurance_at' => 'TEXT', 'insurance_paper' => 'INTEGER NOT NULL DEFAULT 0', 'insurance_reminded_at' => 'TEXT',
         // Marketing : relances de paiement abandonné, e-mails après l'événement, origine de la réservation
         'abandon_r1_at' => 'TEXT', 'abandon_r2_at' => 'TEXT', 'post_sent_at' => 'TEXT', 'anniv_sent_at' => 'TEXT',
         'source' => "TEXT NOT NULL DEFAULT ''", 'referral_rewarded' => 'INTEGER NOT NULL DEFAULT 0',
@@ -618,6 +644,12 @@ function migrate(PDO $pdo): void
         $pdo->prepare('UPDATE booking_options SET label = ?, description = ? WHERE label = ? AND description = ?')->execute([
             'Écran 98 pouces, vidéoprojecteur + sonorisation', 'Écran 98 pouces, vidéoprojecteur avec écran de projection de 3 × 2,30 m, sono et micros sans fil.',
             'Écran 98 pouces + sonorisation', 'Écran grand format, sono et micros sans fil.']);
+    }
+    // v29 : alerte aux propriétaires pour toute annulation (y compris automatique, faute de solde)
+    if ((int)setting_raw($pdo, '_schema_version') < 29 && setting_raw($pdo, '_seeded') !== null) {
+        foreach (['notif_cancelled_admin', 'notif_cancelled_push'] as $k) {
+            $pdo->prepare('INSERT OR REPLACE INTO settings(key, value) VALUES(?, ?)')->execute([$k, '1']);
+        }
     }
     // v28 : barème d'annulation recommandé (acompte conservé au-delà du délai de réflexion), article 6 rédigé d'après les réglages
     if ((int)setting_raw($pdo, '_schema_version') < 28 && setting_raw($pdo, '_seeded') !== null) {

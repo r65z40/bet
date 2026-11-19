@@ -103,6 +103,39 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
         <label class="f" style="max-width:260px"><span>Durée</span><select id="duration"></select></label>
       </div>
     </section>
+      <details class="waitlist card" id="waitlist" style="margin-top:0">
+        <summary>Votre date est déjà prise ? Soyez prévenu si elle se libère</summary>
+        <div id="waitBox">
+          <p class="muted">Nous vous écrivons dès que la date redevient libre (annulation, report…). Aucun engagement.</p>
+          <div class="wl-grid">
+            <label class="f"><span>Date souhaitée</span><input form="waitForm" type="date" name="date" required min="<?= e(bk_now()->format('Y-m-d')) ?>"></label>
+            <label class="f"><span>Prénom</span><input form="waitForm" type="text" name="first_name" maxlength="60" autocomplete="given-name"></label>
+            <label class="f"><span>E-mail</span><input form="waitForm" type="email" name="email" required maxlength="120" autocomplete="email"></label>
+          </div>
+          <input form="waitForm" type="text" name="website" tabindex="-1" autocomplete="off" style="position:absolute;left:-9999px" aria-hidden="true">
+          <button form="waitForm" class="btn btn-light" type="submit">M’alerter</button>
+          <p class="wl-msg" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+      <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const f = document.getElementById('waitForm'), box = document.getElementById('waitBox'), msg = box.querySelector('.wl-msg');
+        f.addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          const fd = new FormData(f), btn = box.querySelector('button');
+          if (!fd.get('date') || !fd.get('email')) { msg.textContent = 'Indiquez la date et votre e-mail.'; return; }
+          btn.disabled = true; msg.textContent = '';
+          try {
+            const r = await fetch('api.php?a=waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(fd)) });
+            const j = await r.json();
+            msg.textContent = j.message || j.error || 'Une erreur est survenue.';
+            msg.className = 'wl-msg ' + (j.error ? 'err' : 'ok');
+            if (j.ok) f.reset();
+          } catch (e) { msg.textContent = 'Connexion impossible, réessayez.'; }
+          btn.disabled = false;
+        });
+      });
+      </script>
 
     <section class="card step locked" id="step3">
       <div class="step-head"><span class="step-num">3</span><h2>Votre événement</h2></div>
@@ -184,6 +217,7 @@ public_header(s('resa_meta_title'), s('resa_lead'), true);
     <p class="secure">Paiement sécurisé par <?= e(implode(' et ', array_map(fn($k) => $k === 'paypal' ? 'PayPal' : 'Stripe', array_keys($providers)))) ?>. <span id="secureNote">Le montant total est réglé à la réservation.</span></p>
   </aside>
 </form>
+<form id="waitForm" novalidate hidden></form>
 </div></section>
 <div class="mobile-bar" id="mobileBar" hidden><div><small class="muted" id="barLabel">Total TTC</small><br><strong id="barTotal">—</strong></div><a class="btn btn-gold" href="#summary">Récapitulatif ↓</a></div>
 <?php if (s('mk_recap') !== '0'): ?>

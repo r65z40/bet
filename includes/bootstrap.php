@@ -81,6 +81,7 @@ require_once __DIR__ . '/deposit.php';
 require_once __DIR__ . '/acompte.php';
 require_once __DIR__ . '/devis.php';
 require_once __DIR__ . '/marketing.php';
+require_once __DIR__ . '/sejour.php';
 require_once __DIR__ . '/notify.php';
 require_once __DIR__ . '/backup.php';
 require_once __DIR__ . '/drive.php';
