@@ -326,7 +326,7 @@ const DEFAULT_ITEMS = [
         ['title' => 'Que comprend la location ?', 'text' => 'La salle, le mobilier (**144 chaises**, 20 tables de 180 cm, tables rondes, **20 mange-debout**), la cuisine équipée (étuve, réfrigérateurs), le bar (tireuse à bière professionnelle, machines à glaçons et à boissons chaudes, lave-verres), l’eau et l’électricité. D’autres services sont proposés en option lors de la réservation.'],
         ['title' => 'Peut-on décorer la salle ?', 'text' => 'Oui, librement, à condition de ne rien fixer sur les murs et de ne pas utiliser de confettis ni de flammes (bougies, feux de Bengale…).'],
         ['title' => 'Comment fonctionne la caution ?', 'text' => 'Une caution de **2 × le loyer HT** est demandée, au choix : par empreinte bancaire en ligne (rien n’est débité) ou par chèque remis à l’état des lieux. Elle est rendue après l’état des lieux de sortie.'],
-        ['title' => 'Et si je dois annuler ?', 'text' => 'Vous pouvez annuler depuis votre espace client. Le montant remboursé dépend du délai avant l’événement, comme indiqué dans les conditions de location.'],
+        ['title' => 'Et si je dois annuler ?', 'text' => 'Écrivez-nous par e-mail (l’adresse est aussi dans votre espace client). Dans les 7 jours suivant la réservation d’une date lointaine, l’annulation est gratuite ; ensuite, le montant remboursé dépend du délai avant l’événement. Vous préférez changer de date ? Un report gratuit est possible une fois, demandé au moins 60 jours avant. Tout est détaillé dans les conditions de location.'],
         ['title' => 'Peut-on visiter la salle avant de réserver ?', 'text' => 'Bien sûr, sur rendez-vous : écrivez-nous avec vos disponibilités.'],
         ['title' => 'Y a-t-il un parking ?', 'text' => 'Oui, un grand parking public gratuit juste à côté, et un accès adapté aux personnes à mobilité réduite.'],
     ],
@@ -357,7 +357,7 @@ const REVIEW_SOURCES = [
 ];
 
 /** Version du schéma : à incrémenter pour ajouter les nouveaux réglages aux sites déjà installés. */
-const SCHEMA_VERSION = 27;
+const SCHEMA_VERSION = 28;
 
 /** Documents remis aux clients à l'installation : [titre, description, fichier dans /documents]. */
 const DEFAULT_DOCUMENTS = [

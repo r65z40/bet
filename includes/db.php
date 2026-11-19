@@ -619,6 +619,15 @@ function migrate(PDO $pdo): void
             'Écran 98 pouces, vidéoprojecteur + sonorisation', 'Écran 98 pouces, vidéoprojecteur avec écran de projection de 3 × 2,30 m, sono et micros sans fil.',
             'Écran 98 pouces + sonorisation', 'Écran grand format, sono et micros sans fil.']);
     }
+    // v28 : barème d'annulation recommandé (acompte conservé au-delà du délai de réflexion), article 6 rédigé d'après les réglages
+    if ((int)setting_raw($pdo, '_schema_version') < 28 && setting_raw($pdo, '_seeded') !== null) {
+        $pdo->prepare("UPDATE settings SET value = ? WHERE key = 'bk_cancel_rules' AND replace(value, char(13), '') = ?")->execute(["30 = 70\n7 = 50", "30 = 100\n7 = 50"]);
+        foreach (['**Au moins 30 jours avant** la date : remboursement intégral du montant payé. **Entre 30 et 7 jours avant** : remboursement de 50 % du prix total TTC (dans la limite du montant payé). **Moins de 7 jours avant** : aucun remboursement. Un report de date peut être proposé selon les disponibilités.',
+                  '**Au moins 30 jours avant** la date : remboursement intégral du montant payé. **Entre 30 et 7 jours avant** : remboursement de 50 %. **Moins de 7 jours avant** : aucun remboursement.'] as $old) {
+            $pdo->prepare("UPDATE settings SET value = replace(value, ?, '{annulation}') WHERE key = 'bk_cgv'")->execute([$old]);
+        }
+        $pdo->prepare('UPDATE items SET text = ? WHERE text = ?')->execute(['Écrivez-nous par e-mail (l’adresse est aussi dans votre espace client). Dans les 7 jours suivant la réservation d’une date lointaine, l’annulation est gratuite ; ensuite, le montant remboursé dépend du délai avant l’événement. Vous préférez changer de date ? Un report gratuit est possible une fois, demandé au moins 60 jours avant. Tout est détaillé dans les conditions de location.', 'Vous pouvez annuler depuis votre espace client. Le montant remboursé dépend du délai avant l’événement, comme indiqué dans les conditions de location.']);
+    }
     // v27 : conformité — conditions de location complétées (loueur, acompte ≠ arrhes, annulation par le loueur,
     //       rétractation, médiation). Texte d'origine remplacé en entier ; texte personnalisé : sections ajoutées à la fin.
     if ((int)setting_raw($pdo, '_schema_version') < 27 && setting_raw($pdo, '_seeded') !== null) {

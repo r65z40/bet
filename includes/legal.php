@@ -57,7 +57,7 @@ Statistiques de visite : 25 mois.
 Sauvegardes : effacées automatiquement au bout de quelques semaines.
 
 # Cookies
-Le site ne dépose aucun cookie de mesure d’audience ni de publicité. La carte Google Maps ne s’affiche que si vous cliquez sur « Afficher la carte » : Google peut alors déposer ses propres cookies. Un cookie technique est utilisé uniquement pour l’espace d’administration. Le navigateur garde aussi en mémoire, sur votre appareil, quelques préférences d’affichage (par exemple pour ne pas vous reproposer le récapitulatif par e-mail).
+Le site ne dépose aucun cookie de mesure d’audience ni de publicité. La carte Google Maps intégrée à la page d’accueil est fournie par Google, qui peut déposer ses propres cookies. Un cookie technique est utilisé uniquement pour l’espace d’administration. Le navigateur garde aussi en mémoire, sur votre appareil, quelques préférences d’affichage (par exemple pour ne pas vous reproposer le récapitulatif par e-mail).
 
 # Vos droits
 Vous pouvez demander l’accès, la rectification, l’effacement, la limitation ou la portabilité de vos données, vous opposer à leur utilisation (notamment à tout moment pour les e-mails d’offres), et définir des directives sur leur sort après votre décès, en écrivant à {email}. Réponse sous un mois. Les factures restent conservées pendant la durée légale. Vous pouvez aussi adresser une réclamation à la CNIL (www.cnil.fr).
@@ -89,10 +89,38 @@ function legal_vars(): array
     ];
 }
 
+/** Barème d'annulation et report de date, rédigés d'après les réglages (article « Annulation par le client »). */
+function cancel_terms(): string
+{
+    $rules = bk_cancel_rule_list();
+    $out = [];
+    $g = (int)bk_num('bk_cancel_grace_days', 7);
+    if ($g > 0) {
+        $out[] = '**Dans les ' . $g . ' jours suivant la réservation**, pour un événement prévu au moins ' . (int)bk_num('bk_cancel_grace_min', 90) . ' jours plus tard : remboursement intégral.' . ($rules ? ' Ensuite :' : '');
+    }
+    $prev = null;
+    $parts = [];
+    foreach ($rules as $days => $pct) {
+        $when = $prev === null ? '**au moins ' . $days . ' jours avant** la date' : '**entre ' . $prev . ' et ' . $days . ' jours avant**';
+        $kept = 100 - $pct;
+        $what = $kept <= 0 ? 'remboursement intégral des sommes versées'
+            : ($pct <= 0 ? 'aucun remboursement'
+            : rating_label((string)$kept) . ' % du prix total TTC restent acquis' . ($kept == acompte_percent() && acompte_mode() !== 'total' ? ' (soit l’acompte)' : '') . ', le reste des sommes versées est remboursé');
+        $parts[] = $when . ' : ' . $what;
+        $prev = $days;
+    }
+    $parts[] = $prev === null ? 'aucun remboursement' : '**moins de ' . $prev . ' jours avant** : aucun remboursement';
+    $out[] = ucfirst(implode(' ; ', $parts)) . '.';
+    if (($r = (int)bk_num('bk_report_days', 60)) > 0) {
+        $out[] = '**Report de date** : une fois, sans frais, sur demande faite au moins ' . $r . ' jours avant l’événement, vers une date libre dans les 12 mois suivants ; les sommes versées sont reportées sur la nouvelle date.';
+    }
+    return implode(' ', $out);
+}
+
 /** Conditions de location mises en forme (page publique et e-mail de confirmation). */
 function cgv_html(): string
 {
-    return render_doc(str_replace('{paiement}', acompte_terms(), s('bk_cgv')), legal_vars());
+    return render_doc(strtr(s('bk_cgv'), ['{paiement}' => acompte_terms(), '{annulation}' => cancel_terms()]), legal_vars());
 }
 
 /** Texte effectif d'une page légale (valeur modifiée ou texte par défaut). */

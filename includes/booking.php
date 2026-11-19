@@ -763,10 +763,9 @@ function bk_expire_pending(): void
     }
 }
 
-/** Pourcentage remboursable selon la politique d'annulation. */
-function bk_refund_percent(array $b): int
+/** Barème d'annulation : [jours minimum => % du prix total remboursable], du plus long délai au plus court. */
+function bk_cancel_rule_list(): array
 {
-    $days = (bk_dt($b['start_at'])->getTimestamp() - time()) / 86400;
     $rules = [];
     foreach (lines(s('bk_cancel_rules')) as $l) {
         if (preg_match('/^\s*(\d+)\s*[=:;]\s*(\d+)/', $l, $m)) {
@@ -774,7 +773,26 @@ function bk_refund_percent(array $b): int
         }
     }
     krsort($rules);
-    foreach ($rules as $minDays => $pct) {
+    return $rules;
+}
+
+/** Annulation pendant le délai de réflexion (peu après la réservation, événement encore lointain) ? */
+function bk_in_grace(array $b): bool
+{
+    $g = (int)bk_num('bk_cancel_grace_days', 7);
+    return $g > 0 && !empty($b['paid_at'])
+        && bk_dt($b['paid_at']) >= bk_now()->modify('-' . $g . ' days')
+        && bk_dt($b['start_at']) >= bk_dt($b['paid_at'])->modify('+' . (int)bk_num('bk_cancel_grace_min', 90) . ' days');
+}
+
+/** Pourcentage du prix total remboursable selon la politique d'annulation (100 pendant le délai de réflexion). */
+function bk_refund_percent(array $b): int
+{
+    if (bk_in_grace($b)) {
+        return 100;
+    }
+    $days = (bk_dt($b['start_at'])->getTimestamp() - time()) / 86400;
+    foreach (bk_cancel_rule_list() as $minDays => $pct) {
         if ($days >= $minDays) {
             return $pct;
         }

@@ -447,9 +447,6 @@ $jsonLd  = [
         repeating-linear-gradient(90deg, rgba(7,28,53,.05) 0 1px, transparent 1px 46px),
         #e9eef2}
     .map-box iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
-    .map-consent{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:20px;text-align:center;
-      background:linear-gradient(135deg,#eef2f6,#e3e9f0)}
-    .map-consent p{margin:0}.map-note{font-size:.85rem;color:var(--muted,#617083);max-width:420px}
     @media (max-width:620px){.map-box{height:320px}}
 
     /* Animations douces */
@@ -1030,18 +1027,7 @@ $photoIndex = array_flip(array_column($photos, 'id')); // pour ouvrir la visionn
 <?php endif; ?>
 <?php if ($mapSrc): ?>
         <div class="map-box" id="map">
-          <div class="map-consent">
-            <p><strong>📍 <?= e(s('map_query')) ?></strong></p>
-            <button type="button" class="btn btn-gold" id="mapLoad" data-src="<?= e($mapSrc) ?>" data-title="Carte Google Maps : <?= e(s('map_query')) ?>">Afficher la carte</button>
-            <p class="map-note">La carte est fournie par Google, qui peut déposer des cookies. <?php if (s('maps_url') !== ''): ?><a href="<?= e(s('maps_url')) ?>" target="_blank" rel="noopener">Ouvrir dans Google Maps ↗</a><?php endif; ?></p>
-          </div>
-          <script>
-          document.getElementById('mapLoad').addEventListener('click', function () {
-            const f = document.createElement('iframe');
-            f.src = this.dataset.src; f.title = this.dataset.title; f.referrerPolicy = 'no-referrer-when-downgrade'; f.allowFullscreen = true;
-            this.closest('.map-box').replaceChildren(f);
-          });
-          </script>
+          <iframe src="<?= e($mapSrc) ?>" title="Carte Google Maps : <?= e(s('map_query')) ?>" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
         </div>
 <?php endif; ?>
 <?php if ($v2): ?>

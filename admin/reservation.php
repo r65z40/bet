@@ -144,8 +144,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $paid = !empty($b['paid_at']);
 $remaining = round(bk_paid_online($b) - (float)$b['refunded_amount'], 2); // part payée en ligne encore remboursable
 $pct = bk_refund_percent($b);
-// Le pourcentage s'applique au prix de la location ; avec un acompte, on ne rembourse jamais plus que ce qui a été payé
-$suggest = round(max(0, min($remaining, bk_due($b) * $pct / 100 - (float)$b['refunded_amount'])), 2);
+// Part conservée = (100 − %) du prix ; le client récupère ce qu'il a versé au-delà (ex. 30 % conservés = l'acompte)
+$keptPart = round(bk_due($b) * (100 - $pct) / 100, 2);
+$suggest = round(max(0, min($remaining, bk_paid_total($b) - $keptPart - (float)$b['refunded_amount'])), 2);
 $log = db()->prepare('SELECT * FROM booking_log WHERE booking_id = ? ORDER BY id DESC');
 $log->execute([$id]);
 admin_header('Réservation ' . $b['ref'], 'resa');
@@ -171,7 +172,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
           <tr><td><strong><?= bk_is_acompte($b) ? 'Reste à payer après le bon' : 'Payé en ligne' ?></strong></td><td></td><td class="num"><strong><?= money2(bk_due($b)) ?></strong></td></tr><?php endif; ?>
         <?php if (bk_is_acompte($b)): ?>
           <tr><td>Acompte<?= $paid ? ' — payé le ' . e(bk_dt($b['paid_at'])->format('d/m/Y')) . ' (' . e(provider_label($b['provider'])) . ')' : '' ?></td><td></td><td class="num"><?= money2((float)$b['acompte_amount']) ?></td></tr>
-          <tr><td><strong>Solde</strong> — <?= !empty($b['balance_paid_at']) ? 'payé le ' . e(bk_dt($b['balance_paid_at'])->format('d/m/Y')) . ' (' . e(balance_method_label($b['balance_method'])) . ')' : '<span style="color:#b42318">à régler avant le ' . e(bk_dt($b['balance_due_at'])->format('d/m/Y')) . '</span>' . ($b['status'] === 'confirmed' && ($dl = bk_balance_deadline($b)) ? '<br><span class="muted" style="font-size:.85rem">Annulation automatique (acompte remboursé) le ' . e($dl->modify('+1 day')->format('d/m/Y')) . ' si non réglé</span>' : '') ?></td><td></td><td class="num"><strong><?= money2(bk_balance_amount($b)) ?></strong></td></tr>
+          <tr><td><strong>Solde</strong> — <?= !empty($b['balance_paid_at']) ? 'payé le ' . e(bk_dt($b['balance_paid_at'])->format('d/m/Y')) . ' (' . e(balance_method_label($b['balance_method'])) . ')' : '<span style="color:#b42318">à régler avant le ' . e(bk_dt($b['balance_due_at'])->format('d/m/Y')) . '</span>' . ($b['status'] === 'confirmed' && ($dl = bk_balance_deadline($b)) ? '<br><span class="muted" style="font-size:.85rem">Annulation automatique (' . (acompte_kept_on_unpaid() ? 'acompte conservé' : 'acompte remboursé') . ') le ' . e($dl->modify('+1 day')->format('d/m/Y')) . ' si non réglé</span>' : '') ?></td><td></td><td class="num"><strong><?= money2(bk_balance_amount($b)) ?></strong></td></tr>
         <?php endif; ?>
         <?php if ((float)$b['refunded_amount'] > 0): ?><tr><td>Remboursé</td><td></td><td class="num">− <?= money2((float)$b['refunded_amount']) ?></td></tr><?php endif; ?>
       </table>
@@ -228,7 +229,7 @@ admin_header('Réservation ' . $b['ref'], 'resa');
     <form method="post" class="card">
       <?= csrf_field() ?>
       <h2><?= $b['status'] === 'confirmed' ? 'Annuler / rembourser' : 'Rembourser à nouveau' ?></h2>
-      <p class="muted" style="margin-top:-6px">Selon vos conditions, à <?= max(0, (int)floor((bk_dt($b['start_at'])->getTimestamp() - time()) / 86400)) ?> jour(s) de l’événement : <strong><?= $pct ?> %</strong> remboursable, soit <?= money2($suggest) ?>.
+      <p class="muted" style="margin-top:-6px">Selon vos conditions, à <?= max(0, (int)floor((bk_dt($b['start_at'])->getTimestamp() - time()) / 86400)) ?> jour(s) de l’événement<?= bk_in_grace($b) ? ' (délai de réflexion : réservée il y a moins de ' . (int)bk_num('bk_cancel_grace_days', 7) . ' jours)' : '' ?> : <?= $keptPart > 0 ? 'vous conservez <strong>' . money2(min($keptPart, bk_paid_total($b))) . '</strong> (' . (100 - $pct) . ' % du prix), ' : '' ?>remboursement proposé <strong><?= money2($suggest) ?></strong>.
         Le remboursement est effectué directement sur le moyen de paiement du client (<?= e(provider_label($b['provider'])) ?>).<?= bk_is_acompte($b) ? ' Calcul sur le prix total ; seuls les montants payés en ligne sont remboursables ici' . (!empty($b['balance_paid_at']) && isset(BALANCE_OFFLINE[$b['balance_method']]) ? ' (le solde reçu par ' . e(strtolower(BALANCE_OFFLINE[$b['balance_method']])) . ' se rembourse à la main)' : '') . '.' : '' ?></p>
       <?= field('amount', 'Montant à rembourser TTC (€) — maximum ' . money2($remaining), rating_label((string)$suggest), 'text') ?>
       <?php if ((float)$b['gift_amount'] > 0 && !(int)$b['gift_restored']): ?>
@@ -290,6 +291,11 @@ admin_header('Réservation ' . $b['ref'], 'resa');
     <?php if ($b['status'] === 'confirmed'): ?>
     <form method="post" class="card" id="deplacer"><?= csrf_field() ?>
       <h2>Déplacer à une autre date</h2>
+      <?php if (($rd = (int)bk_num('bk_report_days', 60)) > 0): $daysLeft = (int)floor((bk_dt($b['start_at'])->getTimestamp() - time()) / 86400); ?>
+      <p style="margin:-4px 0 10px;font-size:.9rem;padding:8px 12px;border-radius:8px;background:<?= !empty($b['moved_at']) || $daysLeft < $rd ? '#fff3dc' : '#e7f6ec' ?>">
+        Report gratuit (conditions) : une fois, demandé au moins <?= $rd ?> jours avant.
+        <?= !empty($b['moved_at']) ? '<strong>Déjà reporté le ' . e(bk_dt($b['moved_at'])->format('d/m/Y')) . '.</strong>' : ($daysLeft < $rd ? '<strong>Délai dépassé</strong> (à ' . $daysLeft . ' jours) : report à votre appréciation.' : '<strong>Le client y a droit.</strong>') ?></p>
+      <?php endif; ?>
       <p class="muted" style="margin-top:-6px">Même formule et même durée (<?= $b['mode'] === 'day' ? (int)round((float)$b['hours']) . ' h, arrivée à ' . e(bk_dt($b['start_at'])->format('H\hi')) : e(fr_hours((float)$b['hours'])) ?>). Le prix payé et la facture ne changent pas. Le site vérifie que la nouvelle date est libre (avec le temps mort) ; le délai minimum de réservation ne s’applique pas.</p>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
         <label class="field" style="flex:1 1 160px"><span>Nouvelle date</span><input type="date" name="new_date" required min="<?= e(bk_now()->format('Y-m-d')) ?>" value="<?= e(bk_dt($b['start_at'])->format('Y-m-d')) ?>"></label>

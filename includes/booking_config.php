@@ -22,7 +22,7 @@ La capacité maximale de la salle est de 120 personnes assises. Le client s’en
 Une caution de 2 × le montant du loyer HT est demandée. Au choix du client, elle prend la forme d’une **empreinte bancaire** réalisée en ligne depuis l’espace client, quelques jours avant l’arrivée ou à l’état des lieux d’entrée (la somme est bloquée sur la carte sans être débitée), ou d’un **chèque** remis lors de l’état des lieux d’entrée (non encaissé). La caution est libérée ou restituée au plus tard 7 jours après l’état des lieux de sortie. En cas de dégradation, de ménage non effectué ou de matériel manquant, le montant correspondant est retenu sur justificatif (photos, devis ou facture), et son motif est communiqué au client.
 
 # 6. Annulation par le client
-Toute annulation doit être faite par e-mail. **Au moins 30 jours avant** la date : remboursement intégral du montant payé. **Entre 30 et 7 jours avant** : remboursement de 50 % du prix total TTC (dans la limite du montant payé). **Moins de 7 jours avant** : aucun remboursement. Un report de date peut être proposé selon les disponibilités.
+Toute annulation doit être faite par e-mail. {annulation}
 
 # 7. Annulation par le loueur
 Si le loueur annule la location ou ne peut mettre la salle à disposition, le client est intégralement remboursé des sommes versées et reçoit en plus une indemnité égale à la somme qu’il aurait perdue s’il avait lui-même annulé à la même date (article 6). Aucune indemnité n’est due en cas de force majeure (sinistre, décision administrative, intempérie exceptionnelle…) : le client est alors intégralement remboursé ou peut choisir une autre date.
@@ -115,10 +115,16 @@ const BOOKING_SETTINGS = [
     'annulation' => [
         'title' => 'Annulation & conditions',
         'fields' => [
-            'bk_cancel_rules' => ['label' => 'Remboursement en cas d’annulation', 'type' => 'textarea', 'default' => "30 = 100\n7 = 50",
-                'help' => 'Une règle par ligne « au moins X jours avant = % remboursé ». En dessous du plus petit délai : 0 %. Utilisé pour proposer le montant du remboursement dans l’admin.'],
+            'bk_cancel_rules' => ['label' => 'Annulation par le client : barème', 'type' => 'textarea', 'default' => "30 = 70\n7 = 50",
+                'help' => 'Une règle par ligne « au moins X jours avant = % du prix total remboursable ». Le client récupère ce qu’il a versé au-delà de la part conservée : « 30 = 70 » = plus de 30 jours avant, 30 % du prix (l’acompte) sont conservés ; « 7 = 50 » = entre 30 et 7 jours, la moitié du prix est conservée. En dessous du plus petit délai : rien n’est remboursé. Sert au montant proposé dans l’admin et au texte des conditions ({annulation}).'],
+            'bk_cancel_grace_days' => ['label' => 'Délai de réflexion : annulation gratuite pendant combien de jours après la réservation', 'default' => '7', 'type' => 'number',
+                'help' => '0 = pas de délai de réflexion. Remboursement intégral si l’annulation arrive dans ce délai…'],
+            'bk_cancel_grace_min' => ['label' => '… et si l’événement a lieu au moins combien de jours plus tard', 'default' => '90', 'type' => 'number',
+                'help' => 'Ex. 90 : la réservation d’une date à moins de 3 mois n’a pas de délai de réflexion (vous n’auriez plus le temps de la relouer).'],
+            'bk_report_days' => ['label' => 'Report de date gratuit (une fois) : demande au moins combien de jours avant', 'default' => '60', 'type' => 'number',
+                'help' => 'Affiché dans les conditions de location. Vous déplacez la réservation depuis sa fiche (« Déplacer à une autre date »). 0 = pas de report gratuit.'],
             'bk_cgv' => ['label' => 'Conditions générales de location (page publique)', 'type' => 'textarea', 'default' => BOOKING_DEFAULT_CGV,
-                'help' => 'Texte à faire relire par votre comptable ou un juriste. **gras** autorisé. Les lignes commençant par « # » deviennent des titres. {paiement} est remplacé par les modalités de paiement en vigueur (totalité ou acompte, Réglages › Paiement). Autres variables : {societe} {forme} {siren} {email} {telephone} {mediateur} {confidentialite}. La version en vigueur est jointe à chaque e-mail de confirmation.'],
+                'help' => 'Texte à faire relire par votre comptable ou un juriste. **gras** autorisé. Les lignes commençant par « # » deviennent des titres. {paiement} est remplacé par les modalités de paiement en vigueur (totalité ou acompte, Réglages › Paiement), {annulation} par le barème d’annulation et le report de date (ci-dessus). Autres variables : {societe} {forme} {siren} {email} {telephone} {mediateur} {confidentialite}. La version en vigueur est jointe à chaque e-mail de confirmation.'],
         ],
     ],
     'paiement' => [
@@ -140,8 +146,10 @@ const BOOKING_SETTINGS = [
             'bk_devis_days'      => ['label' => 'Devis en ligne : durée de validité (jours)', 'default' => '15', 'type' => 'number', 'help' => 'Le client peut créer lui-même un devis depuis la page de réservation (bouton « Recevoir un devis »).'],
             'bk_solde_days'      => ['label' => 'Solde : à régler combien de jours avant l’événement', 'default' => '60', 'type' => 'number',
                 'help' => 'Le client reçoit le lien de paiement du solde 7 jours avant cette date, puis une relance le jour même ; vous êtes prévenu s’il n’est toujours pas réglé. Il peut aussi le payer à tout moment depuis son espace client.'],
+            'bk_solde_cancel_keep' => ['label' => 'Solde non réglé à la date limite : l’acompte est…', 'type' => 'select', 'default' => '1', 'options' => ['1' => 'Conservé (recommandé)', '0' => 'Remboursé au client'],
+                'help' => 'Conservé : ne pas payer le solde ne permet pas d’annuler sans frais. Le texte des conditions, des e-mails et de l’espace client suit ce réglage.'],
             'bk_solde_cancel_days' => ['label' => 'Solde non réglé : annulation automatique combien de jours avant l’événement', 'default' => '30', 'type' => 'number',
-                'help' => 'Date limite absolue. Dernier rappel au client 7 jours avant ; à cette date, la réservation est annulée, l’acompte remboursé et la date libérée. 0 = jamais d’annulation automatique.'],
+                'help' => 'Date limite absolue. Dernier rappel au client 7 jours avant ; à cette date, la réservation est annulée et la date libérée (acompte conservé ou remboursé selon le réglage ci-dessus). 0 = jamais d’annulation automatique.'],
         ],
     ],
     'marketing' => [

@@ -29,6 +29,18 @@ function acompte_cancel_days(): int
     return max(0, min(acompte_days(), (int)bk_num('bk_solde_cancel_days', 30)));
 }
 
+/** Solde non payé à la date limite : l'acompte est-il conservé (réglage, oui par défaut) ? */
+function acompte_kept_on_unpaid(): bool
+{
+    return s('bk_solde_cancel_keep') !== '0';
+}
+
+/** « l’acompte reste acquis » / « l’acompte est remboursé » (textes client). */
+function acompte_unpaid_outcome(): string
+{
+    return acompte_kept_on_unpaid() ? 'l’acompte reste acquis' : 'l’acompte est remboursé';
+}
+
 /** Date limite (fin de journée) avant annulation automatique, ou null. */
 function bk_balance_deadline(array $b): ?DateTimeImmutable
 {
@@ -119,7 +131,7 @@ function acompte_terms(): string
 function acompte_terms_cancel(): string
 {
     $c = acompte_cancel_days();
-    return $c > 0 ? ' Si le solde n’est pas réglé au plus tard ' . $c . ' jours avant l’événement, la réservation est annulée et l’acompte remboursé.'
+    return $c > 0 ? ' Si le solde n’est pas réglé au plus tard ' . $c . ' jours avant l’événement, la réservation est annulée, la date libérée et ' . acompte_unpaid_outcome() . '.'
         : ' À défaut de paiement du solde dans les délais, la réservation peut être annulée selon les conditions d’annulation ci-dessous.';
 }
 
@@ -276,10 +288,14 @@ function bk_mail_balance(array $b, string $tpl): bool
     $vars['montant_solde'] = money2(bk_balance_amount($b));
     $vars['montant_acompte'] = money2((float)$b['acompte_amount']);
     $vars['montant_rembourse'] = money2((float)($b['_refund'] ?? 0));
+    $vars['consequence'] = acompte_kept_on_unpaid() ? 'l’acompte resterait alors acquis, conformément à nos conditions' : 'l’acompte vous serait alors remboursé';
+    $vars['remboursement'] = (float)($b['_refund'] ?? 0) > 0
+        ? 'Votre acompte de **' . money2((float)$b['_refund']) . '** vous est **remboursé** sur votre moyen de paiement (comptez quelques jours selon votre banque).'
+        : 'L’acompte de ' . money2((float)$b['acompte_amount']) . ' reste acquis.';
     $vars['date_limite'] = $b['balance_due_at'] ? fr_date(bk_dt($b['balance_due_at']), false) : '';
     $dl = bk_balance_deadline($b);
     $vars['date_annulation'] = $dl ? fr_date($dl, false) : '';
-    $blocks['annulation'] = $dl ? '<p style="margin:0 0 14px;background:#fdecea;border-radius:8px;padding:10px 14px;color:#8a1c12">Sans règlement du solde au plus tard le <strong>' . e(fr_date($dl, false)) . '</strong>, la réservation sera annulée et l’acompte remboursé.</p>' : '';
+    $blocks['annulation'] = $dl ? '<p style="margin:0 0 14px;background:#fdecea;border-radius:8px;padding:10px 14px;color:#8a1c12">Sans règlement du solde au plus tard le <strong>' . e(fr_date($dl, false)) . '</strong>, la réservation sera annulée et ' . (acompte_kept_on_unpaid() ? 'l’acompte restera acquis' : 'l’acompte remboursé') . '.</p>' : '';
     $blocks['bouton'] = '<p style="margin:18px 0">' . mail_button(bk_client_url($b) . '#paiement', $tpl === 'solde_recu' ? 'Ma réservation et ma facture' : '🔒 Régler le solde') . '</p>';
     [$subject, $html] = mail_from_template($tpl, $vars, $blocks);
     $ok = send_mail($b['email'], $subject, $html, mail_reply_to());
@@ -350,7 +366,7 @@ function acompte_cron(array &$errors): int
     return $n;
 }
 
-/** Solde non réglé à la date limite : réservation annulée, acompte remboursé, client et administration prévenus. */
+/** Solde non réglé à la date limite : réservation annulée, acompte conservé (ou remboursé selon le réglage), client et administration prévenus. */
 function acompte_auto_cancel(array $b): void
 {
     $b = bk_get((int)$b['id']) ?? $b;
@@ -372,9 +388,10 @@ function acompte_auto_cancel(array $b): void
             bk_log((int)$b['id'], 'Vérification du paiement du solde en cours impossible : ' . $e->getMessage());
         }
     }
-    $refundable = round(bk_paid_online($b) - (float)$b['refunded_amount'], 2);
-    $done = bk_cancel($b, $refundable, false, true); // e-mail dédié ci-dessous ; bon cadeau recrédité
-    bk_log((int)$b['id'], 'Annulée automatiquement : solde non réglé à la date limite' . ($done > 0 ? ' — acompte remboursé (' . money2($done) . ')' : ''));
+    $keep = acompte_kept_on_unpaid();
+    $refundable = $keep ? 0.0 : round(bk_paid_online($b) - (float)$b['refunded_amount'], 2);
+    $done = bk_cancel($b, $refundable, false, !$keep); // e-mail dédié ci-dessous ; bon cadeau recrédité seulement si l'acompte est rendu
+    bk_log((int)$b['id'], 'Annulée automatiquement : solde non réglé à la date limite' . ($done > 0 ? ' — acompte remboursé (' . money2($done) . ')' : ($keep ? ' — acompte conservé (conditions générales)' : '')));
     $nb = bk_get((int)$b['id']);
     if ($nb) {
         bk_mail_balance($nb + ['_refund' => $done], 'solde_annule');

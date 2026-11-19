@@ -77,7 +77,7 @@ public_header('Ma réservation ' . $b['ref'] . ' | ' . s('site_name'), '', false
 <?php else: ?>
       <div class="sum-total"><span>Solde à régler avant le <?= e(fr_date(bk_dt($b['balance_due_at']), false)) ?></span><strong style="font-size:1.3rem"><?= money2(bk_balance_amount($b)) ?></strong></div>
 <?php if ($b['status'] === 'confirmed' && ($dl = bk_balance_deadline($b))): ?>
-      <p style="margin:8px 0 0;font-size:.92rem;color:#8a1c12">Sans règlement du solde au plus tard le <strong><?= e(fr_date($dl, false)) ?></strong>, la réservation est annulée et l’acompte remboursé.</p>
+      <p style="margin:8px 0 0;font-size:.92rem;color:#8a1c12">Sans règlement du solde au plus tard le <strong><?= e(fr_date($dl, false)) ?></strong>, la réservation est annulée et <?= e(acompte_unpaid_outcome()) ?>.</p>
 <?php endif; ?>
 <?php if ($b['status'] === 'confirmed' && $providers && $bal > 0): ?>
       <form method="post" action="paiement.php" class="pay" style="margin-top:14px">
