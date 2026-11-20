@@ -52,7 +52,11 @@ function bk_deposit_amount(array $b): float
 /** Date à partir de laquelle l'empreinte peut être déposée. */
 function deposit_opens_at(array $b): DateTimeImmutable
 {
-    return bk_dt($b['start_at'])->modify('-' . max(0, (int)bk_num('bk_deposit_days_before', 2)) . ' days')->setTime(0, 0);
+    // Une empreinte ne vaut que 7 jours : plus la location est longue, plus elle est demandée tard,
+    // pour garder au moins 3 jours après le départ (24 h : J-2, 48 h : la veille, 72 h : le jour de l'arrivée)
+    $days = $b['mode'] === 'day' ? max(1, (int)round((bk_dt($b['end_at'])->getTimestamp() - bk_dt($b['start_at'])->getTimestamp()) / 86400)) : 1;
+    $before = max(0, (int)bk_num('bk_deposit_days_before', 2) - ($days - 1));
+    return bk_dt($b['start_at'])->modify('-' . $before . ' days')->setTime(0, 0);
 }
 
 /** L'empreinte peut-elle être déposée maintenant ? */
@@ -225,6 +229,23 @@ function deposit_cron(array &$errors): array
                 }
                 db()->prepare('UPDATE bookings SET deposit_requested_at = ? WHERE id = ?')->execute([$now->format(BK_FMT), $b['id']]);
             }
+        }
+    }
+    // 1 bis. La veille de l'arrivée, toujours pas d'empreinte : relance au client et alerte aux propriétaires
+    if (deposit_by_card()) {
+        $st = db()->prepare("SELECT * FROM bookings WHERE status = 'confirmed' AND deposit_status IN ('', 'expiree') AND deposit_alert_at IS NULL AND start_at > ? AND start_at <= ?");
+        $st->execute([$now->format(BK_FMT), $now->modify('+1 day')->format(BK_FMT)]);
+        foreach ($st->fetchAll() as $b) {
+            if (bk_deposit_amount($b) <= 0) {
+                continue;
+            }
+            db()->prepare('UPDATE bookings SET deposit_alert_at = ? WHERE id = ?')->execute([$now->format(BK_FMT), $b['id']]);
+            $justAsked = $b['deposit_requested_at'] && bk_dt($b['deposit_requested_at']) > $now->modify('-12 hours'); // pas deux fois le même e-mail
+            if (!$justAsked && deposit_can_hold($b) && notif_on('deposit_request', 'client') && deposit_mail($b, 'caution_demande')) {
+                $asked++;
+            }
+            admin_notify('deposit_missing', '⚠ Caution non déposée : ' . $b['first_name'] . ' ' . $b['last_name'], [notif_booking_line($b),
+                'Ne remettez pas les clés sans caution : ' . (deposit_cheque_allowed() ? 'empreinte bancaire (depuis la fiche) ou chèque.' : 'empreinte bancaire depuis la fiche.')], 'reservation.php?id=' . (int)$b['id'] . '#caution');
         }
     }
     // 2. Libération automatique après le départ (ou juste avant l'expiration de l'empreinte)

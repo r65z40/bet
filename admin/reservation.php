@@ -306,6 +306,10 @@ admin_header('Réservation ' . $b['ref'], 'resa');
         [$dl, $dc] = DEPOSIT_STATUSES[$b['deposit_status']] ?? ['?', 'gray']; $exp = deposit_expires_at($b); ?>
     <div class="card" id="caution">
       <h2>Caution <span class="pill" style="vertical-align:middle;<?= $dc === 'green' ? 'background:#e7f6ec;color:#1d7a46' : ($dc === 'red' ? 'background:#fdecea;color:#b42318' : '') ?>"><?= e($dl) ?></span></h2>
+      <?php if ($b['status'] === 'confirmed' && in_array($b['deposit_status'], ['', 'expiree'], true) && bk_deposit_amount($b) > 0
+          && bk_dt($b['start_at']) <= bk_now()->modify('+1 day') && bk_dt($b['end_at']) > bk_now()): ?>
+        <p style="background:#fdecea;color:#8a1c12;border-radius:8px;padding:10px 12px;font-weight:600">⚠ Caution non déposée : ne remettez pas les clés sans <?= deposit_cheque_allowed() ? 'empreinte bancaire ou chèque' : 'empreinte bancaire' ?>.</p>
+      <?php endif; ?>
       <?php if ($b['deposit_status'] === 'empreinte'): ?>
         <p><strong><?= money2((float)$b['deposit_held']) ?></strong> bloqués sur la carte du client depuis le <?= e(bk_dt($b['deposit_at'])->format('d/m/Y à H\hi')) ?>.
           Valable jusqu’au <strong><?= e($exp->format('d/m/Y à H\hi')) ?></strong><?php if ((int)bk_num('bk_deposit_release_days', 2) > 0): ?> ; libération automatique le <?= e(bk_dt($b['end_at'])->modify('+' . (int)bk_num('bk_deposit_release_days', 2) . ' days')->format('d/m/Y')) ?> si vous ne faites rien<?php endif; ?>.</p>

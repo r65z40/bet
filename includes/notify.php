@@ -23,6 +23,7 @@ const NOTIF_EVENTS = [
     'edl'              => ['État des lieux signé', 'Le client reçoit le lien vers l’état des lieux d’entrée ou de sortie (photos et signatures).', ['client' => 1]],
     'reminder'         => ['Rappel avant l’événement', 'Infos pratiques, adresse, documents (nombre de jours : Réglages › E-mails automatiques).', ['client' => 1]],
     'deposit_request'  => ['Demande de caution', 'Lien pour déposer l’empreinte bancaire, quelques jours avant l’arrivée.', ['client' => 1]],
+    'deposit_missing'  => ['Caution non déposée la veille', 'L’empreinte bancaire n’est toujours pas déposée la veille de l’arrivée (le client reçoit aussi une relance).', ['admin' => 1, 'push' => 1]],
     'deposit_held'     => ['Caution déposée', 'Le client a déposé l’empreinte bancaire.', ['admin' => 0, 'push' => 1]],
     'eve'              => ['Veille de l’événement', 'Récapitulatif pour préparer la salle : client, horaires, options, nombre de personnes.', ['admin' => 0, 'push' => 1]],
     'deposit_released' => ['Caution libérée', 'Rien n’a été débité.', ['client' => 1, 'admin' => 0, 'push' => 0]],

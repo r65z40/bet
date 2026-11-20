@@ -420,6 +420,7 @@ function install_schema(PDO $pdo): void
         'balance_requested_at' => 'TEXT', 'balance_reminded_at' => 'TEXT', 'balance_late_at' => 'TEXT', 'balance_final_at' => 'TEXT',
         // Attestation d'assurance déposée en ligne (fichier dans data/assurances), ou notée reçue sur papier
         'insurance_file' => "TEXT NOT NULL DEFAULT ''", 'insurance_at' => 'TEXT', 'insurance_paper' => 'INTEGER NOT NULL DEFAULT 0', 'insurance_reminded_at' => 'TEXT',
+        'deposit_alert_at' => 'TEXT', // alerte « caution non déposée » la veille de l'arrivée
         // Marketing : relances de paiement abandonné, e-mails après l'événement, origine de la réservation
         'abandon_r1_at' => 'TEXT', 'abandon_r2_at' => 'TEXT', 'post_sent_at' => 'TEXT', 'anniv_sent_at' => 'TEXT',
         'source' => "TEXT NOT NULL DEFAULT ''", 'referral_rewarded' => 'INTEGER NOT NULL DEFAULT 0',
@@ -644,6 +645,10 @@ function migrate(PDO $pdo): void
         $pdo->prepare('UPDATE booking_options SET label = ?, description = ? WHERE label = ? AND description = ?')->execute([
             'Écran 98 pouces, vidéoprojecteur + sonorisation', 'Écran 98 pouces, vidéoprojecteur avec écran de projection de 3 × 2,30 m, sono et micros sans fil.',
             'Écran 98 pouces + sonorisation', 'Écran grand format, sono et micros sans fil.']);
+    }
+    // v30 : délai de réflexion aligné sur le seuil de l'acompte (2 mois)
+    if ((int)setting_raw($pdo, '_schema_version') < 30 && setting_raw($pdo, '_seeded') !== null) {
+        $pdo->prepare("UPDATE settings SET value = '60' WHERE key = 'bk_cancel_grace_min' AND value = '90'")->execute();
     }
     // v29 : alerte aux propriétaires pour toute annulation (y compris automatique, faute de solde)
     if ((int)setting_raw($pdo, '_schema_version') < 29 && setting_raw($pdo, '_seeded') !== null) {

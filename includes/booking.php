@@ -783,7 +783,7 @@ function bk_in_grace(array $b): bool
     $g = (int)bk_num('bk_cancel_grace_days', 7);
     return $g > 0 && !empty($b['paid_at'])
         && bk_dt($b['paid_at']) >= bk_now()->modify('-' . $g . ' days')
-        && bk_dt($b['start_at']) >= bk_dt($b['paid_at'])->modify('+' . (int)bk_num('bk_cancel_grace_min', 90) . ' days');
+        && bk_dt($b['start_at']) >= bk_dt($b['paid_at'])->modify('+' . (int)bk_num('bk_cancel_grace_min', 60) . ' days');
 }
 
 /** Pourcentage du prix total remboursable selon la politique d'annulation (100 pendant le délai de réflexion). */

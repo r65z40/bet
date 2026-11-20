@@ -100,7 +100,8 @@ function cancel_terms(): string
     $out = [];
     $g = (int)bk_num('bk_cancel_grace_days', 7);
     if ($g > 0) {
-        $out[] = '**Dans les ' . $g . ' jours suivant la réservation**, pour un événement prévu au moins ' . (int)bk_num('bk_cancel_grace_min', 90) . ' jours plus tard : remboursement intégral.' . ($rules ? ' Ensuite :' : '');
+        $min = (int)bk_num('bk_cancel_grace_min', 60);
+        $out[] = '**Dans les ' . $g . ' jours suivant la réservation**, si l’événement a lieu au moins ' . $min . ' jours plus tard : remboursement intégral. Une réservation faite moins de ' . $min . ' jours avant l’événement n’a pas de délai de réflexion.' . ($rules ? ' Ensuite :' : '');
     }
     $prev = null;
     $parts = [];
