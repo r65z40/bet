@@ -646,6 +646,12 @@ function migrate(PDO $pdo): void
             'Écran 98 pouces, vidéoprojecteur + sonorisation', 'Écran 98 pouces, vidéoprojecteur avec écran de projection de 3 × 2,30 m, sono et micros sans fil.',
             'Écran 98 pouces + sonorisation', 'Écran grand format, sono et micros sans fil.']);
     }
+    // v31 : annulation par le loueur — remboursement intégral ou report, sans indemnité supplémentaire
+    if ((int)setting_raw($pdo, '_schema_version') < 31 && setting_raw($pdo, '_seeded') !== null) {
+        foreach (['Si le loueur annule la location ou ne peut mettre la salle à disposition, le client est intégralement remboursé des sommes versées et reçoit en plus une indemnité égale à la somme qu’il aurait perdue s’il avait lui-même annulé à la même date (article 6). Aucune indemnité n’est due en cas de force majeure (sinistre, décision administrative, intempérie exceptionnelle…) : le client est alors intégralement remboursé ou peut choisir une autre date.', 'Si le loueur annule la location ou ne peut mettre la salle à disposition, le client est intégralement remboursé des sommes versées et reçoit en plus une indemnité égale à la somme qu’il aurait perdue s’il avait lui-même annulé à la même date. Aucune indemnité n’est due en cas de force majeure (sinistre, décision administrative, intempérie exceptionnelle…) : le client est alors intégralement remboursé ou peut choisir une autre date.'] as $old) {
+            $pdo->prepare("UPDATE settings SET value = replace(value, ?, ?) WHERE key = 'bk_cgv'")->execute([$old, 'Si le loueur annule la location ou ne peut mettre la salle à disposition, le client est intégralement remboursé des sommes versées dans un délai de 14 jours, ou peut choisir de reporter sa location sans frais sur une autre date libre.']);
+        }
+    }
     // v30 : délai de réflexion aligné sur le seuil de l'acompte (2 mois)
     if ((int)setting_raw($pdo, '_schema_version') < 30 && setting_raw($pdo, '_seeded') !== null) {
         $pdo->prepare("UPDATE settings SET value = '60' WHERE key = 'bk_cancel_grace_min' AND value = '90'")->execute();
@@ -673,7 +679,7 @@ function migrate(PDO $pdo): void
             $pdo->prepare('UPDATE settings SET value = ? WHERE key = ?')->execute([BOOKING_DEFAULT_CGV, 'bk_cgv']);
         } elseif ($cgv !== '' && !str_contains($cgv, 'L221-28')) {
             $cgv = str_replace('Location de 24 heures (horaires indiqués lors de la réservation)', 'Location à la journée (24, 48 ou 72 heures, horaires indiqués lors de la réservation)', $cgv);
-            $cgv = rtrim($cgv) . "\n\n# Annulation par le loueur\nSi le loueur annule la location ou ne peut mettre la salle à disposition, le client est intégralement remboursé des sommes versées et reçoit en plus une indemnité égale à la somme qu’il aurait perdue s’il avait lui-même annulé à la même date. Aucune indemnité n’est due en cas de force majeure (sinistre, décision administrative, intempérie exceptionnelle…) : le client est alors intégralement remboursé ou peut choisir une autre date."
+            $cgv = rtrim($cgv) . "\n\n# Annulation par le loueur\nSi le loueur annule la location ou ne peut mettre la salle à disposition, le client est intégralement remboursé des sommes versées dans un délai de 14 jours, ou peut choisir de reporter sa location sans frais sur une autre date libre."
                 . "\n\n# Droit de rétractation\nLa location de la salle est une prestation de loisirs fournie à une date déterminée : conformément à l’article L221-28 12° du Code de la consommation, elle n’ouvre pas droit au délai de rétractation de 14 jours. Les conditions d’annulation ci-dessus s’appliquent."
                 . "\n\n# Réclamations, médiation et droit applicable\nToute réclamation est adressée par écrit à {email}. À défaut d’accord amiable, le client consommateur peut recourir gratuitement au médiateur de la consommation : {mediateur}. Les présentes conditions sont soumises au droit français.";
             $pdo->prepare('UPDATE settings SET value = ? WHERE key = ?')->execute([$cgv, 'bk_cgv']);
