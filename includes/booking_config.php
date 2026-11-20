@@ -25,7 +25,7 @@ Une caution de 2 × le montant du loyer HT est demandée. Au choix du client, el
 Toute annulation doit être faite par e-mail. {annulation}
 
 # 7. Annulation par le loueur
-Si le loueur annule la location ou ne peut mettre la salle à disposition, le client est intégralement remboursé des sommes versées dans un délai de 14 jours, ou peut choisir de reporter sa location sans frais sur une autre date libre.
+**En cas de force majeure ou d’événement indépendant de sa volonté** (sinistre, fermeture administrative, panne majeure empêchant l’accueil du public…), le loueur propose un report sans frais sur une autre date libre ou le remboursement intégral des sommes versées, au choix du client, sans autre indemnité. **Pour toute autre cause**, le client est intégralement remboursé des sommes versées dans un délai de 14 jours ; s’il est un particulier ou une association (consommateur ou non-professionnel), il reçoit en plus une indemnité égale à 10 % du montant de l’acompte prévu pour sa réservation.
 
 # 8. Droit de rétractation
 La location de la salle est une prestation de loisirs fournie à une date déterminée : conformément à l’article L221-28 12° du Code de la consommation, elle n’ouvre pas droit au délai de rétractation de 14 jours. Les conditions d’annulation de l’article 6 s’appliquent.
