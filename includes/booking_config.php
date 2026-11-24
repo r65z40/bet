@@ -84,7 +84,7 @@ const BOOKING_SETTINGS = [
             'bk_hour_close'       => ['label' => 'Location à l’heure : fermeture (fin au plus tard)', 'default' => '21:00', 'type' => 'time'],
             'bk_hour_step'        => ['label' => 'Location à l’heure : pas des horaires', 'default' => '60', 'type' => 'select', 'options' => ['30' => 'Toutes les 30 minutes', '60' => 'Toutes les heures']],
             'bk_min_hours'        => ['label' => 'Durée minimum à l’heure (heures)', 'default' => '2', 'type' => 'number'],
-            'bk_buffer_hours'     => ['label' => 'Temps mort autour des locations à l’heure (heures)', 'default' => '2', 'type' => 'number', 'help' => 'S’applique aussi autour des événements de votre agenda Google, et des blocages pour les locations à l’heure. Pas entre deux locations à la journée, ni entre une location à la journée et un blocage : ils se suivent avec le battement réglé ci-dessus.'],
+            'bk_buffer_hours'     => ['label' => 'Temps mort autour des locations à l’heure (heures)', 'default' => '2', 'type' => 'number', 'help' => 'Autour de chaque location à l’heure, y compris face aux blocages et aux événements de votre agenda Google. Pas pour les locations à la journée : elles peuvent suivre ou précéder directement une autre location à la journée, un blocage ou un événement Google (le battement réglé ci-dessus suffit).'],
             'bk_min_notice_hours' => ['label' => 'Délai minimum avant le début (heures)', 'default' => '48', 'type' => 'number'],
             'bk_max_months'       => ['label' => 'Réservation possible jusqu’à (mois à l’avance)', 'default' => '18', 'type' => 'number'],
             'bk_max_guests'       => ['label' => 'Nombre maximum de personnes', 'default' => '120', 'type' => 'number'],

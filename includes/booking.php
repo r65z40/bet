@@ -326,17 +326,18 @@ function bk_conflict_day(int $s, int $e, array $dayBusy): bool
 }
 
 /**
- * Chevauchement avec le temps mort. Entre deux locations à la journée, ou une location à la journée et un blocage,
- * pas de temps mort : le battement (départ 10 h, arrivée suivante 10 h 30) est déjà compris dans leurs horaires.
+ * Chevauchement avec le temps mort. Entre une location à la journée et une autre location à la journée, un blocage
+ * ou un événement de l'agenda Google, pas de temps mort : le battement (départ 10 h, arrivée suivante 10 h 30) est déjà compris dans leurs horaires.
  */
 function bk_conflict(int $s, int $e, array $busy, bool $isDay = false): bool
 {
     $buf = (int)round(bk_num('bk_buffer_hours', 2) * 3600);
     foreach ($busy as $iv) {
         [$bs, $be] = $iv;
-        // Location à la journée : pas de temps mort avec une autre location à la journée ni avec un blocage
-        // (location prise par téléphone, travaux… : ses horaires sont ceux que vous avez saisis)
-        $b = $isDay && ((($iv[2] ?? '') === 'booking' && ($iv[3] ?? '') === 'day') || ($iv[2] ?? '') === 'block') ? 0 : $buf;
+        // Location à la journée : pas de temps mort avec une autre location à la journée, un blocage ou un
+        // événement de l'agenda Google (leurs horaires sont ceux saisis) ; le temps mort ne vaut qu'avec les locations à l'heure
+        $type = $iv[2] ?? '';
+        $b = $isDay && (($type === 'booking' && ($iv[3] ?? '') === 'day') || $type === 'block' || $type === 'agenda') ? 0 : $buf;
         if ($s < $be + $b && $e > $bs - $b) {
             return true;
         }
