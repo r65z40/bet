@@ -216,7 +216,7 @@ admin_header('Réservations', 'resa');
   <form method="post" class="card">
     <?= csrf_field() ?>
     <h2>Bloquer un créneau</h2>
-    <p class="muted" style="margin-top:-6px">Travaux, location prise par téléphone… Le temps mort s’applique aussi autour. (Vous pouvez aussi simplement ajouter l’événement dans votre agenda Google.)</p>
+    <p class="muted" style="margin-top:-6px">Travaux, location prise par téléphone… Le temps mort s’applique autour pour les locations à l’heure ; une location à la journée peut le suivre ou le précéder directement (pour une location prise par téléphone : de 10 h 30 à 10 h le lendemain). (Vous pouvez aussi simplement ajouter l’événement dans votre agenda Google.)</p>
     <div class="grid g2">
       <?= field('from', 'Début', '', 'datetime-local') ?>
       <?= field('to', 'Fin', '', 'datetime-local') ?>
